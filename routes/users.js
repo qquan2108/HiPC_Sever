@@ -72,4 +72,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Get all users
+router.get('/all', async (req, res) => {
+  try {
+    const users = await User.find().select('-password'); // Ẩn trường password
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;

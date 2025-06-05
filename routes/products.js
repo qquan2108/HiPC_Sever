@@ -1,28 +1,49 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const Image = require('../models/Image');
 
-// GET all
+// GET all products with image
 router.get('/', async (req, res) => {
   try {
-    const items = await Product.find();
-    res.json(items);
+    const products = await Product.find();
+    const productsWithImage = await Promise.all(products.map(async (p) => {
+      const image = await Image.findOne({ product_id: p._id });
+      return {
+        ...p.toObject(),
+        image: image ? image.url : null
+      };
+    }));
+    res.json(productsWithImage);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET by id
+// filepath: ../routes/product.js
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Product.findById(req.params.id);
-    res.json(item);
+    const item = await Product.findById(req.params.id)
+      .populate('category_id')
+      .populate('brand_id')
+      .lean();
+
+    if (!item) return res.status(404).json({ error: 'Not found' });
+
+    // Lấy tất cả ảnh của sản phẩm
+    const images = await Image.find({ product_id: item._id });
+
+    res.json({
+      ...item,
+      image: images[0] ? images[0].url : null, // Ảnh đại diện
+      images: images.map(img => img.url),      // Mảng tất cả ảnh
+    });
   } catch (err) {
-    res.status(404).json({ error: 'Not found' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// POST create
+// POST create product
 router.post('/', async (req, res) => {
   try {
     const newItem = new Product(req.body);
@@ -33,7 +54,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update
+// PUT update product
 router.put('/:id', async (req, res) => {
   try {
     const updatedItem = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -43,7 +64,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE
+// DELETE product
 router.delete('/:id', async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
