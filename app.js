@@ -10,13 +10,15 @@ var productsRouter = require('./routes/products');
 var categorysRouter = require('./routes/categorys');
 var ordersRouter = require('./routes/orders');
 var buildproductsRouter = require('./routes/buildproducts');
-var categorysRouter = require('./routes/categorys');
 var chatmessagesRouter = require('./routes/chatmessages');
 var chatsessionsRouter = require('./routes/chatsessions');
 var comparisonproductsRouter = require('./routes/comparisonproducts');
 var comparisonsRouter = require('./routes/comparisons');
-var imagesearchsRouter = require('./routes/imagesearchs');
+var imagesRouter = require('./routes/image');
 var productreviewsRouter = require('./routes/productreviews');
+var tsktproductsRouter = require('./routes/tsktproducts'); // Thêm dòng này
+var brandsRouter = require('./routes/brands');
+var vouchersRouter = require('./routes/vouchers');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -51,9 +53,13 @@ app.use('/chatmessages', chatmessagesRouter);
 app.use('/chatsessions', chatsessionsRouter);
 app.use('/comparisonproducts', comparisonproductsRouter);
 app.use('/comparisons', comparisonsRouter);
-app.use('/imagesearchs', imagesearchsRouter);
+app.use('/images', imagesRouter);
 app.use('/productreviews', productreviewsRouter);
+app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
+app.use('/brands', brandsRouter);
+app.use('/vouchers', vouchersRouter);
 
+console.log('Images router loaded');
 
 
 // catch 404 and forward to error handler
@@ -73,3 +79,5 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+
+
