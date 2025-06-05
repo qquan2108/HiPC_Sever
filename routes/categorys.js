@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Category = require('../models/Category');
 
-// GET all
+// GET all categories
 router.get('/', async (req, res) => {
   try {
     const items = await Category.find();
@@ -12,17 +12,18 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET by id
+// GET category by id
 router.get('/:id', async (req, res) => {
   try {
     const item = await Category.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) {
     res.status(404).json({ error: 'Not found' });
   }
 });
 
-// POST create
+// POST create category
 router.post('/', async (req, res) => {
   try {
     const newItem = new Category(req.body);
@@ -33,7 +34,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update
+// PUT update category
 router.put('/:id', async (req, res) => {
   try {
     const updatedItem = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -43,7 +44,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE
+// DELETE category
 router.delete('/:id', async (req, res) => {
   try {
     await Category.findByIdAndDelete(req.params.id);
