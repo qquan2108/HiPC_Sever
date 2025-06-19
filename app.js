@@ -19,6 +19,7 @@ var productreviewsRouter = require('./routes/productreviews');
 var tsktproductsRouter = require('./routes/tsktproducts'); // Thêm dòng này
 var brandsRouter = require('./routes/brands');
 var vouchersRouter = require('./routes/vouchers');
+var searchRouter = require('./routes/search');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -57,6 +58,7 @@ app.use('/images', imagesRouter);
 app.use('/productreviews', productreviewsRouter);
 app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
+app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
 
 console.log('Images router loaded');
