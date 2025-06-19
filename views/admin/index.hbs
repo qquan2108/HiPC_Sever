@@ -1,0 +1,23 @@
+{{#*inline "title"}}Danh sách Sản phẩm{{/inline}}
+
+<div class="header-actions">
+  <a href="/admin/products/create" class="btn"><i class="bx bx-plus"></i> Thêm sản phẩm</a>
+  <input type="text" id="searchInput" placeholder="Tìm sản phẩm.">
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Hình</th>
+      <th>Tên</th>
+      <th>Giá</th>
+      <th>Kho</th>
+      <th>Hành động</th>
+    </tr>
+  </thead>
+  <tbody id="productTable"></tbody>
+</table>
+
+<script>
+  document.addEventListener('DOMContentLoaded', fetchProducts);
+</script>

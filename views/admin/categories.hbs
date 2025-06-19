@@ -1,0 +1,24 @@
+<!-- File: views/admin/categories.hbs -->
+{{#*inline "title"}}Quản lý Danh mục{{/inline}}
+
+<div class="container">
+  <div class="header-actions">
+    <input type="text" id="searchInput" placeholder="Tìm danh mục...">
+    <button class="btn" id="addCategoryBtn"><i class="bx bx-plus"></i> Thêm danh mục</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Tên</th>
+        <th>Mô tả</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="categoryTable"></tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', fetchCategories);
+</script>
+

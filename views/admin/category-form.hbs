@@ -1,0 +1,24 @@
+<!-- File: views/admin/category-form.hbs -->
+{{#*inline "title"}}{{#if category._id}}Chỉnh sửa Danh mục{{else}}Tạo Danh mục{{/if}}{{/inline}}
+
+<form id="categoryForm">
+  {{#if category._id}}
+    <input type="hidden" name="id" value="{{category._id}}">
+  {{/if}}
+  <div class="form-group">
+    <label>Tên danh mục</label>
+    <input type="text" name="name" value="{{category.name}}" required>
+  </div>
+  <div class="form-group">
+    <label>Mô tả</label>
+    <textarea name="description">{{category.description}}</textarea>
+  </div>
+  <div class="modal-footer">
+    <button type="submit" class="btn">Lưu</button>
+    <a href="/admin/categories" class="btn btn-secondary">Hủy</a>
+  </div>
+</form>
+
+<script>
+  document.addEventListener('DOMContentLoaded', initCategoryForm);
+</script>
