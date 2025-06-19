@@ -52,11 +52,28 @@ exports.updateProduct = async (req, res) => {
 };
 
 // Lấy danh sách và chi tiết
-exports.getProducts = async (req, res) => {
-  const list = await Product.find()
-    .populate('category_id', 'name')
-    .populate('brand_id', 'name');
-  res.json(list);
+exports.getProducts =  async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const [products, total] = await Promise.all([
+      Product.find()
+        .skip(skip)
+        .limit(limit)
+        .populate('category_id', 'name')
+        .populate('brand_id', 'name'),
+      Product.countDocuments()
+    ]);
+
+    res.json({
+      products,
+      hasMore: skip + products.length < total
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getProductById = async (req, res) => {

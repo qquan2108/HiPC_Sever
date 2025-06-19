@@ -3,7 +3,9 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan'); 
+var hbs     = require('hbs');
 
+var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var productsRouter = require('./routes/products');
@@ -44,6 +46,23 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Đăng ký helper so sánh
+hbs.registerHelper('ifEquals', function(a, b, options) {
+  // nếu a hoặc b chưa có, sẽ cho vào nhánh else (nghĩa không match)
+  if (a == null || b == null) {
+    return options.inverse(this);
+  }
+  return a.toString() === b.toString()
+    ? options.fn(this)
+    : options.inverse(this);
+});
+
+// Đăng ký helper JSON stringify
+hbs.registerHelper('json', function(context) {
+  return JSON.stringify(context);
+});
+
+app.use('/admin', adminRouter);
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
@@ -64,12 +83,13 @@ app.use('/vouchers', vouchersRouter);
 console.log('Images router loaded');
 
 
+app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
 });
 
-app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 
 
 // error handler

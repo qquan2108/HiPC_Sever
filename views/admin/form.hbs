@@ -1,0 +1,83 @@
+{{#*inline "title"}}
+  {{#ifEquals mode 'edit'}}Chỉnh sửa sản phẩm{{else}}Tạo sản phẩm{{/ifEquals}}
+{{/inline}}
+
+<div class="form-scroll-container">
+  <form id="productForm" data-mode="{{mode}}">
+    {{#ifEquals mode 'edit'}}
+      <input type="hidden" name="id" value="{{product._id}}">
+    {{/ifEquals}}
+
+    <div class="form-group">
+      <label>Danh mục</label>
+      <select name="category_id" id="categorySelect" required>
+        <option value="">-- Chọn danh mục --</option>
+        {{#each categories}}
+          <option value="{{_id}}" {{#ifEquals _id ../product.category_id._id}}selected{{/ifEquals}}>
+            {{name}}
+          </option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Thông số kỹ thuật</label>
+      <div id="specContainer">
+        {{#ifEquals mode 'edit'}}
+          {{#each product.specifications}}
+            <div class="spec-item">
+              <label>{{key}}</label>
+              <input type="text" name="specifications[{{key}}]" value="{{value}}">
+            </div>
+          {{/each}}
+        {{/ifEquals}}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Brand</label>
+      <select name="brand_id" id="brandSpinner" required>
+        <option value="">-- Chọn brand --</option>
+        {{#each brands}}
+          <option value="{{_id}}" {{#ifEquals _id ../product.brand_id._id}}selected{{/ifEquals}}>
+            {{name}}
+          </option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Tên sản phẩm</label>
+      <input type="text" name="name" value="{{product.name}}" required>
+    </div>
+
+    <div class="form-group">
+      <label>Giá (VNĐ)</label>
+      <input type="number" name="price" value="{{product.price}}" min="0" required>
+    </div>
+
+    <div class="form-group">
+      <label>Stock</label>
+      <input type="number" name="stock" value="{{product.stock}}" min="0" required>
+    </div>
+
+    <div class="form-group">
+      <label>URL ảnh</label>
+      <input type="url" name="image" value="{{product.image}}">
+    </div>
+
+    <div class="form-group">
+      <label>Mô tả</label>
+      <textarea name="description" rows="3">{{product.description}}</textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button type="submit" class="btn btn-primary">Lưu</button>
+      <a href="/admin/products" class="btn btn-secondary">Hủy</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', initProductForm);
+</script>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin {{title}}</title>
+    <link rel="stylesheet" href="/admin/static/css/splash.css">
+    <link rel="stylesheet" href="admin/static/css/categories.css">
+    <link rel="stylesheet" href="/admin/static/css/products.css">
+    <link rel="stylesheet" href="/admin/static/css/user.css">
+    <link rel="stylesheet" href="/admin/static/css/form.css">
+
+</head>
+
+<body>
+    <header>
+        <div class="logo-admin"><img src="/admin/static/images/logo.png" alt="Logo"></div>
+        <nav>
+            <ul>
+                <li><a href="/admin/products">Sản phẩm</a></li>
+                <li><a href="/admin/products/create">Tạo mới</a></li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container" style="margin-top:100px;">
+        {{{body}}}
+    </div>
+    <script src="/admin/static/js/admin.js"></script>
+</body>
+
+</html>

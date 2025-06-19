@@ -1,0 +1,13 @@
+/* public/admin/static/css/users.css */
+
+/* Reuse biến & reset từ products.css */
+@import 'products.css'; 
+
+/* Tuỳ chỉnh cho bảng người dùng */
+.header-actions .btn i { margin-right: 4px; }
+
+/* Cột thêm */
+table td:nth-child(5),
+table th:nth-child(5) { min-width: 100px; }
+
+/* (Các style chung như products.css áp dụng tiếp) */
