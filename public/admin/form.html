@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Tạo/Chỉnh sửa Sản phẩm</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    label { display:block; margin:8px 0 4px; }
+    input, select, textarea { width:100%; padding:6px; box-sizing:border-box; }
+    .specs-container { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1 id="formTitle">Tạo sản phẩm</h1>
+  <form id="productForm">
+    <input type="hidden" name="id">
+
+    <label>Danh mục</label>
+    <select id="categorySpinner" name="category_id" required>
+      <option value="">-- Chọn danh mục --</option>
+    </select>
+
+    <label>Brand</label>
+    <select id="brandSpinner" name="brand_id" required>
+      <option value="">-- Chọn brand --</option>
+    </select>
+
+    <label>Tên sản phẩm</label>
+    <input type="text" name="name" required />
+
+    <label>Giá (VNĐ)</label>
+    <input type="number" name="price" min="0" required />
+
+    <label>Stock</label>
+    <input type="number" name="stock" min="0" required />
+
+    <label>URL ảnh</label>
+    <input type="url" name="image" />
+
+    <label>Mô tả</label>
+    <textarea name="description" rows="3"></textarea>
+
+    <div class="specs-container">
+      <label>Thông số kỹ thuật</label>
+      <div id="specContainer"></div>
+    </div>
+
+    <button type="submit">Lưu</button>
+    <button type="button" id="cancelBtn">Hủy</button>
+  </form>
+
+  <script src="js/admin.js"></script>
+  <script>
+    initForm();
+  </script>
+</body>
+</html>

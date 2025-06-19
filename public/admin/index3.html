@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Danh sách Sản phẩm</title>
+  <!-- CSS/Fonts/Icons giống giao diện index3.html -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    
+  </style>
+</head>
+<body>
+  <!-- Header/Navi giống index3.html -->
+  <button id="addBtn" class="btn"><i class="bx bx-plus"></i> Thêm sản phẩm</button>
+  <input type="text" id="searchInput" placeholder="Tìm sản phẩm..." />
+  <table>
+    <thead>
+      <tr><th>Hình</th><th>Tên</th><th>Giá</th><th>Kho</th><th>Hành động</th></tr>
+    </thead>
+    <tbody id="productTable"></tbody>
+  </table>
+
+  <script src="js/admin.js"></script>
+  <script>
+    // Chuyển đến form tạo
+    document.getElementById('addBtn').addEventListener('click', () => {
+      location.href = 'form.html';
+    });
+    // Khởi chạy load danh sách
+    fetchProducts();
+  </script>
+</body>
+</html>
