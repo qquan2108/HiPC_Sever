@@ -2,28 +2,40 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan'); 
+var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var productsRouter = require('./routes/products');
+var categorysRouter = require('./routes/categorys');
+var ordersRouter = require('./routes/orders');
+var buildproductsRouter = require('./routes/buildproducts');
+var chatmessagesRouter = require('./routes/chatmessages');
+var chatsessionsRouter = require('./routes/chatsessions');
+var comparisonproductsRouter = require('./routes/comparisonproducts');
+var comparisonsRouter = require('./routes/comparisons');
+var imagesRouter = require('./routes/image');
+var productreviewsRouter = require('./routes/productreviews');
+var tsktproductsRouter = require('./routes/tsktproducts');
+var brandsRouter = require('./routes/brands');
+var vouchersRouter = require('./routes/vouchers');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
 var app = express();
-app.use(cors)
+app.use(cors());
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('MongoDB connected');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-});
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+  });
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -33,6 +45,24 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/category', categorysRouter);
+app.use('/product', productsRouter);
+
+// Mount orders router correctly
+app.use('/orders', ordersRouter);
+
+app.use('/buildproducts', buildproductsRouter);
+app.use('/chatmessages', chatmessagesRouter);
+app.use('/chatsessions', chatsessionsRouter);
+app.use('/comparisonproducts', comparisonproductsRouter);
+app.use('/comparisons', comparisonsRouter);
+app.use('/images', imagesRouter);
+app.use('/productreviews', productreviewsRouter);
+app.use('/tsktproducts', tsktproductsRouter);
+app.use('/brands', brandsRouter);
+app.use('/vouchers', vouchersRouter);
+
+console.log('Orders router mounted at /orders');
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

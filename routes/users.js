@@ -63,10 +63,62 @@ router.post('/login', async (req, res) => {
         id: user._id,
         full_name: user.full_name,
         email: user.email,
+        phone: user.phone,      // thêm dòng này
+        address: user.address,
         role: user.role
       }
     });
 
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get all users
+router.get('/all', async (req, res) => {
+  try {
+    const users = await User.find().select('-password'); // Ẩn trường password
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+//sua user theo id
+router.put('/:id', async (req, res) => {
+  try {
+    const { full_name, phone, address, role } = req.body;
+    const updateData = { full_name, phone, address, role };
+    // Nếu có password mới thì hash lại
+    if (req.body.password) {
+      updateData.password = await bcrypt.hash(req.body.password, 10);
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).select('-password');
+    if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User updated', user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Xóa user (Delete)
+router.delete('/:id', async (req, res) => {
+  try {
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+router.get('/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
