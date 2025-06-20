@@ -67,7 +67,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
-app.use('/oders', ordersRouter);
+app.use('/orders', ordersRouter);
 app.use('/buildproducts', buildproductsRouter);
 app.use('/chatmessages', chatmessagesRouter);
 app.use('/chatsessions', chatsessionsRouter);
