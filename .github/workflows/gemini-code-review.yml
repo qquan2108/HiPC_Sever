@@ -47,5 +47,5 @@ jobs:
           pull_request_diff: ${{ steps.get_diff.outputs.pull_request_diff }}
           pull_request_chunk_size: "3500"               # tùy chỉnh theo token limit
           extra_prompt: |-
-            # ví dụ: “Please review as a backend engineer.”
+            # ví dụ: “Hãy review pull request này dưới góc nhìn của backend developer.”
           log_level:         "DEBUG"
