@@ -8,7 +8,7 @@ const TsktProduct = require('../models/TsktProduct');
 
 // Dashboard
 router.get('/', (req, res) => {
-  res.render('admin/dashboard', { layout: 'admin/layout' });
+  res.render('admin/index', { layout: 'admin/layout' });
 });
 
 // Quản lý Người dùng (static + JS fetch)
