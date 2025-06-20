@@ -2,45 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 
-// Các route cụ thể đặt trước
-
-// Cập nhật số lượng sản phẩm trong giỏ hàng
-router.put('/update-quantity', async (req, res) => {
-  console.log('BODY:', req.body);
-  const { productId, quantity } = req.body;
-
-  // Tìm order chứa sản phẩm này
-  const order = await Order.findOne({ "products.productId": productId });
-  if (!order) return res.status(404).json({ error: 'Order not found' });
-
-  const prod = order.products.find(p => p.productId.toString() === productId);
-  if (prod) prod.quantity = quantity;
-  await order.save();
-
-  // Trả về order đã populate
-  const populatedOrder = await Order.findById(order._id).populate('products.productId');
-  res.json(populatedOrder);
-});
-
-// Xóa sản phẩm khỏi giỏ hàng
-router.delete('/remove-product/:productId', async (req, res) => {
-  const { productId } = req.params;
-  const order = await Order.findOne({ "products.productId": productId });
-  if (!order) return res.status(404).json({ error: 'Order not found' });
-
-  order.products = order.products.filter(p => p.productId.toString() !== productId);
-  await order.save();
-
-  const populatedOrder = await Order.findById(order._id).populate('products.productId');
-  res.json(populatedOrder);
-});
-
 // Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
 router.post('/add-to-cart', async (req, res) => {
-  const { productId, quantity } = req.body;
-  let order = await Order.findOne(); // Thêm điều kiện user nếu có
+  const { user_id, productId, quantity } = req.body;
+  let order = await Order.findOne({ user_id, status: 'pending' });
   if (!order) {
-    order = new Order({ products: [{ productId, quantity }] });
+    order = new Order({ user_id, products: [{ productId, quantity }], status: 'pending' });
   } else {
     const prod = order.products.find(p => p.productId.toString() === productId);
     if (prod) {
@@ -52,6 +19,64 @@ router.post('/add-to-cart', async (req, res) => {
   await order.save();
   const populatedOrder = await Order.findById(order._id).populate('products.productId');
   res.json(populatedOrder);
+});
+
+// Cập nhật số lượng sản phẩm trong giỏ hàng
+router.put('/update-quantity', async (req, res) => {
+  const { user_id, productId, quantity } = req.body;
+  const order = await Order.findOne({ user_id, status: 'pending', "products.productId": productId });
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  const prod = order.products.find(p => p.productId.toString() === productId);
+  if (prod) prod.quantity = quantity;
+  await order.save();
+  const populatedOrder = await Order.findById(order._id).populate('products.productId');
+  res.json(populatedOrder);
+});
+
+// Xóa sản phẩm khỏi giỏ hàng
+router.delete('/remove-product/:userId/:productId', async (req, res) => {
+  const { userId, productId } = req.params;
+  const order = await Order.findOne({ user_id: userId, status: 'pending' });
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  order.products = order.products.filter(p => p.productId.toString() !== productId);
+  await order.save();
+  const populatedOrder = await Order.findById(order._id).populate('products.productId');
+  res.json(populatedOrder);
+});
+
+// Lấy danh sách đơn hàng của user
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const orders = await Order.find({ user_id: req.params.userId })
+      .populate('products.productId');
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Đặt hàng (checkout)
+router.post('/checkout', async (req, res) => {
+  try {
+    const { user_id, products, address, paymentMethod, shippingMethod, voucher, total } = req.body;
+    const newOrder = new Order({
+      user_id,
+      products,
+      address,
+      paymentMethod,
+      shippingMethod,
+      voucher,
+      total,
+      status: 'confirmed',
+      createdAt: new Date()
+    });
+    await newOrder.save();
+    // XÓA GIỎ HÀNG (chỉ xóa đơn hàng pending của user)
+    await Order.deleteMany({ user_id, status: 'pending' });
+    res.status(201).json({ message: 'Đặt hàng thành công', orderId: newOrder._id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Các route động đặt sau cùng
@@ -91,29 +116,6 @@ router.get('/', async (req, res) => {
   try {
     const items = await Order.find().populate('products.productId');
     res.json(items);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-router.post('/checkout', async (req, res) => {
-  try {
-    const { products, address, paymentMethod, shippingMethod, voucher, total } = req.body;
-    // Tạo đơn hàng mới
-    const newOrder = new Order({
-      products,
-      address,
-      paymentMethod,
-      shippingMethod,
-      voucher,
-      total,
-      createdAt: new Date()
-    });
-    await newOrder.save();
-
-    // XÓA GIỎ HÀNG (giả sử chỉ có 1 order là giỏ hàng)
-    await Order.deleteMany({ /* điều kiện là giỏ hàng, ví dụ type: 'cart' hoặc user_id nếu có */ });
-
-    res.status(201).json({ message: 'Đặt hàng thành công', orderId: newOrder._id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
