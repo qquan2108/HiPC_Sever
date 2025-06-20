@@ -1,0 +1,51 @@
+name: "Code Review by Gemini AI"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read               # để checkout mã nguồn
+  pull-requests: write         # để post review comment
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) Lấy code
+      - uses: actions/checkout@v3
+
+      # 2) Tạo diff của PR
+      - name: "Get diff of the pull request"
+        id: get_diff
+        shell: bash
+        env:
+          PULL_REQUEST_HEAD_REF: "${{ github.event.pull_request.head.ref }}"
+          PULL_REQUEST_BASE_REF: "${{ github.event.pull_request.base.ref }}"
+        run: |-
+          git fetch origin "${{ env.PULL_REQUEST_HEAD_REF }}"
+          git fetch origin "${{ env.PULL_REQUEST_BASE_REF }}"
+          git checkout "${{ env.PULL_REQUEST_HEAD_REF }}"
+          git diff "origin/${{ env.PULL_REQUEST_BASE_REF }}" > diff.txt
+          {
+            echo "pull_request_diff<<EOF"
+            cat diff.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      # 3) Chạy Gemini AI review
+      - uses: rubensflinco/gemini-code-review-action@1.0.5
+        name: "Code Review by Gemini AI"
+        id: review
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token:     ${{ secrets.GITHUB_TOKEN }}
+          github_repository: ${{ github.repository }}
+          github_pull_request_number: ${{ github.event.pull_request.number }}
+          git_commit_hash:   ${{ github.event.pull_request.head.sha }}
+          model:             "gemini-2.0-flash"    # hoặc model bạn muốn
+          pull_request_diff: ${{ steps.get_diff.outputs.pull_request_diff }}
+          pull_request_chunk_size: "3500"               # tùy chỉnh theo token limit
+          extra_prompt: |-
+            # ví dụ: “Please review as a backend engineer.”
+          log_level:         "DEBUG"
