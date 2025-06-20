@@ -2,8 +2,10 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+var logger = require('morgan'); 
+var hbs     = require('hbs');
 
+var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var productsRouter = require('./routes/products');
@@ -16,26 +18,27 @@ var comparisonproductsRouter = require('./routes/comparisonproducts');
 var comparisonsRouter = require('./routes/comparisons');
 var imagesRouter = require('./routes/image');
 var productreviewsRouter = require('./routes/productreviews');
-var tsktproductsRouter = require('./routes/tsktproducts');
+var tsktproductsRouter = require('./routes/tsktproducts'); // Thêm dòng này
 var brandsRouter = require('./routes/brands');
 var vouchersRouter = require('./routes/vouchers');
+var searchRouter = require('./routes/search');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
 var app = express();
 app.use(cors());
 
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('MongoDB connected');
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-  });
+.then(() => {
+  console.log('MongoDB connected');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+});
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -43,14 +46,28 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Đăng ký helper so sánh
+hbs.registerHelper('ifEquals', function(a, b, options) {
+  // nếu a hoặc b chưa có, sẽ cho vào nhánh else (nghĩa không match)
+  if (a == null || b == null) {
+    return options.inverse(this);
+  }
+  return a.toString() === b.toString()
+    ? options.fn(this)
+    : options.inverse(this);
+});
+
+// Đăng ký helper JSON stringify
+hbs.registerHelper('json', function(context) {
+  return JSON.stringify(context);
+});
+
+app.use('/admin', adminRouter);
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
-
-// Mount orders router correctly
 app.use('/orders', ordersRouter);
-
 app.use('/buildproducts', buildproductsRouter);
 app.use('/chatmessages', chatmessagesRouter);
 app.use('/chatsessions', chatsessionsRouter);
@@ -58,16 +75,20 @@ app.use('/comparisonproducts', comparisonproductsRouter);
 app.use('/comparisons', comparisonsRouter);
 app.use('/images', imagesRouter);
 app.use('/productreviews', productreviewsRouter);
-app.use('/tsktproducts', tsktproductsRouter);
+app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
+app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
 
-console.log('Orders router mounted at /orders');
+
+app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
 });
+
+
 
 // error handler
 app.use(function(err, req, res, next) {
@@ -81,3 +102,5 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+
+

@@ -1,0 +1,31 @@
+{{#*inline "title"}}Quản lý Sản phẩm{{/inline}}
+
+<div class="container">
+  <div class="header-actions">
+    <input type="text" id="searchInput" placeholder="Tìm sản phẩm...">
+    <button class="btn" id="addBtn"><i class="bx bx-plus"></i> Thêm sản phẩm</button>
+  </div>
+
+  <div id="tableContainer" class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Hình</th>
+          <th>Tên</th>
+          <th>Giá</th>
+          <th>Kho</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="productTable"></tbody>
+    </table>
+    <!-- sentinel để detect scroll tới cuối -->
+    <div id="scrollSentinel"></div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    initProductScroll();
+  });
+</script>

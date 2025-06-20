@@ -1,0 +1,27 @@
+{{#*inline "title"}}Quản lý Người dùng{{/inline}}
+
+<div class="container">
+  <div class="header-actions">
+    <input type="text" id="searchInput" placeholder="Tìm người dùng...">
+    <button class="btn" id="addUserBtn"><i class='bx bx-user-plus'></i> Thêm Người dùng</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Họ & Tên</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Địa chỉ</th>
+        <th>Vai trò</th>
+        <th>Ngày tạo</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', fetchUsers);
+  // reuse existing fetchUsers & renderUsers functions in admin.js
+</script>
