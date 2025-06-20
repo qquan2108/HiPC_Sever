@@ -1,0 +1,20 @@
+name: Ask Gemini AI to review your pull requests
+  # You may pin to the exact commit or the version.
+  # uses: ablil/gemini-code-review@6b1552685543c9ca5c92e714a3f596d6702a2e0a
+  uses: ablil/gemini-code-review@v0.5.12
+  with:
+    # Get your Gemini API key from here https://ai.google.dev/gemini-api/docs/api-key
+    gemini_api_key: AIzaSyDxrSe7xriTAd731tDr6CVcxFl3tTBFEEs
+    # Github token to interact with Github API, provided by Github
+    github_token: 
+    # Gemini model to use (default: gemini-1.5-flash)
+    gemini-model: # optional, default is gemini-1.5-flash
+    # Filename patterns to exclude, by default it picks up what is on .gitignore
+    exclude_filenames: # optional
+    # test Github action without actually commenting on the pull requests
+    dry_run: # optional
+    # set this value to true or 1 to switch to debug level (default: false)
+    debug: # optional
+    # enhance default prompt by adding extra instructions
+    extra_prompt: # optional
+          
