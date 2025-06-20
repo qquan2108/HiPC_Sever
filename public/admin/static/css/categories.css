@@ -1,0 +1,12 @@
+/* public/admin/static/css/categories.css */
+
+/* Reuse biến & reset từ products.css */
+@import 'products.css';
+
+/* Tùy chỉnh cho bảng danh mục */
+.actions a i { font-size: 1.1rem; }
+
+/* Thêm chút spacing mô tả */
+table td:nth-child(2) { max-width: 300px; white-space: pre-wrap; }
+
+/* (Các style chung như products.css áp dụng tiếp) */
