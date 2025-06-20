@@ -1,13 +1,9 @@
-// public/admin/static/js/admin.js
-
-const apiProduct = '/product';       // :contentReference[oaicite:0]{index=0}  
-const apiUsers = '/users/all';     // :contentReference[oaicite:1]{index=1}  
-const apiCategory = '/category';      // :contentReference[oaicite:2]{index=2}  
-const apiTskt = '/tsktproducts';  // :contentReference[oaicite:3]{index=3}  
+const apiProduct  = '/product';
+const apiUsers    = '/users/all';
+const apiCategory = '/category';
+const apiTskt     = '/tsktproducts';
 
 /* —— PRODUCTS —— */
-
-// pagination state
 let currentPage = 1;
 let hasMore     = true;
 const limit     = 20;
@@ -15,7 +11,7 @@ const limit     = 20;
 async function fetchProducts(page = 1) {
   if (!hasMore && page !== 1) return;
   try {
-    const res = await fetch(`/product?page=${page}&limit=${limit}`);
+    const res = await fetch(`${apiProduct}`);
     const { products, hasMore: more } = await res.json();
     renderProducts(products, page > 1);
     hasMore = more;
@@ -45,191 +41,94 @@ function renderProducts(products, append = false) {
 
 async function deleteProduct(id) {
   if (!confirm('Xác nhận xóa sản phẩm này?')) return;
-  await fetch(`/product/${id}`, { method: 'DELETE' });
-  // reset scroll load
+  await fetch(`${apiProduct}/${id}`, { method: 'DELETE' });
   currentPage = 1;
-  hasMore = true;
+  hasMore     = true;
   fetchProducts();
 }
 
-function initProductScroll() {
-  fetchProducts(); // load page 1
+async function initProductForm() {
+  const form          = document.getElementById('productForm');
+  const categorySelect= document.getElementById('categorySelect');
+  const specContainer = document.getElementById('specContainer');
+  if (!form || !categorySelect || !specContainer) return;
 
-  const sentinel = document.getElementById('scrollSentinel');
-  const observer = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      fetchProducts(currentPage + 1);
+  // Load specs when category changes
+  categorySelect.addEventListener('change', async () => {
+    const catId = categorySelect.value;
+    specContainer.innerHTML = '';
+    if (!catId) return;
+    try {
+      const res  = await fetch(`${apiTskt}/category/${catId}`);
+      const data = await res.json();
+      const specs = (data[0] && data[0].value) || [];
+      specs.forEach(fieldName => {
+        const div = document.createElement('div');
+        div.className = 'spec-item';
+        div.innerHTML = `
+          <label>${fieldName}</label>
+          <input type="text" name="specs[${fieldName}]" placeholder="Nhập ${fieldName}" />`;
+        specContainer.appendChild(div);
+      });
+    } catch (err) {
+      console.error('Lỗi tải thông số kỹ thuật:', err);
     }
-  }, {
-    root: document.getElementById('tableContainer'),
-    rootMargin: '0px',
-    threshold: 1.0
   });
 
-  observer.observe(sentinel);
-}
-
-/* —— USERS —— */
-async function fetchUsers() {
+  // Preload form if in edit mode
+  if (form.dataset.mode === 'edit') {
+    const id = form.dataset.id;
+    // fetch product data
     try {
-        const res = await fetch(`${apiUsers}`);
-        const users = await res.json();
-        renderUsers(users);
-    } catch (err) { console.error(err); }
-}
-
-function renderUsers(users) {
-    const tbody = document.getElementById('userTable');
-    tbody.innerHTML = '';
-    users.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-      <td>${u.full_name}</td>
-      <td>${u.email}</td>
-      <td>${u.role}</td>
-      <td class="actions">
-        <a href="#" onclick="deleteUser('${u._id}')"><i class="bx bx-trash"></i></a>
-      </td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-async function deleteUser(id) {
-    if (!confirm('Xác nhận xóa người dùng này?')) return;
-    await fetch(`/users/${id}`, { method: 'DELETE' });
-    fetchUsers();
-}
-
-/* —— CATEGORIES —— */
-async function fetchCategories() {
-    try {
-        const res = await fetch(`${apiCategory}`);
-        const cats = await res.json();
-        renderCategories(cats);
-    } catch (err) { console.error(err); }
-}
-
-function renderCategories(cats) {
-    const tbody = document.getElementById('categoryTable');
-    tbody.innerHTML = '';
-    cats.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-      <td>${c.name}</td>
-      <td class="actions">
-        <a href="#" onclick="deleteCategory('${c._id}')"><i class="bx bx-trash"></i></a>
-      </td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-async function deleteCategory(id) {
-    if (!confirm('Xác nhận xóa danh mục này?')) return;
-    await fetch(`${apiCategory}/${id}`, { method: 'DELETE' });
-    fetchCategories();
-}
-
-function initCategoryForm() {
-    const form = document.getElementById('categoryForm');
-    if (!form) return;
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const fd = new FormData(form);
-        const id = fd.get('id');
-        const payload = { name: fd.get('name') };
-        const url = id ? `${apiCategory}/${id}` : `${apiCategory}`;
-        const method = id ? 'PUT' : 'POST';
-        await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        window.location.reload();
-    });
-}
-
-/* —— PRODUCT FORM (CREATE / EDIT) —— */
-function initProductForm() {
-    const form = document.getElementById('productForm');
-    const categorySelect = document.getElementById('categorySelect');
-    const specContainer = document.getElementById('specContainer');
-
-    if (!form || !categorySelect || !specContainer) return;
-
-    // 1. Khi thay đổi danh mục
-    categorySelect.addEventListener('change', async () => {
-        const catId = categorySelect.value;
-        specContainer.innerHTML = '';  // clear cũ
-
-        if (!catId) return;
-
-        try {
-            const res = await fetch(`/tsktproducts/category/${catId}`);
-            const data = await res.json();
-            // data là mảng, element đầu có .value là mảng tên specs
-            const specs = (data[0] && data[0].value) || [];
-
-            specs.forEach(fieldName => {
-                const div = document.createElement('div');
-                div.className = 'spec-item';
-                div.innerHTML = `
-          <label>${fieldName}</label>
-          <input
-            type="text"
-            name="specs[${fieldName}]"
-            placeholder="Nhập ${fieldName}"
-          />`;
-                specContainer.appendChild(div);
-            });
-        } catch (err) {
-            console.error('Lỗi tải Thông số kỹ thuật:', err);
-        }
-    });
-
-    // 2. Preload nếu edit
-    if (form.dataset.mode === 'edit') {
-        categorySelect.dispatchEvent(new Event('change'));
-        // Nếu muốn preload giá trị cũ, phải điền form.product.specs trước
+      const res  = await fetch(`${apiProduct}/${id}`);
+      const prod = await res.json();
+      form.querySelector('input[name="name"]').value        = prod.name;
+      form.querySelector('input[name="price"]').value       = prod.price;
+      form.querySelector('input[name="stock"]').value       = prod.stock;
+      form.querySelector('textarea[name="description"]').value = prod.description || '';
+      form.querySelector('input[name="image"]').value       = prod.image || '';
+      categorySelect.value = prod.category_id._id;
+      // trigger specs load
+      await new Promise(r => setTimeout(r, 0));
+      categorySelect.dispatchEvent(new Event('change'));
+      // fill specs values
+      prod.specifications.forEach(spec => {
+        const input = Array.from(specContainer.querySelectorAll('.spec-item input'))
+          .find(inp => inp.previousElementSibling.textContent === spec.key);
+        if (input) input.value = spec.value;
+      });
+    } catch (err) {
+      console.error('Lỗi preload sản phẩm:', err);
     }
+  }
 
-    // 3. Submit form như bình thường...
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const fd = new FormData(form);
-        const id = fd.get('id');
-        const payload = {
-            name: fd.get('name'),
-            category_id: fd.get('category_id'),
-            brand_id: fd.get('brand_id'),
-            price: +fd.get('price'),
-            stock: +fd.get('stock'),
-            image: fd.get('image'),
-            description: fd.get('description'),
-            // gom specs theo fieldName string
-            specifications: Array.from(form.querySelectorAll('.spec-item input'))
-                .map(inp => ({
-                    key: inp.previousElementSibling.textContent,
-                    value: inp.value
-                }))
-        };
-        const url = id ? `/product/${id}` : '/product';
-        const method = id ? 'PUT' : 'POST';
-
-        await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        window.location.href = '/admin/products';
-    });
+  // Submit handler
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd  = new FormData(form);
+    const id  = fd.get('id');
+    const payload = {
+      name: fd.get('name'),
+      category_id: fd.get('category_id'),
+      brand_id: fd.get('brand_id'),
+      price: parseFloat(fd.get('price')),
+      stock: parseInt(fd.get('stock')),
+      image: fd.get('image'),
+      description: fd.get('description'),
+      specifications: Array.from(form.querySelectorAll('.spec-item input'))
+        .map(inp => ({ key: inp.previousElementSibling.textContent, value: inp.value }))
+    };
+    const url    = id ? `${apiProduct}/${id}` : apiProduct;
+    const method = id ? 'PUT' : 'POST';
+    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    window.location.href = '/admin/products';
+  });
 }
 
-
-/* —— INIT —— */
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('productTable')) fetchProducts();
-    if (document.getElementById('userTable')) fetchUsers();
-    if (document.getElementById('categoryTable')) fetchCategories();
-    initProductForm();
-    initCategoryForm();
+  if (document.getElementById('productTable')) fetchProducts();
+  if (document.getElementById('userTable')) fetchUsers();
+  if (document.getElementById('categoryTable')) fetchCategories();
+  initProductForm();
+  initCategoryForm();
 });
