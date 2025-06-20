@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Image = require('../models/Image');
 
 // --- 1. Các route “đặc biệt”, phải nằm trên cùng ---
 
@@ -10,12 +11,32 @@ const Product = require('../models/Product');
 router.get('/user/:userId', async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.params.userId })
-      .sort({ order_date: -1 })                                       // mới nhất lên trước
+      .sort({ order_date: -1 })
       .populate({
-        path: 'products.productId',                                   // chỉ populate Product
-       select: 'name price image',                                         // chỉ những field cần thiết
+        path: 'products.productId',
+        select: 'name price' // KHÔNG cần 'image' vì Product không có trường này
       })
       .populate('voucher');
+    // Lấy tất cả productId trong các đơn hàng
+    const allProductIds = [];
+    orders.forEach(order => {
+      order.products.forEach(prod => {
+        if (prod.productId && prod.productId._id) {
+          allProductIds.push(prod.productId._id);
+        }
+      });
+    });
+    // Lấy ảnh cho các sản phẩm
+    const images = await Image.find({ product_id: { $in: allProductIds } });
+    // Gán image vào từng productId
+    orders.forEach(order => {
+      order.products.forEach(prod => {
+        if (prod.productId && prod.productId._id) {
+          const img = images.find(img => img.product_id.toString() === prod.productId._id.toString());
+          prod.productId.image = img ? img.url : null;
+        }
+      });
+    });
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
