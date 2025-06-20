@@ -80,8 +80,6 @@ app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
 
-console.log('Images router loaded');
-
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
 
