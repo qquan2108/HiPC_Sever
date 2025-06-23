@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const Image = require('../models/Image'); // Add this at the top
 
 // Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
 router.post('/add-to-cart', async (req, res) => {
@@ -49,6 +50,15 @@ router.get('/user/:userId', async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.params.userId })
       .populate('products.productId');
+    // Attach image URL to each product
+    for (const order of orders) {
+      for (const prod of order.products) {
+        if (prod.productId && prod.productId._id) {
+          const img = await Image.findOne({ product_id: prod.productId._id });
+          prod.productId.image = img ? img.url : null;
+        }
+      }
+    }
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
