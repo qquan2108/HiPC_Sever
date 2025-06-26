@@ -1,22 +1,28 @@
+// models/Order.js
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  build_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Build' },
+  user_id:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [
     {
       productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-      quantity: { type: Number, default: 1 }
+      quantity:  { type: Number, default: 1 }
     }
   ],
-  total_price: Number,
-  order_date: { type: Date, default: Date.now },
-  address: String, // Thêm trường này
-  paymentMethod: String, // Thêm trường này
-  shippingMethod: String, // Thêm trường này
-  voucher: { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher', default: null }, // Thêm trường này
-  total: Number, // Thêm trường này (nếu muốn lưu tổng tiền cuối cùng)
-  createdAt: { type: Date, default: Date.now } // Thêm trường này nếu muốn
-});
+  // Thêm trường status để lưu trạng thái đơn
+  status: {
+    type: String,
+    enum: ['pending','confirmed','shipping','delivered','returned','cancelled'],
+    default: 'pending',
+    required: true
+  },
+  total_price:   Number,
+  order_date:    { type: Date, default: Date.now },
+  address:       String,
+  paymentMethod: String,
+  shippingMethod:String,
+  voucher:       { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher', default: null },
+  total:         Number
+}, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
