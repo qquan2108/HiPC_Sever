@@ -1,6 +1,7 @@
 // controllers/productCtrl.js
-const Product = require('../models/Product');
-const Image = require('../models/Image');
+const Product     = require('../models/Product');
+const Image       = require('../models/Image');
+const TsktProduct = require('../models/TsktProduct');
 
 // Create product
 exports.createProduct = async (req, res) => {
@@ -79,7 +80,7 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// Get product by ID with all images
+// Get product by ID with all images and TSKT template data
 exports.getProductById = async (req, res) => {
   try {
     const item = await Product.findById(req.params.id)
@@ -88,11 +89,25 @@ exports.getProductById = async (req, res) => {
       .lean();
     if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
 
+    // Fetch images
     const images = await Image.find({ product_id: item._id });
+    const primaryImage = images[0]?.url || null;
+
+    // Fetch TSKT template for this category
+    const tpl = await TsktProduct.findOne({ category_id: item.category_id._id }).lean();
+    let tskt = [];
+    if (tpl) {
+      tskt = tpl.value.map(key => {
+        const spec = item.specifications.find(s => s.key === key);
+        return { label: key, value: spec ? spec.value : '' };
+      });
+    }
+
     res.json({
       ...item,
-      image: images[0] ? images[0].url : null,
+      image:  primaryImage,
       images: images.map(img => img.url),
+      tskt
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
