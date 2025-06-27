@@ -64,7 +64,6 @@ hbs.registerHelper('json', function(context) {
 });
 
 app.use('/admin', adminRouter);
-app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);

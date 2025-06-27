@@ -49,4 +49,9 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
+// ql don hang
+router.get('/orders', (req, res) => {
+  res.render('admin/order', { layout: 'admin/layout' });
+});
+
 module.exports = router;
