@@ -49,6 +49,15 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
+// bao cao
+router.get('/reports', (req, res) => {
+  res.render('admin/baocao', { layout: 'admin/layout' });
+});
+// thong bao
+router.get('/notifications', (req, res) => {
+  res.render('admin/thongbao', { layout: 'admin/layout' });
+});
+
 //ql banner
 router.get('/banner', (req, res) => {
   res.render('admin/qlbanner', { layout: 'admin/layout' });

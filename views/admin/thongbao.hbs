@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thông báo Web Bán PC</title>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Animate.css & AOS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f8f9fa;
+      padding-top: 60px;
+    }
+    .navbar {
+      background: #0056d2;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .navbar-brand {
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.25rem;
+    }
+    .toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1050;
+    }
+    .toast {
+      min-width: 280px;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .toast-header {
+      background: #0056d2;
+      color: #fff;
+      font-weight: 600;
+    }
+    .toast-body {
+      background: #fff;
+      color: #343a40;
+    }
+    .btn-trigger {
+      margin: 2rem auto;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar fixed-top">
+    <div class="container">
+      <span class="navbar-brand">Thông báo Web Bán PC</span>
+    </div>
+  </nav>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="container text-center btn-trigger">
+    <button class="btn btn-primary me-2" onclick="notify('success','Thành công','Đơn hàng #12345 đã được xác nhận!')">Thông báo thành công</button>
+    <button class="btn btn-info me-2" onclick="notify('info','Thông tin','Sản phẩm mới đã có mặt trên kho!')">Thông báo info</button>
+    <button class="btn btn-warning me-2" onclick="notify('warning','Cảnh báo','Số lượng cạn kiệt: RAM 16GB')">Thông báo cảnh báo</button>
+    <button class="btn btn-danger" onclick="notify('danger','Lỗi','Giao dịch thất bại. Vui lòng thử lại.')">Thông báo lỗi</button>
+  </div>
+
+  <!-- Bootstrap JS & dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    AOS.init({ duration: 600, once: true });
+
+    function notify(type, title, message) {
+      const container = document.getElementById('toastContainer');
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast animate__animated animate__fadeInDown`;      
+      toastEl.setAttribute('role','alert');
+      toastEl.setAttribute('aria-live','assertive');
+      toastEl.setAttribute('aria-atomic','true');
+      toastEl.setAttribute('data-bs-delay','4000');
+
+      toastEl.innerHTML = `
+        <div class="toast-header bg-${type} text-white">
+          <strong class="me-auto">${title}</strong>
+          <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          ${message}
+        </div>
+      `;
+
+      container.appendChild(toastEl);
+      const bsToast = new bootstrap.Toast(toastEl);
+      bsToast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => {
+        toastEl.classList.add('animate__fadeOutUp');
+        toastEl.addEventListener('animationend', () => container.removeChild(toastEl));
+      });
+    }
+  </script>
+</body>
+</html>
