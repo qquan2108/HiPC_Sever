@@ -49,4 +49,8 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
+router.get('/banner', (req, res) => {
+  res.render('admin/qlbanner', { layout: 'admin/layout' });
+});
+
 module.exports = router;
