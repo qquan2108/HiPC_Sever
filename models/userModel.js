@@ -26,6 +26,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Avatar and banner URLs for user profile
+  avatarUrl: {
+    type: String,
+    trim: true
+  },
+  bannerUrl: {
+    type: String,
+    trim: true
+  },
   role: {
     type: String,
     enum: ['customer', 'admin', 'staff'],
@@ -41,9 +50,15 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Middleware tự động cập nhật updated_at khi document thay đổi
+// Middleware to automatically update updated_at on save
 userSchema.pre('save', function (next) {
   this.updated_at = Date.now();
+  next();
+});
+
+// Middleware to update updated_at on findOneAndUpdate
+userSchema.pre('findOneAndUpdate', function (next) {
+  this._update.updated_at = Date.now();
   next();
 });
 

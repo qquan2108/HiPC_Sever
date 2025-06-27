@@ -49,4 +49,11 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
+router.get('/report', (req, res) => {
+  res.render('admin/baocao', { layout: 'admin/layout' });
+});
+router.get('/thongbao', (req, res) => {
+  res.render('admin/thongbao', { layout: 'admin/layout' });
+});
+
 module.exports = router;
