@@ -1,0 +1,31 @@
+@import 'categories.css';
+
+/* File: public/admin/static/css/order.css */
+
+/* Style chung cho mọi button trên trang đơn hàng */
+.order-btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-shadow duration-200;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Style mặc định */
+.order-btn--default {
+  @apply bg-indigo-600 text-white hover:bg-indigo-700;
+}
+
+/* Style khi hover */
+.order-btn--default:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Style khi focus (accessibility) */
+.order-btn--default:focus {
+  outline: none;
+  @apply ring-2 ring-indigo-300;
+}
+
+/* Style khi disabled */
+.order-btn--default:disabled {
+  @apply bg-gray-300 text-gray-600 cursor-not-allowed;
+  box-shadow: none;
+}

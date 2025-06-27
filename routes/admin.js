@@ -49,11 +49,23 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
-router.get('/report', (req, res) => {
+// bao cao
+router.get('/reports', (req, res) => {
   res.render('admin/baocao', { layout: 'admin/layout' });
 });
-router.get('/thongbao', (req, res) => {
+// thong bao
+router.get('/notifications', (req, res) => {
   res.render('admin/thongbao', { layout: 'admin/layout' });
+});
+
+//ql banner
+router.get('/banner', (req, res) => {
+  res.render('admin/qlbanner', { layout: 'admin/layout' });
+  });
+
+// ql don hang
+router.get('/orders', (req, res) => {
+  res.render('admin/order', { layout: 'admin/layout' });
 });
 
 module.exports = router;
