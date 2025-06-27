@@ -1,24 +1,54 @@
-<!-- File: views/admin/categories.hbs -->
+{{!< admin}}
 {{#*inline "title"}}Quản lý Danh mục{{/inline}}
 
+<!-- CSS riêng nếu cần -->
+<link rel="stylesheet" href="/admin/static/css/categories.css" />
+
 <div class="container">
-  <div class="header-actions">
-    <input type="text" id="searchInput" placeholder="Tìm danh mục...">
-    <button class="btn" id="addCategoryBtn"><i class="bx bx-plus"></i> Thêm danh mục</button>
+  <!-- Header Actions: Thêm mới + Search -->
+  <div class="header-actions mb-4 flex justify-between items-center">
+    <a href="/admin/categories/create" class="btn inline-flex items-center">
+      <i class="bx bx-category-alt mr-2"></i> Thêm Danh mục
+    </a>
+    <input
+      type="text"
+      id="categorySearch"
+      placeholder="Tìm theo tên danh mục..."
+      class="px-4 py-2 border rounded w-1/3"
+    />
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Tên</th>
-        <th>Mô tả</th>
-        <th>Hành động</th>
-      </tr>
-    </thead>
-    <tbody id="categoryTable"></tbody>
-  </table>
+
+  <!-- Bảng danh sách -->
+  <div class="table-container overflow-auto shadow rounded">
+    <table class="min-w-full divide-y divide-gray-200 bg-white">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên Danh mục</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="categoryTable" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
+    <!-- sentinel cho infinite scroll -->
+    <div id="categoryScrollSentinel" class="h-1"></div>
+  </div>
 </div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', fetchCategories);
-</script>
+<script src="/admin/static/js/categories.js"></script>
 
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    initCategoryScroll();
+    fetchCategories(1);
+
+    // Search instant client-side
+    document.getElementById('categorySearch').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      renderCategories(allCategories.filter(c =>
+        c.name.toLowerCase().includes(q)
+      ), false);
+    });
+  });
+</script>
