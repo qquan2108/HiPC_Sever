@@ -1,0 +1,143 @@
+{{!-- File: views/admin/order.hbs --}}
+{{#*inline "title"}}Quản lý Đơn hàng{{/inline}}
+<link rel="stylesheet" href="/admin/static/css/order.css">
+
+<div class="container mx-auto p-6">
+  <!-- Header: Search + Status Filter + Status Tabs -->
+  <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+    <!-- Tìm kiếm -->
+    <div class="w-full sm:w-1/5">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Tìm kiếm theo Mã đơn hoặc Tên khách"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <!-- Tab button hiện có -->
+    <div id="statusTabs" class="flex flex-wrap space-x-2"></div>
+  </div>
+
+  <!-- Orders Table -->
+  <div class="overflow-x-auto bg-white shadow rounded-lg">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đặt</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="orderTable" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
+  </div>
+</div>
+  
+<script>
+  let currentStatus = '';
+
+  // Lấy cấu hình tabs từ server
+  async function fetchStatusTabs() {
+    const res = await fetch('/orders/status-tabs');
+    return res.json();
+  }
+
+  // Lấy orders với filter và tìm kiếm
+  async function fetchOrders(status = '', query = '') {
+    let url = '/orders?';
+    if (status) url += `status=${status}&`;
+    if (query)  url += `q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  // Ánh xạ màu cho status badge
+  function statusColor(status) {
+    const map = {
+      pending:   'bg-yellow-100 text-yellow-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      shipped:   'bg-indigo-100 text-indigo-800',
+      delivered: 'bg-green-100 text-green-800',
+      canceled:  'bg-red-100 text-red-800'
+    };
+    return map[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  // Render các tab
+  function renderStatusTabs(tabs) {
+    const container = document.getElementById('statusTabs');
+    container.innerHTML = '';
+    tabs.forEach(tab => {
+      const btn = document.createElement('button');
+      btn.textContent = tab.label;
+      btn.className = [
+        'px-4 py-2 rounded-lg text-sm font-medium border focus:outline-none',
+        tab.key === currentStatus
+          ? 'bg-indigo-500 text-white border-transparent'
+          : 'bg-white text-gray-700 border-gray-300'
+      ].join(' ');
+      btn.onclick = async () => {
+        currentStatus = tab.key;
+        document.getElementById('searchInput').value = '';
+        const orders = await fetchOrders(currentStatus);
+        renderOrders(orders);
+        renderStatusTabs(tabs);
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  // Render bảng orders
+  function renderOrders(orders) {
+    const tbody = document.getElementById('orderTable');
+    tbody.innerHTML = '';
+    orders.forEach(o => {
+      const name  = o.user_id?.full_name || '—';
+      const date  = new Date(o.order_date).toLocaleDateString('vi-VN');
+      const total = new Intl.NumberFormat('vi-VN', {
+        style: 'currency', currency: 'VND'
+      }).format(o.total);
+
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50';
+      tr.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${o._id}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${name}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${date}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold">${total}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm">
+          <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${statusColor(o.status)}">
+            ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+          <button
+            onclick="window.location.href='/orders/${o._id}/status'"
+            class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title="Cập nhật trạng thái"
+          >
+            Cập nhật
+          </button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Khởi tạo khi DOM load
+  document.addEventListener('DOMContentLoaded', async () => {
+    const tabs   = await fetchStatusTabs();
+    renderStatusTabs(tabs);
+    const orders = await fetchOrders();
+    renderOrders(orders);
+
+    // Tìm kiếm theo input
+    document.getElementById('searchInput').addEventListener('input', async e => {
+      const q    = e.target.value.trim();
+      const data = await fetchOrders(currentStatus, q);
+      renderOrders(data);
+    });
+  });
+</script>

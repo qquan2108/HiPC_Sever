@@ -1,27 +1,56 @@
+
 {{#*inline "title"}}Quản lý Người dùng{{/inline}}
 
+<!-- Boxicons đã include ở layout, CSS riêng nếu cần -->
+<link rel="stylesheet" href="/admin/static/css/user.css" />
+
 <div class="container">
-  <div class="header-actions">
-    <input type="text" id="searchInput" placeholder="Tìm người dùng...">
-    <button class="btn" id="addUserBtn"><i class='bx bx-user-plus'></i> Thêm Người dùng</button>
+  <!-- Header actions: Thêm & Search -->
+  <div class="header-actions mb-4 flex justify-between items-center">
+    <a href="/admin/users/create" class="btn inline-flex items-center">
+      <i class="bx bx-user-plus mr-2"></i> Thêm Người dùng
+    </a>
+    <input
+      type="text"
+      id="userSearch"
+      placeholder="Tìm kiếm theo tên hoặc email..."
+      class="px-4 py-2 border rounded w-1/3"
+    />
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Họ & Tên</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Địa chỉ</th>
-        <th>Vai trò</th>
-        <th>Ngày tạo</th>
-        <th>Hành động</th>
-      </tr>
-    </thead>
-    <tbody id="userTable"></tbody>
-  </table>
+
+  <!-- Bảng danh sách users -->
+  <div class="table-container overflow-auto shadow rounded">
+    <table class="min-w-full divide-y divide-gray-200 bg-white">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avatar</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vai trò</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="userTable" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
+    <!-- sentinel infinite scroll -->
+    <div id="userScrollSentinel" class="h-1"></div>
+  </div>
 </div>
 
+<script src="/admin/static/js/user.js"></script>
+
 <script>
-  document.addEventListener('DOMContentLoaded', fetchUsers);
-  // reuse existing fetchUsers & renderUsers functions in admin.js
+  document.addEventListener('DOMContentLoaded', () => {
+    initUserScroll();
+    fetchUsers(1);
+    // filter search
+    document.getElementById('userSearch').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      renderUsers(allUsers.filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      ), false);
+    });
+  });
 </script>

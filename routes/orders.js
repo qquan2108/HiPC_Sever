@@ -4,6 +4,46 @@ const Order = require('../models/Order');
 
 // Các route cụ thể đặt trước
 
+    //admin
+// Danh sách tab trạng thái
+router.get('/status-tabs', (req, res) => {
+  res.json([
+    { key: '',          label: 'Tất cả'       },
+    { key: 'pending',   label: 'Chờ duyệt'    },
+    { key: 'confirmed', label: 'Đã xác nhận' },
+    { key: 'shipped',   label: 'Đã giao hàng'},
+    { key: 'delivered', label: 'Đã nhận'      },
+    { key: 'return_requested', label: 'Yêu cầu hủy'      },
+    { key: 'canceled',  label: 'Đã hủy'       },
+  ]);
+});
+
+// Trả về mảng đơn hàng, đã populate tên khách
+router.get('/', async (req, res) => {
+  try {
+    const { status, q } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+
+    if (q) {
+      // Tìm theo ID hoặc tên khách (chia trường hợp)
+      filter.$or = [
+        { _id: q },
+        { 'user_id.full_name': { $regex: q, $options: 'i' } }
+      ];
+    }
+
+    const orders = await Order.find(filter)
+      .populate('user_id', 'full_name')
+      .sort({ order_date: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Lỗi server, không lấy được đơn hàng' });
+  }
+});
+
 // Cập nhật số lượng sản phẩm trong giỏ hàng
 router.put('/update-quantity', async (req, res) => {
   console.log('BODY:', req.body);
@@ -118,5 +158,7 @@ router.post('/checkout', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 module.exports = router;

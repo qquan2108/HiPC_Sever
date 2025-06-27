@@ -82,4 +82,36 @@ router.get('/all', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)||1);
+    const limit = Math.max(1, parseInt(req.query.limit)||20);
+    const skip  = (page-1)*limit;
+    const [ users, total ] = await Promise.all([
+      User.find().skip(skip).limit(limit).lean(),
+      User.countDocuments()
+    ]);
+    res.json({
+      users: users.map(u => ({
+        _id: u._id, name: u.full_name, email: u.email,
+        role: u.role, active: u.active, avatar: u.avatar
+      })),
+      hasMore: skip + users.length < total
+    });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.sendStatus(204);
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message: 'Xóa lỗi' });
+  }
+});
+  
 module.exports = router;
