@@ -1,4 +1,6 @@
 const Order = require('../models/Order');
+const Product = require('../models/Product');
+const { canTransition } = require('../utils/orderStatus');
 
 // Tạo mới đơn hàng
 exports.createOrder = async (req, res) => {
@@ -33,19 +35,33 @@ exports.getOrdersByUser = async (req, res) => {
   }
 };
 
-// Cập nhật trạng thái đơn hàng
+// Cập nhật trạng thái đơn hàng với kiểm tra workflow
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['pending','confirmed','shipping','delivered','returned','cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Trạng thái không hợp lệ' });
+    const order = await Order.findById(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+
+    if (!canTransition(order.status, status)) {
+      return res.status(400).json({ error: `Không thể chuyển từ trạng thái ${order.status} sang ${status}` });
     }
-    const order = await Order.findByIdAndUpdate(
-      req.params.orderId,
-      { status },
-      { new: true }
-    );
-    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn' });
+
+    // Nếu chuyển sang cancelled và đơn đã confirmed/packed/picked, hoàn lại stock
+    if (
+      status === 'cancelled' &&
+      ['confirmed','packed','picked','shipping'].includes(order.status) &&
+      order.products && order.products.length > 0
+    ) {
+      for (const item of order.products) {
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: { stock: item.quantity } }
+        );
+      }
+    }
+
+    order.status = status;
+    await order.save();
     res.json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -57,11 +73,23 @@ exports.cancelOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId);
     if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn' });
-    // chỉ cho hủy khi đang ở trạng thái pending hoặc confirmed
-    if (!['pending','confirmed'].includes(order.status)) {
+    if (!['pending','confirmed','packed','picked','shipping'].includes(order.status)) {
       return res.status(400).json({ error: 'Không thể hủy đơn ở trạng thái hiện tại' });
     }
+    // Hoàn stock nếu đã qua xác nhận
+    if (
+      ['confirmed','packed','picked','shipping'].includes(order.status) &&
+      order.products && order.products.length > 0
+    ) {
+      for (const item of order.products) {
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: { stock: item.quantity } }
+        );
+      }
+    }
     order.status = 'cancelled';
+    order.cancelledAt = new Date();
     await order.save();
     res.json({ message: 'Đã hủy đơn', order });
   } catch (err) {

@@ -1,10 +1,24 @@
 // routes/orders.js
 const express = require('express');
 const router = express.Router();
+const orderCtrl = require('../controllers/orderCtrl');
 const Order = require('../models/Order');
 const Image = require('../models/Image');
 const Product = require('../models/Product');
 
+
+router.get('/status-tabs', (req, res) => {
+  res.json([
+    { key: 'pending', label: 'Chờ xác nhận', icon: 'clock-outline' },
+    { key: 'confirmed', label: 'Chờ lấy hàng', icon: 'truck-fast-outline' },
+    { key: 'packed', label: 'Đã đóng gói', icon: 'package-variant-closed' },
+    { key: 'picked', label: 'Đã lấy hàng', icon: 'truck-check-outline' },
+    { key: 'shipping', label: 'Đang giao', icon: 'truck-delivery-outline' },
+    { key: 'delivered', label: 'Đã giao', icon: 'home-outline' },
+    { key: 'cancelled', label: 'Đã huỷ', icon: 'close-circle-outline' },
+    // Có thể bổ sung các trạng thái khác nếu muốn
+  ]);
+});
 // 1) Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
 router.post('/add-to-cart', async (req, res) => {
   const { user_id, productId, quantity } = req.body;
@@ -108,66 +122,7 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
-// 6) Hủy đơn và hoàn stock
-// QUAN TRỌNG: Route này phải đặt TRƯỚC route PUT '/:id' generic
-router.put('/:id/cancel', async (req, res) => {
-  try {
-    console.log('Cancel order ID:', req.params.id); // Debug log
-    
-    const order = await Order.findById(req.params.id);
-    if (!order) {
-      console.log('Order not found for ID:', req.params.id);
-      return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
-    }
 
-    console.log('Current order status:', order.status); // Debug log
-    
-    // Kiểm tra trạng thái đơn hàng
-    if (!['pending', 'confirmed'].includes(order.status)) {
-      console.log('Invalid status for cancellation:', order.status);
-      return res.status(400).json({ 
-        error: `Không thể hủy đơn hàng với trạng thái: ${order.status}. Chỉ có thể hủy đơn ở trạng thái 'Chờ xác nhận' hoặc 'Chờ lấy hàng'` 
-      });
-    }
-
-    // Hoàn stock cho từng sản phẩm (chỉ khi đơn đã confirmed)
-    if (order.status === 'confirmed' && order.products && order.products.length > 0) {
-      for (const item of order.products) {
-        try {
-          const result = await Product.updateOne(
-            { _id: item.productId },
-            { $inc: { stock: item.quantity } }
-          );
-          console.log(`Updated stock for product ${item.productId}:`, result);
-        } catch (stockError) {
-          console.error('Error updating stock:', stockError);
-          // Tiếp tục với các sản phẩm khác thay vì dừng
-        }
-      }
-    }
-
-    // Cập nhật trạng thái đơn hàng
-    order.status = 'cancelled';
-    order.cancelledAt = new Date(); // Thêm timestamp khi hủy
-    await order.save();
-
-    // Populate dữ liệu trước khi trả về
-    const populatedOrder = await Order.findById(order._id).populate('products.productId');
-    
-    console.log('Order cancelled successfully:', order._id);
-    res.json({ 
-      message: 'Hủy đơn hàng thành công', 
-      order: populatedOrder 
-    });
-
-  } catch (err) {
-    console.error('Cancel order error:', err);
-    res.status(500).json({ 
-      error: 'Lỗi server khi hủy đơn hàng',
-      details: err.message 
-    });
-  }
-});
 
 // 7) Cập nhật chung - PHẢI ĐẶT SAU route cancel
 router.put('/:id', async (req, res) => {
@@ -189,11 +144,28 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 9) Lấy tất cả đơn (GET /orders)
+// 8) Cập nhật trạng thái đơn hàng theo workflow
+router.put('/:orderId/status', orderCtrl.updateStatus);
+
+// 9) Hủy đơn (giữ logic hoàn stock)
+router.put('/:orderId/cancel', orderCtrl.cancelOrder);
+
+// 10) Lấy tất cả đơn (GET /orders)
 router.get('/', async (req, res) => {
   try {
     const items = await Order.find().populate('products.productId');
     res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  console.log('GET /orders/:id', req.params.id); // Thêm dòng này
+  try {
+    const order = await Order.findById(req.params.id).populate('products.productId');
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+    res.json(order);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
