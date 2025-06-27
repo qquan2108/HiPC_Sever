@@ -49,6 +49,11 @@ router.get('/categories/:id/edit', async (req, res) => {
   res.render('admin/category-form', { layout: 'admin/layout', category });
 });
 
+//ql banner
+router.get('/banner', (req, res) => {
+  res.render('admin/qlbanner', { layout: 'admin/layout' });
+  });
+
 // ql don hang
 router.get('/orders', (req, res) => {
   res.render('admin/order', { layout: 'admin/layout' });
