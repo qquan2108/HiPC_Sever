@@ -8,7 +8,7 @@
     <form id="orderForm" data-mode="{{mode}}" data-id="{{order._id}}">
         <div class="mb-4">
             <label class="block">Khách hàng</label>
-            <input type="text" name="user_id" value="{{order.user_id}}" required class="input">
+            <input type="text" name="user_id" value="{{order.user_id.full_name}}" class="input" {{#ifEquals mode 'edit'}}disabled{{/ifEquals}}>
         </div>
         <div class="mb-4">
             <label class="block">Địa chỉ</label>
