@@ -10,13 +10,13 @@ const Product = require('../models/Product');
 router.get('/status-tabs', (req, res) => {
   res.json([
     { key: 'pending', label: 'Chờ xác nhận', icon: 'clock-outline' },
-    { key: 'confirmed', label: 'Chờ lấy hàng', icon: 'truck-fast-outline' },
+    { key: 'confirmed', label: 'Chờ lấy hàng', icon: 'truck-outline' },
     { key: 'packed', label: 'Đã đóng gói', icon: 'package-variant-closed' },
-    { key: 'picked', label: 'Đã lấy hàng', icon: 'truck-check-outline' },
-    { key: 'shipping', label: 'Đang giao', icon: 'truck-delivery-outline' },
-    { key: 'delivered', label: 'Đã giao', icon: 'home-outline' },
+    { key: 'picked', label: 'Đã lấy hàng', icon: 'cube-send' },
+    { key: 'shipping', label: 'Đang giao', icon: 'truck-fast-outline' },
+    { key: 'delivered', label: 'Đã giao', icon: 'check-circle-outline' },
     { key: 'cancelled', label: 'Đã huỷ', icon: 'close-circle-outline' },
-    // Có thể bổ sung các trạng thái khác nếu muốn
+    // Thêm các trạng thái khác nếu cần
   ]);
 });
 // 1) Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
