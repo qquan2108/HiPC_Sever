@@ -2,17 +2,18 @@
 {{#*inline "title"}}Quản lý Đơn hàng{{/inline}}
 <link rel="stylesheet" href="/admin/static/css/order.css">
 
+<div class="header-actions mb-4 flex justify-between items-center">
+  <a href="/admin/orders/create" class="btn order-btn">➕ Tạo đơn hàng</a>
+  <!-- phần search + status-tabs đã có -->
+</div>
+
 <div class="container mx-auto p-6">
   <!-- Header: Search + Status Filter + Status Tabs -->
   <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
     <!-- Tìm kiếm -->
     <div class="w-full sm:w-1/5">
-      <input
-        id="searchInput"
-        type="text"
-        placeholder="Tìm kiếm theo Mã đơn hoặc Tên khách"
-        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      />
+      <input id="searchInput" type="text" placeholder="Tìm kiếm theo Mã đơn hoặc Tên khách"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
     </div>
     <!-- Tab button hiện có -->
     <div id="statusTabs" class="flex flex-wrap space-x-2"></div>
@@ -35,7 +36,11 @@
     </table>
   </div>
 </div>
+
+<script>
   
+</script>
+
 <script>
   let currentStatus = '';
 
@@ -49,7 +54,7 @@
   async function fetchOrders(status = '', query = '') {
     let url = '/orders?';
     if (status) url += `status=${status}&`;
-    if (query)  url += `q=${encodeURIComponent(query)}`;
+    if (query) url += `q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     return res.json();
   }
@@ -57,11 +62,11 @@
   // Ánh xạ màu cho status badge
   function statusColor(status) {
     const map = {
-      pending:   'bg-yellow-100 text-yellow-800',
+      pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-blue-100 text-blue-800',
-      shipped:   'bg-indigo-100 text-indigo-800',
+      shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
-      canceled:  'bg-red-100 text-red-800'
+      canceled: 'bg-red-100 text-red-800'
     };
     return map[status] || 'bg-gray-100 text-gray-800';
   }
@@ -95,8 +100,9 @@
     const tbody = document.getElementById('orderTable');
     tbody.innerHTML = '';
     orders.forEach(o => {
-      const name  = o.user_id?.full_name || '—';
-      const date  = new Date(o.order_date).toLocaleDateString('vi-VN');
+      const name = o.user_id?.full_name || '—';
+      console.log(name)
+      const date = new Date(o.order_date).toLocaleDateString('vi-VN');
       const total = new Intl.NumberFormat('vi-VN', {
         style: 'currency', currency: 'VND'
       }).format(o.total);
@@ -113,29 +119,34 @@
             ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}
           </span>
         </td>
-        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-          <button
-            onclick="window.location.href='/orders/${o._id}/status'"
-            class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            title="Cập nhật trạng thái"
-          >
-            Cập nhật
-          </button>
+        <td class="px-6 py-4 text-center space-x-2">
+          <button onclick="window.location = '/admin/orders/${o._id}/edit'" class="btn order-btn">✏️ Sửa</button>
+          <button onclick="deleteOrder('${o._id}')" class="btn btn-danger">🗑️ Xóa</button>
         </td>`;
       tbody.appendChild(tr);
     });
   }
 
+
+  async function deleteOrder(id) {
+    if (!confirm('Xóa đơn hàng này?')) return;
+    const res = await fetch(`/orders/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      const filtered = currentOrders.filter(o => o._id !== id);
+      renderOrders(filtered);
+    } else alert('Xóa thất bại');
+  }
+
   // Khởi tạo khi DOM load
   document.addEventListener('DOMContentLoaded', async () => {
-    const tabs   = await fetchStatusTabs();
+    const tabs = await fetchStatusTabs();
     renderStatusTabs(tabs);
     const orders = await fetchOrders();
     renderOrders(orders);
 
     // Tìm kiếm theo input
     document.getElementById('searchInput').addEventListener('input', async e => {
-      const q    = e.target.value.trim();
+      const q = e.target.value.trim();
       const data = await fetchOrders(currentStatus, q);
       renderOrders(data);
     });

@@ -2,10 +2,10 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan'); 
-var hbs     = require('hbs');
+var logger = require('morgan');
+var hbs = require('hbs');
 var { default: mongoose } = require('mongoose');
-var fs       = require('fs');
+var fs = require('fs');
 
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
@@ -39,11 +39,11 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
 mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-  console.log('MongoDB connected');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-});
+  .then(() => {
+    console.log('MongoDB connected');
+  }).catch(err => {
+    console.error('MongoDB connection error:', err);
+  });
 
 const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -57,7 +57,7 @@ app.use('/uploads/banners', express.static(uploadDir));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Đăng ký helper so sánh
-hbs.registerHelper('ifEquals', function(a, b, options) {
+hbs.registerHelper('ifEquals', function (a, b, options) {
   // nếu a hoặc b chưa có, sẽ cho vào nhánh else (nghĩa không match)
   if (a == null || b == null) {
     return options.inverse(this);
@@ -68,7 +68,7 @@ hbs.registerHelper('ifEquals', function(a, b, options) {
 });
 
 // Đăng ký helper JSON stringify
-hbs.registerHelper('json', function(context) {
+hbs.registerHelper('json', function (context) {
   return JSON.stringify(context);
 });
 
@@ -96,14 +96,14 @@ app.use('/banners', bannerRoutes);
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   next(createError(404));
 });
 
 
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};

@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const ctrl = require('../controllers/orderCtrl')
 
 // Các route cụ thể đặt trước
 
-    //admin
-// Danh sách tab trạng thái
+//admin
+
 router.get('/status-tabs', (req, res) => {
   res.json([
     { key: '',          label: 'Tất cả'       },
@@ -18,31 +19,22 @@ router.get('/status-tabs', (req, res) => {
   ]);
 });
 
-// Trả về mảng đơn hàng, đã populate tên khách
-router.get('/', async (req, res) => {
-  try {
-    const { status, q } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
 
-    if (q) {
-      // Tìm theo ID hoặc tên khách (chia trường hợp)
-      filter.$or = [
-        { _id: q },
-        { 'user_id.full_name': { $regex: q, $options: 'i' } }
-      ];
-    }
+// GET 1 đơn theo ID
+router.get('/:orderId', ctrl.getOrderById);
 
-    const orders = await Order.find(filter)
-      .populate('user_id', 'full_name')
-      .sort({ order_date: -1 });
+// POST tạo đơn (chung cho admin)
+router.post('/', ctrl.createOrder);
 
-    res.json(orders);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Lỗi server, không lấy được đơn hàng' });
-  }
-});
+// PUT cập nhật thông tin đơn (không chỉ status)
+router.put('/:orderId', ctrl.updateOrder);
+
+// PUT cập nhật thông tin đơn
+router.put('/:orderId/status', ctrl.updateStatus);
+
+// DELETE xóa hẳn (với admin)
+router.delete('/:orderId', ctrl.deleteOrder);
+
 
 // Cập nhật số lượng sản phẩm trong giỏ hàng
 router.put('/update-quantity', async (req, res) => {
@@ -99,10 +91,13 @@ router.post('/add-to-cart', async (req, res) => {
 // GET by id
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Order.findById(req.params.id).populate('products.productId');
-    res.json(item);
+    const order = await Order.findById(req.params.id)
+      .populate('user_id', 'full_name')           
+      .populate('products.productId', 'name price image')
+      .lean();
+    return res.json(order);
   } catch (err) {
-    res.status(404).json({ error: 'Not found' });
+    return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
   }
 });
 
@@ -135,6 +130,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 router.post('/checkout', async (req, res) => {
   try {
     const { products, address, paymentMethod, shippingMethod, voucher, total } = req.body;

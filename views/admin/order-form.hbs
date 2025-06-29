@@ -1,0 +1,81 @@
+{{#*inline "title"}}
+{{#ifEquals mode 'edit'}}Chỉnh sửa Đơn hàng{{else}}Tạo Đơn hàng{{/ifEquals}}
+{{/inline}}
+
+<link rel="stylesheet" href="/admin/static/css/order.css">
+
+<div class="container mx-auto p-6">
+    <form id="orderForm" data-mode="{{mode}}" data-id="{{order._id}}">
+        <div class="mb-4">
+            <label class="block">Khách hàng</label>
+            <input type="text" name="user_id" value="{{order.user_id}}" required class="input">
+        </div>
+        <div class="mb-4">
+            <label class="block">Địa chỉ</label>
+            <textarea name="address" class="input">{{order.address}}</textarea>
+        </div>
+        <div class="mb-4">
+            <label class="block">Phương thức thanh toán</label>
+            <input type="text" name="paymentMethod" value="{{order.paymentMethod}}" class="input">
+        </div>
+        <div class="mb-4">
+            <label class="block">Phương thức vận chuyển</label>
+            <input type="text" name="shippingMethod" value="{{order.shippingMethod}}" class="input">
+        </div>
+        <div class="mb-4">
+            <label class="block">Tổng tiền</label>
+            <input type="number" name="total" value="{{order.total}}" class="input">
+        </div>
+        <div class="flex space-x-2">
+            <button type="submit" class="btn order-btn">Lưu</button>
+            <a href="/admin/orders" class="btn btn-secondary">Hủy</a>
+            {{#ifEquals mode 'edit'}}
+            <button type="button" id="deleteBtn" class="btn btn-danger">Xóa</button>
+            {{/ifEquals}}
+        </div>
+    </form>
+</div>
+
+<div id="statusButtons"></div>
+
+<script>
+    
+    /**
+   * Gửi yêu cầu cập nhật trạng thái cho orderId
+   * @param {string} orderId 
+   * @param {string} newStatus 
+   */
+async function updateOrderStatus(orderId, newStatus) {
+  if (!newStatus) return;
+  try {
+    const res = await fetch(`/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) {
+      const { error } = await res.json();
+      return alert('Lỗi cập nhật trạng thái: ' + error);
+    }
+    const updated = await res.json();
+    alert(`Đã chuyển đơn #${orderId} sang trạng thái "${updated.status}"`);
+    // Reload lại danh sách hoặc cập nhật UI tại chỗ
+    window.location.reload();
+  } catch (err) {
+    alert('Lỗi mạng: ' + err.message);
+  }
+}
+
+  // Sau khi load chi tiết đơn (với o.status):
+  const allowed = transitions[o.status] || [];
+  const container = document.getElementById('statusButtons');
+  allowed.forEach(st => {
+    const btn = document.createElement('button');
+    btn.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+    btn.onclick = () => updateOrderStatus(orderId, st);
+    container.appendChild(btn);
+  });
+</script>
+
+
+<script src="/admin/static/js/order.js"></script>
