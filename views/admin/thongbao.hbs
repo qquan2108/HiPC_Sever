@@ -1,0 +1,127 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Toastr CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet"/>
+
+<div class="container my-5">
+  <h2 class="mb-4">Thông Báo</h2>
+  <!-- Toast container -->
+  <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+  <div class="row">
+    <!-- Danh sách thông báo -->
+    <div class="col-md-4">
+      <div class="list-group" id="notifList"></div>
+    </div>
+
+    <!-- Chi tiết thông báo -->
+    <div class="col-md-8">
+      <div id="notifDetail" class="card d-none">
+        <div class="card-header">
+          <h5 id="notifDetailTitle"></h5>
+          <small id="notifDetailDate" class="text-muted"></small>
+        </div>
+        <div class="card-body">
+          <p id="notifDetailMessage"></p>
+        </div>
+        <div class="card-footer">
+          <button id="markReadBtn" class="btn btn-success me-2">Đánh dấu đã đọc</button>
+          <button id="deleteBtn" class="btn btn-danger">Xóa</button>
+        </div>
+      </div>
+      <div id="emptyState" class="text-center text-muted mt-5">
+        Chọn một thông báo để xem chi tiết.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+  // Hàm hiển thị toastr notification
+  function notify(type, title, message) {
+    toastr.options = {
+      "closeButton": true,
+      "progressBar": true,
+      "positionClass": "toast-top-right",
+      "timeOut": "5000"
+    };
+    switch(type) {
+      case 'success': toastr.success(message, title); break;
+      case 'info':    toastr.info(message, title);    break;
+      case 'warning': toastr.warning(message, title); break;
+      case 'danger':  toastr.error(message, title);   break;
+      default:        toastr.info(message, title);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch('/notifications');
+      if (!res.ok) throw new Error('Không lấy được thông báo');
+      window.notifications = await res.json();
+      renderList();
+
+      // Hiển thị toast với những thông báo mới
+      notifications.filter(n => !n.isRead).forEach(n => {
+        notify(n.type, n.title, n.message);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  function renderList() {
+    const listEl = document.getElementById('notifList');
+    listEl.innerHTML = '';
+
+    notifications.forEach(n => {
+      const a = document.createElement('a');
+      a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start' + (n.isRead ? ' list-group-item-secondary' : '');
+      a.href = '#';
+      a.dataset.id = n._id;
+      a.innerHTML = `
+        <div class="ms-2 me-auto">
+          <div class="fw-bold">${n.title}</div>
+          <small class="text-muted">${new Date(n.createdAt).toLocaleString()}</small>
+        </div>
+        <span class="badge bg-${n.isRead ? 'secondary' : 'primary'} rounded-pill">${n.isRead ? 'Đã xem' : 'Mới'}</span>
+      `;
+      a.addEventListener('click', () => showDetail(n._id));
+      listEl.appendChild(a);
+    });
+  }
+
+  function showDetail(id) {
+    const n = notifications.find(x => x._id === id);
+    document.getElementById('notifDetailTitle').textContent = n.title;
+    document.getElementById('notifDetailDate').textContent = new Date(n.createdAt).toLocaleString();
+    document.getElementById('notifDetailMessage').textContent = n.message;
+    document.getElementById('notifDetail').classList.remove('d-none');
+    document.getElementById('emptyState').classList.add('d-none');
+
+    document.getElementById('markReadBtn').onclick = () => markRead(id);
+    document.getElementById('deleteBtn').onclick = () => deleteNotif(id);
+  }
+
+  async function markRead(id) {
+    await fetch(`/notifications/${id}/read`, { method: 'PATCH' });
+    notifications = notifications.map(n => n._id === id ? { ...n, isRead: true } : n);
+    renderList();
+    showDetail(id);
+  }
+
+  async function deleteNotif(id) {
+    await fetch(`/notifications/${id}`, { method: 'DELETE' });
+    notifications = notifications.filter(n => n._id !== id);
+    renderList();
+    resetDetail();
+  }
+
+  function resetDetail() {
+    document.getElementById('notifDetail').classList.add('d-none');
+    document.getElementById('emptyState').classList.remove('d-none');
+  }
+</script>

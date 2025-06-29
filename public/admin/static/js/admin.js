@@ -172,6 +172,38 @@ async function initProductForm() {
   });
 }
 
+function initCategoryForm() {
+  const form = document.getElementById("categoryForm");
+  if (!form) return;
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const fd = new FormData(form);
+    const payload = {
+      name:        fd.get("name"),
+      description: fd.get("description") || ""
+    };
+    const id     = fd.get("id");              // hidden input khi edit
+    const url    = id ? `${apiCategory}/${id}` : apiCategory;
+    const method = id ? "PUT" : "POST";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      // Sau khi lưu, quay về trang danh sách
+      window.location.href = "/admin/categories";
+    } catch (err) {
+      console.error("Lỗi lưu danh mục:", err);
+      // TODO: show toast lỗi nếu cần
+    }
+  });
+}
+
 /**
  * Initialize infinite scroll for products
  */

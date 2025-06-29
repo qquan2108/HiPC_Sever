@@ -42,7 +42,7 @@ function renderUsers(users, append = false) {
       <td class="px-6 py-4">${u.name}</td>
       <td class="px-6 py-4">${u.email}</td>
       <td class="px-6 py-4">${u.role}</td>
-      <td class="px-6 py-4">${u.active ? 'Kích hoạt' : 'Chưa kích hoạt'}</td>
+      <td class="px-6 py-4"> </td>
       <td class="px-6 py-4 text-center">
         <a href="/admin/users/${u._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
           <i class="bx bx-edit text-xl"></i>
