@@ -65,6 +65,7 @@ router.get('/banner', (req, res) => {
 
 //order
 const Order = require('../models/Order');
+const { transitions } = require('../utils/orderStatus');
 
 // Trang list orders (đã có)
 router.get('/orders', (req, res) => res.render('admin/order', { layout: 'admin/layout' }));
@@ -80,7 +81,7 @@ router.get('/orders/:id/edit', async (req, res) => {
     .populate('user_id', 'full_name email')
     .populate('products.productId', 'name price')
     .lean();
-  res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit' });
+  res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 
 

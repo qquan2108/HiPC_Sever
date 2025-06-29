@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="/admin/static/css/order.css">
 
 <div class="container mx-auto p-6">
-    <form id="orderForm" data-mode="{{mode}}" data-id="{{order._id}}">
+    <form id="orderForm" data-mode="{{mode}}" data-id="{{order._id}}" data-status="{{order.status}}">
         <div class="mb-4">
             <label class="block">Khách hàng</label>
             <input type="text" name="user_id" value="{{order.user_id.full_name}}" class="input" {{#ifEquals mode 'edit'}}disabled{{/ifEquals}}>
@@ -26,6 +26,13 @@
             <label class="block">Tổng tiền</label>
             <input type="number" name="total" value="{{order.total}}" class="input">
         </div>
+        {{#ifEquals mode 'edit'}}
+        <div class="mb-4">
+            <label class="block">Trạng thái hiện tại</label>
+            <input type="text" value="{{order.status}}" class="input" disabled>
+        </div>
+        <div id="statusButtons" class="flex space-x-2 mb-4"></div>
+        {{/ifEquals}}
         <div class="flex space-x-2">
             <button type="submit" class="btn order-btn">Lưu</button>
             <a href="/admin/orders" class="btn btn-secondary">Hủy</a>
@@ -36,46 +43,7 @@
     </form>
 </div>
 
-<div id="statusButtons"></div>
-
 <script>
-    
-    /**
-   * Gửi yêu cầu cập nhật trạng thái cho orderId
-   * @param {string} orderId 
-   * @param {string} newStatus 
-   */
-async function updateOrderStatus(orderId, newStatus) {
-  if (!newStatus) return;
-  try {
-    const res = await fetch(`/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    });
-    if (!res.ok) {
-      const { error } = await res.json();
-      return alert('Lỗi cập nhật trạng thái: ' + error);
-    }
-    const updated = await res.json();
-    alert(`Đã chuyển đơn #${orderId} sang trạng thái "${updated.status}"`);
-    // Reload lại danh sách hoặc cập nhật UI tại chỗ
-    window.location.reload();
-  } catch (err) {
-    alert('Lỗi mạng: ' + err.message);
-  }
-}
-
-  // Sau khi load chi tiết đơn (với o.status):
-  const allowed = transitions[o.status] || [];
-  const container = document.getElementById('statusButtons');
-  allowed.forEach(st => {
-    const btn = document.createElement('button');
-    btn.textContent = st.charAt(0).toUpperCase() + st.slice(1);
-    btn.onclick = () => updateOrderStatus(orderId, st);
-    container.appendChild(btn);
-  });
+  window.orderTransitions = {{{json transitions}}};
 </script>
-
-
 <script src="/admin/static/js/order.js"></script>
