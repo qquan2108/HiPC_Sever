@@ -90,7 +90,29 @@ async function initProductForm() {
   const form            = document.getElementById("productForm");
   const categorySelect  = document.getElementById("categorySelect");
   const specContainer   = document.getElementById("specContainer");
-  if (!form || !categorySelect || !specContainer) return;
+  const descInput       = document.getElementById("descriptionInput");
+  const descEditorEl    = document.getElementById("descriptionEditor");
+  const imageFile       = document.getElementById("imageFile");
+  const imagePreview    = document.getElementById("imagePreview");
+  const imageUrlInput   = document.getElementById("imageUrl");
+  let   quill;
+  if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) return;
+  quill = new Quill(descEditorEl, { theme: "snow" });
+
+  if (imageFile) {
+    imageFile.addEventListener('change', () => {
+      const file = imageFile.files[0];
+      if (file) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.style.display = '';
+      }
+    });
+  }
+
+  if (!form.dataset.id) {
+    const hiddenId = form.querySelector("input[name='id']");
+    if (hiddenId) form.dataset.id = hiddenId.value;
+  }
 
   // Load specs when category changes
   categorySelect.addEventListener("change", async () => {
@@ -122,8 +144,12 @@ async function initProductForm() {
       form.querySelector('input[name="name"]').value        = prod.name;
       form.querySelector('input[name="price"]').value       = prod.price;
       form.querySelector('input[name="stock"]').value       = prod.stock;
-      form.querySelector('textarea[name="description"]').value = prod.description || "";
-      form.querySelector('input[name="image"]').value       = prod.image || "";
+      quill.root.innerHTML = prod.description || "";
+      if (imagePreview) {
+        imagePreview.src = prod.image || '';
+        imagePreview.style.display = prod.image ? '' : 'none';
+      }
+      if (imageUrlInput) imageUrlInput.value = prod.image || '';
       categorySelect.value = prod.category_id._id;
       // trigger specs load
       await new Promise(r => setTimeout(r, 0));
@@ -143,14 +169,34 @@ async function initProductForm() {
   // Submit handler
   form.addEventListener("submit", async e => {
     e.preventDefault();
+    descInput.value = quill.root.innerHTML;
     const fd = new FormData(form);
+
+    let imageUrl = imageUrlInput ? imageUrlInput.value : '';
+    if (imageFile && imageFile.files[0]) {
+      const fdImg = new FormData();
+      fdImg.append('image', imageFile.files[0]);
+      try {
+        const upRes = await fetch(`${apiProduct}/upload`, {
+          method: 'POST',
+          body: fdImg
+        });
+        if (upRes.ok) {
+          const data = await upRes.json();
+          imageUrl = data.url;
+        }
+      } catch (err) {
+        console.error('Upload image error:', err);
+      }
+    }
+
     const payload = {
       name           : fd.get("name"),
       category_id    : fd.get("category_id"),
       brand_id       : fd.get("brand_id"),
       price          : parseFloat(fd.get("price")),
       stock          : parseInt(fd.get("stock")),
-      image          : fd.get("image"),
+      image          : imageUrl,
       description    : fd.get("description"),
       specifications : Array.from(form.querySelectorAll(".spec-item input")).map(
         inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })
