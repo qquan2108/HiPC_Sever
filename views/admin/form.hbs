@@ -64,8 +64,10 @@
     </div>
 
     <div class="form-group">
-      <label>URL ảnh</label>
-      <input type="url" name="image" value="{{product.image}}">
+      <label>Ảnh sản phẩm</label>
+      <input type="file" id="imageFile" accept="image/*">
+      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2" {{#unless product.image}}style="display:none"{{/unless}}>
+      <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
 
     <div class="form-group">
