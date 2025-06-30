@@ -90,7 +90,16 @@ async function initProductForm() {
   const form            = document.getElementById("productForm");
   const categorySelect  = document.getElementById("categorySelect");
   const specContainer   = document.getElementById("specContainer");
-  if (!form || !categorySelect || !specContainer) return;
+  const descInput       = document.getElementById("descriptionInput");
+  const descEditorEl    = document.getElementById("descriptionEditor");
+  let   quill;
+  if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) return;
+  quill = new Quill(descEditorEl, { theme: "snow" });
+
+  if (!form.dataset.id) {
+    const hiddenId = form.querySelector("input[name='id']");
+    if (hiddenId) form.dataset.id = hiddenId.value;
+  }
 
   // Load specs when category changes
   categorySelect.addEventListener("change", async () => {
@@ -122,7 +131,7 @@ async function initProductForm() {
       form.querySelector('input[name="name"]').value        = prod.name;
       form.querySelector('input[name="price"]').value       = prod.price;
       form.querySelector('input[name="stock"]').value       = prod.stock;
-      form.querySelector('textarea[name="description"]').value = prod.description || "";
+      quill.root.innerHTML = prod.description || "";
       form.querySelector('input[name="image"]').value       = prod.image || "";
       categorySelect.value = prod.category_id._id;
       // trigger specs load
@@ -143,6 +152,7 @@ async function initProductForm() {
   // Submit handler
   form.addEventListener("submit", async e => {
     e.preventDefault();
+    descInput.value = quill.root.innerHTML;
     const fd = new FormData(form);
     const payload = {
       name           : fd.get("name"),
