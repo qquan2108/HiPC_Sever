@@ -1,70 +1,50 @@
 
-// 1. Khởi động AOS
-AOS.init({ duration: 600, once: true });
-
+// 1. Khởi động AOS sau khi DOM sẵn sàng
 const fmt = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
 
-// 2. Gọi ngay IIFE
-(async () => {
-  console.log("⚡ baocao.js: bắt đầu chạy");
+document.addEventListener('DOMContentLoaded', async () => {
+  AOS.init({ duration: 600, once: true });
 
-  // fetch dữ liệu
+  console.log('⚡ baocao.js: bắt đầu chạy');
+
+  // fetch dữ liệu mặc định theo tháng hiện tại
   const now = new Date();
   const [sumRes, dataRes] = await Promise.all([
-    fetch("/reports/summary"),
-    fetch(`/reports/revenue?period=month&month=${now.toISOString().slice(0,7)}`),
+    fetch('/reports/summary'),
+    fetch(`/reports/revenue?period=month&month=${now.toISOString().slice(0,7)}`)
   ]);
   if (!sumRes.ok || !dataRes.ok) {
-    console.error("Fetch lỗi", sumRes.status, dataRes.status);
+    console.error('Fetch lỗi', sumRes.status, dataRes.status);
     return;
   }
   const summary = await sumRes.json();
   const chartData = await dataRes.json();
-  console.log("⤷ summary:", summary, "\n⤷ data:", chartData);
+  console.log('⤷ summary:', summary, '\n⤷ data:', chartData);
 
-  // render CountUp
-  new CountUp("revenue",    summary.revenue,    { duration: 1.2, formattingFn: fmt }).start();
-  new CountUp("orders",     summary.orders,     { duration: 1.2 }).start();
-  new CountUp("avgRevenue", summary.avgRevenue, { duration: 1.2, formattingFn: fmt }).start();
+  // render CountUp nếu thư viện tồn tại
+  const CountUpCls = window.CountUp || (window.countUp && window.countUp.CountUp);
+  if (CountUpCls) {
+    new CountUpCls('revenue', summary.revenue, { duration: 1.2, formattingFn: fmt }).start();
+    new CountUpCls('orders', summary.orders, { duration: 1.2 }).start();
+    new CountUpCls('avgRevenue', summary.avgRevenue, { duration: 1.2, formattingFn: fmt }).start();
+  } else {
+    document.getElementById('revenue').textContent = fmt(summary.revenue);
+    document.getElementById('orders').textContent = summary.orders;
+    document.getElementById('avgRevenue').textContent = fmt(summary.avgRevenue);
+  }
 
-  // vẽ Chart.js
-  const ctx = document.getElementById("revenueChart").getContext("2d");
-  const grad = ctx.createLinearGradient(0,0,0,200);
-  grad.addColorStop(0, "rgba(0,98,255,0.5)");
-  grad.addColorStop(1, "rgba(0,98,255,0)");
-  window.revenueChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: chartData.labels,
-      datasets: [{
-        data: chartData.data,
-        backgroundColor: grad,
-        borderColor: "var(--primary)",
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { callback: fmt } },
-        x: { grid: { display: false } }
-      }
-    }
-  });
+  renderRevenueChart(chartData);
 
   // render bảng doanh thu nếu có phần tử
-  const tableBody = document.getElementById("revenueTable");
+  const tableBody = document.getElementById('revenueTable');
   if (tableBody) {
     chartData.labels.forEach((label, idx) => {
-      const tr = document.createElement("tr");
+      const tr = document.createElement('tr');
       tr.innerHTML = `<td>${label}</td><td class="text-end">${fmt(chartData.data[idx])}</td>`;
-
       tableBody.appendChild(tr);
     });
   }
-})();
+});
 
 // ==== So sánh doanh thu giữa các tháng ====
 const fmtCur = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
@@ -123,7 +103,9 @@ function renderRevenueChart(data) {
   const grad = ctx.createLinearGradient(0,0,0,200);
   grad.addColorStop(0,'rgba(0,98,255,0.5)');
   grad.addColorStop(1,'rgba(0,98,255,0)');
-  if (window.revenueChart) window.revenueChart.destroy();
+  if (window.revenueChart && typeof window.revenueChart.destroy === 'function') {
+    window.revenueChart.destroy();
+  }
   window.revenueChart = new Chart(ctx, {
     type: 'line',
     data: { labels: data.labels, datasets: [{ data: data.data, backgroundColor: grad, borderColor: 'var(--primary)', fill: true, tension: 0.3 }] },
@@ -156,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateInputs();
   document.getElementById('periodSelect')?.addEventListener('change', updateInputs);
   document.getElementById('loadRevenue')?.addEventListener('click', loadRevenueData);
-
 });
 
 let compareChart;
@@ -176,7 +157,9 @@ document.getElementById('compareBtn')?.addEventListener('click', async () => {
 function renderCompareChart(data) {
   const ctx = document.getElementById('compareChart')?.getContext('2d');
   if (!ctx) return;
-  if (compareChart) compareChart.destroy();
+  if (compareChart && typeof compareChart.destroy === 'function') {
+    compareChart.destroy();
+  }
   compareChart = new Chart(ctx, {
     type: 'bar',
     data: {
