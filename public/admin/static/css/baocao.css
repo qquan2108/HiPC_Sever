@@ -1,3 +1,4 @@
+
 :root {
   --premium-primary: #6a11cb;
   --premium-secondary: #2575fc;
@@ -18,6 +19,7 @@ body {
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
 
 .chart-fullscreen {
   width: 100vw;
@@ -56,3 +58,4 @@ body {
   border-radius: 0.75rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
+
