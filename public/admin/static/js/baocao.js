@@ -1,180 +1,267 @@
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            easing: 'ease-out-cubic',
+            once: true
+        });
 
-// 1. Khởi động AOS sau khi DOM sẵn sàng
-const fmt = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
+        // Sample data for demonstration
+        const sampleData = {
+            revenue: 15750000,
+            orders: 234,
+            avgRevenue: 67307,
+            monthlyData: [
+                { month: '2024-01', revenue: 12000000 },
+                { month: '2024-02', revenue: 15000000 },
+                { month: '2024-03', revenue: 18000000 },
+                { month: '2024-04', revenue: 16000000 },
+                { month: '2024-05', revenue: 20000000 },
+                { month: '2024-06', revenue: 22000000 }
+            ]
+        };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  AOS.init({ duration: 600, once: true });
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount);
+        }
 
-  console.log('⚡ baocao.js: bắt đầu chạy');
+        // Animate counters
+        function animateCounters() {
+            const revenueCounter = new CountUp('revenue', 0, sampleData.revenue, 0, 2, {
+                suffix: '₫',
+                separator: '.'
+            });
+            const ordersCounter = new CountUp('orders', 0, sampleData.orders, 0, 2);
+            const avgCounter = new CountUp('avgRevenue', 0, sampleData.avgRevenue, 0, 2, {
+                suffix: '₫',
+                separator: '.'
+            });
 
-  // fetch dữ liệu mặc định theo tháng hiện tại
-  const now = new Date();
-  const [sumRes, dataRes] = await Promise.all([
-    fetch('/reports/summary'),
-    fetch(`/reports/revenue?period=month&month=${now.toISOString().slice(0,7)}`)
-  ]);
-  if (!sumRes.ok || !dataRes.ok) {
-    console.error('Fetch lỗi', sumRes.status, dataRes.status);
-    return;
-  }
-  const summary = await sumRes.json();
-  const chartData = await dataRes.json();
-  console.log('⤷ summary:', summary, '\n⤷ data:', chartData);
+            revenueCounter.start();
+            ordersCounter.start();
+            avgCounter.start();
+        }
 
-  // render CountUp nếu thư viện tồn tại
-  const CountUpCls = window.CountUp || (window.countUp && window.countUp.CountUp);
-  if (CountUpCls) {
-    new CountUpCls('revenue', summary.revenue, { duration: 1.2, formattingFn: fmt }).start();
-    new CountUpCls('orders', summary.orders, { duration: 1.2 }).start();
-    new CountUpCls('avgRevenue', summary.avgRevenue, { duration: 1.2, formattingFn: fmt }).start();
-  } else {
-    document.getElementById('revenue').textContent = fmt(summary.revenue);
-    document.getElementById('orders').textContent = summary.orders;
-    document.getElementById('avgRevenue').textContent = fmt(summary.avgRevenue);
-  }
+        // Initialize charts
+        let revenueChart, compareChart;
 
-  renderRevenueChart(chartData);
+        function initRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sampleData.monthlyData.map(item => {
+                        const date = new Date(item.month);
+                        return date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+                    }),
+                    datasets: [{
+                        label: 'Doanh thu',
+                        data: sampleData.monthlyData.map(item => item.revenue),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    weight: 500
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('vi-VN').format(value) + '₫';
+                                },
+                                font: {
+                                    weight: 500
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-  // render bảng doanh thu nếu có phần tử
-  const tableBody = document.getElementById('revenueTable');
-  if (tableBody) {
-    chartData.labels.forEach((label, idx) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${label}</td><td class="text-end">${fmt(chartData.data[idx])}</td>`;
-      tableBody.appendChild(tr);
-    });
-  }
-});
+        function initCompareChart() {
+            const ctx = document.getElementById('compareChart').getContext('2d');
+            
+            compareChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Tháng 1', 'Tháng 2'],
+                    datasets: [{
+                        label: 'Doanh thu',
+                        data: [12000000, 15000000],
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(240, 147, 251, 0.8)'
+                        ],
+                        borderColor: [
+                            '#667eea',
+                            '#f093fb'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('vi-VN').format(value) + '₫';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-// ==== So sánh doanh thu giữa các tháng ====
-const fmtCur = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
+        // Populate month selectors
+        function populateMonthSelectors() {
+            const months = [
+                { value: '2024-01', text: 'Tháng 1/2024' },
+                { value: '2024-02', text: 'Tháng 2/2024' },
+                { value: '2024-03', text: 'Tháng 3/2024' },
+                { value: '2024-04', text: 'Tháng 4/2024' },
+                { value: '2024-05', text: 'Tháng 5/2024' },
+                { value: '2024-06', text: 'Tháng 6/2024' }
+            ];
 
-function updateInputs() {
-  const period = document.getElementById('periodSelect')?.value;
-  const monthInput = document.getElementById('monthInput');
-  const weekInput  = document.getElementById('weekInput');
-  const yearInput  = document.getElementById('yearInput');
-  if (!period || !monthInput || !weekInput || !yearInput) return;
-  monthInput.classList.add('d-none');
-  weekInput.classList.add('d-none');
-  yearInput.classList.add('d-none');
-  if (period === 'month') monthInput.classList.remove('d-none');
-  else if (period === 'week') weekInput.classList.remove('d-none');
-  else yearInput.classList.remove('d-none');
-}
+            const month1Select = document.getElementById('month1');
+            const month2Select = document.getElementById('month2');
 
-function getISOWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-}
+            months.forEach(month => {
+                const option1 = new Option(month.text, month.value);
+                const option2 = new Option(month.text, month.value);
+                month1Select.add(option1);
+                month2Select.add(option2);
+            });
+        }
 
-function getWeekString(date) {
-  const w = getISOWeek(date);
-  return `${date.getFullYear()}-W${String(w).padStart(2,'0')}`;
-}
+        // Update table
+        function updateTable() {
+            const tableBody = document.getElementById('revenueTable');
+            tableBody.innerHTML = '';
 
-async function loadRevenueData() {
-  const period = document.getElementById('periodSelect')?.value;
-  let query = '';
-  if (period === 'month') {
-    const m = document.getElementById('monthInput').value;
-    if (!m) return;
-    query = `period=month&month=${m}`;
-  } else if (period === 'week') {
-    const w = document.getElementById('weekInput').value;
-    if (!w) return;
-    query = `period=week&week=${w}`;
-  } else {
-    const y = document.getElementById('yearInput').value;
-    if (!y) return;
-    query = `period=year&year=${y}`;
-  }
-  const res = await fetch(`/reports/revenue?${query}`);
-  if (!res.ok) return console.error('fetch revenue error', res.status);
-  const data = await res.json();
-  renderRevenueChart(data);
-}
+            sampleData.monthlyData.forEach(item => {
+                const row = document.createElement('tr');
+                const date = new Date(item.month);
+                const monthText = date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+                
+                row.innerHTML = `
+                    <td><strong>${monthText}</strong></td>
+                    <td class="text-end"><strong>${formatCurrency(item.revenue)}</strong></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
 
-function renderRevenueChart(data) {
-  const ctx = document.getElementById('revenueChart').getContext('2d');
-  const grad = ctx.createLinearGradient(0,0,0,200);
-  grad.addColorStop(0,'rgba(0,98,255,0.5)');
-  grad.addColorStop(1,'rgba(0,98,255,0)');
-  if (window.revenueChart && typeof window.revenueChart.destroy === 'function') {
-    window.revenueChart.destroy();
-  }
-  window.revenueChart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: data.labels, datasets: [{ data: data.data, backgroundColor: grad, borderColor: 'var(--primary)', fill: true, tension: 0.3 }] },
-    options: { responsive: true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ callback: fmt } }, x:{ grid:{ display:false } } } }
-  });
-}
+        // Event handlers
+        document.getElementById('periodSelect').addEventListener('change', function() {
+            const monthInput = document.getElementById('monthInput');
+            const weekInput = document.getElementById('weekInput');
+            const yearInput = document.getElementById('yearInput');
 
-document.addEventListener('DOMContentLoaded', () => {
-  const select1 = document.getElementById('month1');
-  const select2 = document.getElementById('month2');
-  if (select1 && select2) {
-    for (let i = 1; i <= 12; i++) {
-      const opt1 = document.createElement('option');
-      opt1.value = i;
-      opt1.textContent = `Th${i}`;
-      select1.appendChild(opt1.cloneNode(true));
-      select2.appendChild(opt1);
-    }
-  }
+            monthInput.classList.add('d-none');
+            weekInput.classList.add('d-none');
+            yearInput.classList.add('d-none');
 
-  // init period inputs
-  const now = new Date();
-  const monthInput = document.getElementById('monthInput');
-  const weekInput = document.getElementById('weekInput');
-  const yearInput = document.getElementById('yearInput');
-  if (monthInput) monthInput.value = now.toISOString().slice(0,7);
-  if (weekInput) weekInput.value = getWeekString(now);
-  if (yearInput) yearInput.value = now.getFullYear();
+            switch(this.value) {
+                case 'month':
+                    monthInput.classList.remove('d-none');
+                    break;
+                case 'week':
+                    weekInput.classList.remove('d-none');
+                    break;
+                case 'year':
+                    yearInput.classList.remove('d-none');
+                    break;
+            }
+        });
 
-  updateInputs();
-  document.getElementById('periodSelect')?.addEventListener('change', updateInputs);
-  document.getElementById('loadRevenue')?.addEventListener('click', loadRevenueData);
-});
+        document.getElementById('loadRevenue').addEventListener('click', function() {
+            const spinner = document.getElementById('loadingSpinner');
+            spinner.style.display = 'flex';
+            
+            setTimeout(() => {
+                spinner.style.display = 'none';
+                animateCounters();
+                updateTable();
+            }, 1000);
+        });
 
-let compareChart;
-document.getElementById('compareBtn')?.addEventListener('click', async () => {
-  const m1 = document.getElementById('month1')?.value;
-  const m2 = document.getElementById('month2')?.value;
-  if (!m1 || !m2) return;
-  const res = await fetch(`/reports/compare?months=${m1},${m2}`);
-  if (!res.ok) {
-    console.error('Compare fetch error', res.status);
-    return;
-  }
-  const data = await res.json();
-  renderCompareChart(data);
-});
+        document.getElementById('compareBtn').addEventListener('click', function() {
+            const month1 = document.getElementById('month1').value;
+            const month2 = document.getElementById('month2').value;
 
-function renderCompareChart(data) {
-  const ctx = document.getElementById('compareChart')?.getContext('2d');
-  if (!ctx) return;
-  if (compareChart && typeof compareChart.destroy === 'function') {
-    compareChart.destroy();
-  }
-  compareChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: data.labels,
-      datasets: [{
-        data: data.data,
-        backgroundColor: '#4e79a7'
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { callback: fmtCur } }
-      }
-    }
-  });
-}
+            if (month1 && month2 && month1 !== month2) {
+                // Update compare chart with selected months
+                const data1 = sampleData.monthlyData.find(item => item.month === month1);
+                const data2 = sampleData.monthlyData.find(item => item.month === month2);
+
+                if (data1 && data2) {
+                    compareChart.data.data = [data1.revenue, data2.revenue];
+                    compareChart.data.labels = [
+                        new Date(month1).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }),
+                        new Date(month2).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+                    ];
+                    compareChart.update();
+                }
+            }
+        });
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            animateCounters();
+            initRevenueChart();
+            initCompareChart();
+            populateMonthSelectors();
+            updateTable();
+        });
