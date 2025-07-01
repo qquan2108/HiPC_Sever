@@ -10,15 +10,17 @@ let currentPage = 1;
 let hasMore     = true;
 const limit      = 20;
 let observer; // IntersectionObserver reference
+let productQuery = '';
 
 /**
  * Fetch products from API with pagination
  * @param {number} page - Page number to fetch
  */
-async function fetchProducts(page = 1) {
+async function fetchProducts(page = 1, q = productQuery) {
   if (!hasMore && page !== 1) return;
   try {
-    const res = await fetch(`${apiProduct}?page=${page}&limit=${limit}`);
+    const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const { products, hasMore: more } = await res.json();
 
@@ -260,7 +262,7 @@ function initProductScroll() {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         observer.unobserve(sentinel);
-        fetchProducts(currentPage + 1);
+        fetchProducts(currentPage + 1, productQuery);
       }
     });
   }, {
@@ -279,6 +281,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("productTable")) {
     initProductScroll();
     fetchProducts(1);
+    const search = document.getElementById('searchInput');
+    if (search) {
+      search.addEventListener('input', () => {
+        productQuery = search.value.trim();
+        currentPage = 1;
+        hasMore = true;
+        fetchProducts(1, productQuery);
+      });
+    }
   }
   // Users
   if (document.getElementById("userTable")) fetchUsers();

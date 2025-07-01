@@ -53,4 +53,14 @@ AOS.init({ duration: 600, once: true });
       }
     }
   });
+
+  // render bảng doanh thu theo tháng nếu có phần tử
+  const tableBody = document.getElementById("revenueTable");
+  if (tableBody) {
+    monthly.labels.forEach((label, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${label}</td><td class="text-end">${fmt(monthly.data[idx])}</td>`;
+      tableBody.appendChild(tr);
+    });
+  }
 })();
