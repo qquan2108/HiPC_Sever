@@ -7,4 +7,5 @@ router.get('/monthly', reportCtrl.getMonthlyRevenue);
 router.get('/compare', reportCtrl.compareMonths);
 router.get('/revenue', reportCtrl.getRevenue);
 
+
 module.exports = router;
