@@ -151,6 +151,12 @@
             margin: 2rem 0;
         }
 
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
         .controls-title {
             font-size: 1.25rem;
             font-weight: 600;
@@ -217,6 +223,11 @@
         .chart-container.large {
             height: 500px;
         }
+
+        .chart-container.fullscreen {
+            height: 70vh;
+        }
+
 
         .chart-container canvas {
             border-radius: 12px;
