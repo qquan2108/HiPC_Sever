@@ -58,8 +58,37 @@
       </div>
     </div>
 
-    <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="150">
-      <canvas id="revenueChart" height="120"></canvas>
+  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="150">
+    <canvas id="revenueChart" height="120"></canvas>
+  </div>
+
+  <div class="row g-2 align-items-end mb-4" data-aos="fade-up" data-aos-delay="200">
+    <div class="col-md-4">
+      <select id="month1" class="form-select" aria-label="Tháng so sánh 1"></select>
+    </div>
+    <div class="col-md-4">
+      <select id="month2" class="form-select" aria-label="Tháng so sánh 2"></select>
+    </div>
+    <div class="col-md-4">
+      <button id="compareBtn" class="btn btn-primary w-100">So sánh</button>
+    </div>
+  </div>
+
+  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="250">
+    <canvas id="compareChart" height="100"></canvas>
+  </div>
+
+  <div class="table-responsive" data-aos="fade-up" data-aos-delay="300">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+            <th>Tháng</th>
+            <th class="text-end">Doanh thu</th>
+          </tr>
+        </thead>
+        <tbody id="revenueTable"></tbody>
+      </table>
+
     </div>
 
     <div class="table-responsive" data-aos="fade-up" data-aos-delay="300">
