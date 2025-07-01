@@ -20,6 +20,7 @@
               <img src="${b.imageUrl}" class="card-img-top" alt="${b.title}">
               <div class="card-body text-center">
                 <h5 class="card-title">${b.title}</h5>
+                <p class="text-sm my-1">${b.content || ''}</p>
                 <div class="btn-group" role="group">
                   <button class="btn btn-sm btn-outline-secondary"
                           onclick="previewBanner('${b.imageUrl}')">
@@ -44,6 +45,9 @@
     document.getElementById('bannerForm').addEventListener('submit', async e => {
       e.preventDefault();
       const title = document.getElementById('bannerTitle').value.trim();
+      const content = document.getElementById('bannerContent')
+        ? document.getElementById('bannerContent').value.trim()
+        : '';
       const file  = document.getElementById('bannerFile').files[0];
       if (!file) return alert('Chưa chọn file.');
 
@@ -60,7 +64,7 @@
         const createRes = await fetch(BANNER_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, imageUrl: url })
+          body: JSON.stringify({ title, imageUrl: url, content })
         });
         if (!createRes.ok) {
           const errText = await createRes.text();

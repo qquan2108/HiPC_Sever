@@ -1,161 +1,99 @@
+{{#*inline "title"}}Báo cáo Thống kê Doanh thu{{/inline}}
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Báo cáo Thống kê Doanh thu</title>
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- AOS & Animate.css -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
 
-  <!-- Bootstrap CSS -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+<header class="bg-light py-3 mb-4">
+  <div class="container">
+    <h1 class="h3 mb-0">📊 Báo cáo Doanh thu</h1>
+  </div>
+</header>
 
-  <!-- AOS & Animate.css -->
-  <link
-    href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    rel="stylesheet"
-  />
-  <link
-    href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css"
-    rel="stylesheet"
-  />
-
-  <!-- Tùy chỉnh CSS -->
-  <link href="/admin/static/css/index.css" rel="stylesheet" />
-</head>
-<body>
-  <header class="bg-light py-3 mb-4">
-    <div class="container">
-      <h1 class="h3 mb-0">📊 Báo cáo Doanh thu</h1>
-    </div>
-  </header>
-
-  <main class="container">
-    <div class="row text-center mb-5" data-aos="fade-up">
-      <div class="col-md-4 mb-4">
-        <div class="card p-4 shadow-sm">
-          <div class="card-body">
-            <div id="revenue" class="display-5 text-success mb-2">0₫</div>
-            <div class="text-muted">Tổng doanh thu</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4 mb-4">
-        <div class="card p-4 shadow-sm">
-          <div class="card-body">
-            <div id="orders" class="display-5 text-warning mb-2">0</div>
-            <div class="text-muted">Tổng đơn hàng</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4 mb-4">
-        <div class="card p-4 shadow-sm">
-          <div class="card-body">
-            <div id="avgRevenue" class="display-5 text-info mb-2">0₫</div>
-            <div class="text-muted">Doanh thu trung bình</div>
-          </div>
+<main class="container">
+  <div class="row text-center mb-5" data-aos="fade-up">
+    <div class="col-md-4 mb-4">
+      <div class="card p-4 shadow-sm">
+        <div class="card-body">
+          <div id="revenue" class="display-5 text-success mb-2">0₫</div>
+          <div class="text-muted">Tổng doanh thu</div>
         </div>
       </div>
     </div>
-
-    <div class="chart-container mb-5" data-aos="fade-up" data-aos-delay="150">
-      <canvas id="revenueChart" height="120"></canvas>
+    <div class="col-md-4 mb-4">
+      <div class="card p-4 shadow-sm">
+        <div class="card-body">
+          <div id="orders" class="display-5 text-warning mb-2">0</div>
+          <div class="text-muted">Tổng đơn hàng</div>
+        </div>
+      </div>
     </div>
-  </main>
+    <div class="col-md-4 mb-4">
+      <div class="card p-4 shadow-sm">
+        <div class="card-body">
+          <div id="avgRevenue" class="display-5 text-info mb-2">0₫</div>
+          <div class="text-muted">Doanh thu trung bình</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <footer class="text-center py-3 bg-light">
-    © 2025 Quân VjpPro
-  </footer>
+  <div class="row g-2 align-items-end mb-3" data-aos="fade-up" data-aos-delay="120">
+    <div class="col-md-4">
+      <select id="periodSelect" class="form-select">
+        <option value="month" selected>Theo tháng</option>
+        <option value="week">Theo tuần</option>
+        <option value="year">Theo năm</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <input type="month" id="monthInput" class="form-control" />
+      <input type="week" id="weekInput" class="form-control d-none" />
+      <input type="number" id="yearInput" class="form-control d-none" min="2000" max="2100" />
+    </div>
+    <div class="col-md-4">
+      <button id="loadRevenue" class="btn btn-primary w-100">Xem</button>
+    </div>
+  </div>
 
-  <!-- JS dependencies -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    defer
-  ></script>
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"
-    defer
-  ></script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js"
-    defer
-  ></script>
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.7/countUp.min.js"
-    defer
-  ></script>
+  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="150">
+    <canvas id="revenueChart" height="240"></canvas>
+  </div>
 
-  <!-- Inline script: chạy sau khi tất cả đã load -->
-  <script defer>
-    document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Khởi động AOS
-      AOS.init({ duration: 600, once: true });
+  <div class="row g-2 align-items-end mb-4" data-aos="fade-up" data-aos-delay="200">
+    <div class="col-md-4">
+      <select id="month1" class="form-select" aria-label="Tháng so sánh 1"></select>
+    </div>
+    <div class="col-md-4">
+      <select id="month2" class="form-select" aria-label="Tháng so sánh 2"></select>
+    </div>
+    <div class="col-md-4">
+      <button id="compareBtn" class="btn btn-primary w-100">So sánh</button>
+    </div>
+  </div>
 
-      console.log('⚡ baocao page: bắt đầu fetch API');
-      // 2. Gọi API đúng đường dẫn
-      const [sumRes, monRes] = await Promise.all([
-        fetch('/reports/summary'),
-        fetch('/reports/monthly'),
-      ]);
+  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="250">
+    <canvas id="compareChart" height="180"></canvas>
+  </div>
 
-      if (!sumRes.ok || !monRes.ok) {
-        console.error('❌ Fetch lỗi:', sumRes.status, monRes.status);
-        return;
-      }
+  <div class="table-responsive" data-aos="fade-up" data-aos-delay="300">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Tháng</th>
+          <th class="text-end">Doanh thu</th>
+        </tr>
+      </thead>
+      <tbody id="revenueTable"></tbody>
+    </table>
+  </div>
+</main>
 
-      const summary = await sumRes.json();
-      const monthly = await monRes.json();
-      console.log('⤷ summary:', summary, '\n⤷ monthly:', monthly);
-
-      // 3. Render CountUp
-      const fmt = v =>
-        new Intl.NumberFormat('vi-VN', {
-          style: 'currency',
-          currency: 'VND',
-        }).format(v);
-
-      new CountUp('revenue', summary.revenue, {
-        duration: 1.2,
-        formattingFn: fmt,
-      }).start();
-      new CountUp('orders', summary.orders, { duration: 1.2 }).start();
-      new CountUp('avgRevenue', summary.avgRevenue, {
-        duration: 1.2,
-        formattingFn: fmt,
-      }).start();
-
-      // 4. Vẽ Chart.js
-      const ctx = document
-        .getElementById('revenueChart')
-        .getContext('2d');
-      const grad = ctx.createLinearGradient(0, 0, 0, 200);
-      grad.addColorStop(0, 'rgba(0,98,255,0.5)');
-      grad.addColorStop(1, 'rgba(0,98,255,0)');
-
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: monthly.labels,
-          datasets: [
-            {
-              data: monthly.data,
-              backgroundColor: grad,
-              borderColor: 'var(--bs-primary)',
-              fill: true,
-              tension: 0.3,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { callback: fmt } },
-            x: { grid: { display: false } },
-          },
-        },
-      });
-    });
-  </script>
-</body>
-</html>
+<!-- JS dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.9.0/countUp.umd.js" defer></script>
+<script src="/admin/static/js/baocao.js" defer></script>
