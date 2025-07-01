@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const Banner = require('../models/Banner');
 require('dotenv').config();
 
 const multer = require('multer');
@@ -79,6 +80,10 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
+    const banner = await Banner.findOne({ isActive: true })
+      .sort('-createdAt')
+      .lean();
+
     res.status(200).json({
       message: 'Login successful',
       token,
@@ -87,7 +92,8 @@ router.post('/login', async (req, res) => {
         full_name: user.full_name,
         email: user.email,
         role: user.role
-      }
+      },
+      banner
     });
 
   } catch (err) {
