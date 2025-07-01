@@ -21,6 +21,7 @@ const upload = multer({ storage });
 
 // CRUD banner
 router.get('/', ctrl.getAll);
+router.get('/latest', ctrl.getLatest);
 router.post('/', ctrl.create);
 router.delete('/:id', ctrl.delete);
 
