@@ -78,6 +78,10 @@
               <label for="bannerFile" class="form-label">Chọn hình</label>
               <input type="file" id="bannerFile" class="form-control" accept="image/*" required>
             </div>
+            <div class="mb-3">
+              <label for="bannerContent" class="form-label">Nội dung</label>
+              <textarea id="bannerContent" class="form-control" rows="3"></textarea>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="submit" class="btn btn-primary">
@@ -174,6 +178,7 @@
                 <small class="text-muted d-block mb-2">
                   ${new Date(b.createdAt).toLocaleDateString('vi-VN')}
                 </small>
+                <p class="text-sm mb-2">${b.content || ''}</p>
                 <div class="btn-group" role="group">
                   <button class="btn btn-sm btn-outline-secondary"
                           onclick="previewBanner('${fullImageUrl}', '${b.title}')"
@@ -211,6 +216,7 @@
       const submitBtn = e.target.querySelector('button[type="submit"]');
       const spinner = document.getElementById('submitSpinner');
       const title = document.getElementById('bannerTitle').value.trim();
+      const content = document.getElementById('bannerContent').value.trim();
       const file = document.getElementById('bannerFile').files[0];
       
       if (!file) {
@@ -249,7 +255,7 @@
         const createRes = await fetch(BANNER_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, imageUrl: url })
+          body: JSON.stringify({ title, imageUrl: url, content })
         });
         
         if (!createRes.ok) {

@@ -13,10 +13,23 @@ exports.getAll = async (req, res, next) => {
 // Tạo banner mới (chỉ khi đã có imageUrl)
 exports.create = async (req, res, next) => {
   try {
-    const { title, imageUrl, link } = req.body;
-    const banner = new Banner({ title, imageUrl, link });
+    const { title, imageUrl, content, link } = req.body;
+    const banner = new Banner({ title, imageUrl, content, link });
     await banner.save();
     res.status(201).json(banner);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Banner mới nhất còn hoạt động
+exports.getLatest = async (req, res, next) => {
+  try {
+    const banner = await Banner.findOne({ isActive: true })
+      .sort('-createdAt')
+      .lean();
+    if (!banner) return res.status(404).json({});
+    res.json(banner);
   } catch (err) {
     next(err);
   }

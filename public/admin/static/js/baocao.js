@@ -53,4 +53,68 @@ AOS.init({ duration: 600, once: true });
       }
     }
   });
+
+  // render bảng doanh thu theo tháng nếu có phần tử
+  const tableBody = document.getElementById("revenueTable");
+  if (tableBody) {
+    monthly.labels.forEach((label, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${label}</td><td class="text-end">${fmt(monthly.data[idx])}</td>`;
+      tableBody.appendChild(tr);
+    });
+  }
 })();
+
+// ==== So sánh doanh thu giữa các tháng ====
+const fmtCur = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
+
+document.addEventListener('DOMContentLoaded', () => {
+  const select1 = document.getElementById('month1');
+  const select2 = document.getElementById('month2');
+  if (select1 && select2) {
+    for (let i = 1; i <= 12; i++) {
+      const opt1 = document.createElement('option');
+      opt1.value = i;
+      opt1.textContent = `Th${i}`;
+      select1.appendChild(opt1.cloneNode(true));
+      select2.appendChild(opt1);
+    }
+  }
+});
+
+let compareChart;
+document.getElementById('compareBtn')?.addEventListener('click', async () => {
+  const m1 = document.getElementById('month1')?.value;
+  const m2 = document.getElementById('month2')?.value;
+  if (!m1 || !m2) return;
+  const res = await fetch(`/reports/compare?months=${m1},${m2}`);
+  if (!res.ok) {
+    console.error('Compare fetch error', res.status);
+    return;
+  }
+  const data = await res.json();
+  renderCompareChart(data);
+});
+
+function renderCompareChart(data) {
+  const ctx = document.getElementById('compareChart')?.getContext('2d');
+  if (!ctx) return;
+  if (compareChart) compareChart.destroy();
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [{
+        data: data.data,
+        backgroundColor: '#4e79a7'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: fmtCur } }
+      }
+    }
+  });
+}
