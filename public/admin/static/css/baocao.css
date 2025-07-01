@@ -1,0 +1,21 @@
+.chart-fullscreen {
+  width: 100vw;
+  height: 70vh;
+  margin-left: calc(50% - 50vw);
+  position: relative;
+}
+.chart-fullscreen canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.param-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+.param-row > * {
+  flex: 1;
+  min-width: 150px;
+}
