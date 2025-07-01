@@ -60,6 +60,7 @@ const fmt = v => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: '
     chartData.labels.forEach((label, idx) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${label}</td><td class="text-end">${fmt(chartData.data[idx])}</td>`;
+
       tableBody.appendChild(tr);
     });
   }
@@ -155,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateInputs();
   document.getElementById('periodSelect')?.addEventListener('change', updateInputs);
   document.getElementById('loadRevenue')?.addEventListener('click', loadRevenueData);
+
 });
 
 let compareChart;
