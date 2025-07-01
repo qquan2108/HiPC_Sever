@@ -1,7 +1,8 @@
 .chart-fullscreen {
-  width: 100vw;
-  height: 70vh;
-  margin-left: calc(50% - 50vw);
+  width: 50vw;
+  height: 20vw;
+  margin-left: 20px;
+  margin-top: 5rem;
   position: relative;
 }
 .chart-fullscreen canvas {
