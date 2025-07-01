@@ -1,103 +1,173 @@
 {{#*inline "title"}}Báo cáo Thống kê Doanh thu{{/inline}}
 
 <!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
 <!-- AOS & Animate.css -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+<!-- Premium font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<!-- Custom CSS for báo cáo -->
+<link rel="stylesheet" href="/admin/static/css/baocao.css" />
 
-<header class="bg-light py-3 mb-4">
-  <div class="container">
-    <h1 class="h3 mb-0">📊 Báo cáo Doanh thu</h1>
-  </div>
+<header class="premium-header">
+    <div class="container">
+        <h1 class="text-center">
+            <i class="fas fa-chart-line me-3"></i>
+            Báo cáo Thống kê Doanh thu
+        </h1>
+    </div>
 </header>
 
-<main class="container">
-  <div class="row text-center mb-5" data-aos="fade-up">
-    <div class="col-md-4 mb-4">
-      <div class="card p-4 shadow-sm">
-        <div class="card-body">
-          <div id="revenue" class="display-5 text-success mb-2">0₫</div>
-          <div class="text-muted">Tổng doanh thu</div>
+<main class="container-fluid px-3 px-md-4">
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="row g-4" data-aos="fade-up">
+            <div class="col-lg-4 col-md-6">
+                <div class="card stat-card success h-100">
+                    <div class="card-body p-4">
+                        <i class="fas fa-dollar-sign stat-icon text-success"></i>
+                        <div id="revenue" class="stat-value">0₫</div>
+                        <div class="stat-label">Tổng doanh thu</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="card stat-card warning h-100">
+                    <div class="card-body p-4">
+                        <i class="fas fa-shopping-cart stat-icon text-warning"></i>
+                        <div id="orders" class="stat-value">0</div>
+                        <div class="stat-label">Tổng đơn hàng</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-12">
+                <div class="card stat-card info h-100">
+                    <div class="card-body p-4">
+                        <i class="fas fa-chart-bar stat-icon text-info"></i>
+                        <div id="avgRevenue" class="stat-value">0₫</div>
+                        <div class="stat-label">Doanh thu trung bình</div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="col-md-4 mb-4">
-      <div class="card p-4 shadow-sm">
-        <div class="card-body">
-          <div id="orders" class="display-5 text-warning mb-2">0</div>
-          <div class="text-muted">Tổng đơn hàng</div>
+    </section>
+
+    <!-- Filter Controls -->
+    <section class="controls-section" data-aos="fade-up" data-aos-delay="100">
+        <h3 class="controls-title">
+            <i class="fas fa-filter"></i>
+            Bộ lọc thời gian
+        </h3>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Loại thống kê</label>
+                <select id="periodSelect" class="form-select">
+                    <option value="month" selected>Theo tháng</option>
+                    <option value="week">Theo tuần</option>
+                    <option value="year">Theo năm</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Chọn thời gian</label>
+                <input type="month" id="monthInput" class="form-control" />
+                <input type="week" id="weekInput" class="form-control d-none" />
+                <input type="number" id="yearInput" class="form-control d-none" min="2000" max="2100" placeholder="Năm" />
+            </div>
+            <div class="col-md-3">
+                <button id="loadRevenue" class="btn btn-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    Xem báo cáo
+                </button>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="col-md-4 mb-4">
-      <div class="card p-4 shadow-sm">
-        <div class="card-body">
-          <div id="avgRevenue" class="display-5 text-info mb-2">0₫</div>
-          <div class="text-muted">Doanh thu trung bình</div>
+    </section>
+
+    <!-- Main Chart -->
+    <section class="chart-section" data-aos="fade-up" data-aos-delay="150">
+        <h3 class="chart-title">
+            <i class="fas fa-line-chart"></i>
+            Biểu đồ doanh thu
+        </h3>
+        <div class="chart-container large">
+            <canvas id="revenueChart"></canvas>
         </div>
-      </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="row g-2 align-items-end mb-3" data-aos="fade-up" data-aos-delay="120">
-    <div class="col-md-4">
-      <select id="periodSelect" class="form-select">
-        <option value="month" selected>Theo tháng</option>
-        <option value="week">Theo tuần</option>
-        <option value="year">Theo năm</option>
-      </select>
-    </div>
-    <div class="col-md-4">
-      <input type="month" id="monthInput" class="form-control" />
-      <input type="week" id="weekInput" class="form-control d-none" />
-      <input type="number" id="yearInput" class="form-control d-none" min="2000" max="2100" />
-    </div>
-    <div class="col-md-4">
-      <button id="loadRevenue" class="btn btn-primary w-100">Xem</button>
-    </div>
-  </div>
+    <!-- Comparison Section -->
+    <section class="chart-section" data-aos="fade-up" data-aos-delay="200">
+        <h3 class="chart-title">
+            <i class="fas fa-balance-scale"></i>
+            So sánh doanh thu
+        </h3>
+        <div class="comparison-controls">
+            <div>
+                <label class="form-label fw-semibold">Tháng thứ nhất</label>
+                <select id="month1" class="form-select" aria-label="Tháng so sánh 1">
+                    <option value="">Chọn tháng...</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label fw-semibold">Tháng thứ hai</label>
+                <select id="month2" class="form-select" aria-label="Tháng so sánh 2">
+                    <option value="">Chọn tháng...</option>
+                </select>
+            </div>
+            <div>
+                <button id="compareBtn" class="btn btn-primary w-100">
+                    <i class="fas fa-chart-column me-2"></i>
+                    So sánh
+                </button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="compareChart"></canvas>
+        </div>
+    </section>
 
-  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="150">
-
-    <canvas id="revenueChart" height="240"></canvas>
-
-  </div>
-
-  <div class="row g-2 align-items-end mb-4" data-aos="fade-up" data-aos-delay="200">
-    <div class="col-md-4">
-      <select id="month1" class="form-select" aria-label="Tháng so sánh 1"></select>
-    </div>
-    <div class="col-md-4">
-      <select id="month2" class="form-select" aria-label="Tháng so sánh 2"></select>
-    </div>
-    <div class="col-md-4">
-      <button id="compareBtn" class="btn btn-primary w-100">So sánh</button>
-    </div>
-  </div>
-
-  <div class="chart-container mb-4" data-aos="fade-up" data-aos-delay="250">
-
-    <canvas id="compareChart" height="180"></canvas>
-
-  </div>
-
-  <div class="table-responsive" data-aos="fade-up" data-aos-delay="300">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Tháng</th>
-          <th class="text-end">Doanh thu</th>
-        </tr>
-      </thead>
-      <tbody id="revenueTable"></tbody>
-    </table>
-  </div>
+    <!-- Revenue Table -->
+    <section class="table-section" data-aos="fade-up" data-aos-delay="250">
+        <h3 class="table-title">
+            <i class="fas fa-table"></i>
+            Bảng chi tiết doanh thu
+        </h3>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>
+                            <i class="fas fa-calendar me-2"></i>
+                            Thời gian
+                        </th>
+                        <th class="text-end">
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Doanh thu
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="revenueTable">
+                    <tr>
+                        <td colspan="2" class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Chọn thời gian và nhấn "Xem báo cáo" để hiển thị dữ liệu
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </main>
 
-<!-- JS dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.9.0/countUp.umd.js" defer></script>
-<script src="/admin/static/js/baocao.js" defer></script>
+<!-- Loading Spinner -->
+<div class="loading-spinner" id="loadingSpinner">
+    <div class="spinner"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.9.0/countUp.umd.js"></script>
+<script src="/admin/static/js/baocao.js"></script>
