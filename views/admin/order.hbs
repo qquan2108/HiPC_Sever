@@ -43,6 +43,7 @@
 
 <script>
   let currentStatus = '';
+  let currentOrders = [];
 
   // Lấy cấu hình tabs từ server
   async function fetchStatusTabs() {
@@ -56,7 +57,9 @@
     if (status) url += `status=${status}&`;
     if (query) url += `q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
-    return res.json();
+    const data = await res.json();
+    currentOrders = Array.isArray(data) ? data : [];
+    return currentOrders;
   }
 
   // Ánh xạ màu cho status badge
@@ -87,8 +90,8 @@
       btn.onclick = async () => {
         currentStatus = tab.key;
         document.getElementById('searchInput').value = '';
-        const orders = await fetchOrders(currentStatus);
-        renderOrders(orders);
+        await fetchOrders(currentStatus);
+        renderOrders(currentOrders);
         renderStatusTabs(tabs);
       };
       container.appendChild(btn);
@@ -141,14 +144,14 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const tabs = await fetchStatusTabs();
     renderStatusTabs(tabs);
-    const orders = await fetchOrders();
-    renderOrders(orders);
+    await fetchOrders();
+    renderOrders(currentOrders);
 
     // Tìm kiếm theo input
     document.getElementById('searchInput').addEventListener('input', async e => {
       const q = e.target.value.trim();
-      const data = await fetchOrders(currentStatus, q);
-      renderOrders(data);
+      await fetchOrders(currentStatus, q);
+      renderOrders(currentOrders);
     });
   });
 </script>

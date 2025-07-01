@@ -1,10 +1,12 @@
 const Notification = require('../models/Notification');
+const { send } = require('../utils/notificationStream');
 
 // Tạo thông báo mới
 exports.create = async (req, res) => {
   try {
     const { type, title, message } = req.body;
     const notif = await Notification.create({ type, title, message });
+    send(notif);
     res.status(201).json(notif);
   } catch (err) {
     res.status(400).json({ error: err.message });

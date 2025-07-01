@@ -82,15 +82,18 @@ exports.getProducts = async (req, res) => {
     const page  = Math.max(1, +req.query.page  || 1);
     const limit = Math.max(1, +req.query.limit || 20);
     const skip  = (page - 1) * limit;
+    const q     = (req.query.q || '').trim();
+
+    const nameFilter = q ? { name: new RegExp(q, 'i') } : {};
 
     const [products, total] = await Promise.all([
-      Product.find()
+      Product.find(nameFilter)
         .skip(skip)
         .limit(limit)
         .populate('category_id', 'name')
         .populate('brand_id', 'name')
         .lean(),
-      Product.countDocuments()
+      Product.countDocuments(nameFilter)
     ]);
 
     const productsWithImage = await Promise.all(
