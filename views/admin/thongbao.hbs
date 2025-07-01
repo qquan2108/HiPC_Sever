@@ -4,6 +4,33 @@
 
 <div class="container my-5">
   <h2 class="mb-4">Thông Báo</h2>
+  <div class="card mb-4">
+    <div class="card-header">Tạo Thông Báo</div>
+    <div class="card-body">
+      <form id="createForm" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Loại</label>
+          <select id="typeInput" class="form-select">
+            <option value="success">Success</option>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="danger">Danger</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Tiêu đề</label>
+          <input id="titleInput" class="form-control" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Nội dung</label>
+          <input id="messageInput" class="form-control" required>
+        </div>
+        <div class="col-12 text-end">
+          <button class="btn btn-primary" type="submit">Gửi</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <!-- Toast container -->
   <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
 
@@ -67,6 +94,33 @@
       // Hiển thị toast với những thông báo mới
       notifications.filter(n => !n.isRead).forEach(n => {
         notify(n.type, n.title, n.message);
+      });
+
+      // Lắng nghe thông báo mới qua SSE
+      const es = new EventSource('/notifications/stream');
+      es.onmessage = ev => {
+        const n = JSON.parse(ev.data);
+        notifications.unshift(n);
+        renderList();
+        notify(n.type, n.title, n.message);
+      };
+
+      const form = document.getElementById('createForm');
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const payload = {
+          type: document.getElementById('typeInput').value,
+          title: document.getElementById('titleInput').value,
+          message: document.getElementById('messageInput').value
+        };
+        const resp = await fetch('/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          form.reset();
+        }
       });
     } catch (err) {
       console.error(err);

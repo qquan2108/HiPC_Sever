@@ -63,8 +63,14 @@ router.get('/banner', (req, res) => {
   res.render('admin/qlbanner', { layout: 'admin/layout' });
 });
 
+// FAQ page
+router.get('/faq', (req, res) => {
+  res.render('admin/faq', { layout: 'admin/layout' });
+});
+
 //order
 const Order = require('../models/Order');
+const { transitions } = require('../utils/orderStatus');
 
 // Trang list orders (đã có)
 router.get('/orders', (req, res) => res.render('admin/order', { layout: 'admin/layout' }));
@@ -76,8 +82,11 @@ router.get('/orders/create', async (req, res) => {
 
 // Trang chỉnh sửa
 router.get('/orders/:id/edit', async (req, res) => {
-  const order = await Order.findById(req.params.id).lean();
-  res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit' });
+  const order = await Order.findById(req.params.id)
+    .populate('user_id', 'full_name email')
+    .populate('products.productId', 'name price')
+    .lean();
+  res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 
 

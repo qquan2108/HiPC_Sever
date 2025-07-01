@@ -124,8 +124,25 @@ router.delete('/:id', async (req, res) => {
 // GET all
 router.get('/', async (req, res) => {
   try {
-    const items = await Order.find().populate('products.productId');
-    res.json(items);
+    const { status, q } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+
+    let orders = await Order.find(filter)
+      .populate('user_id', 'full_name')
+      .populate('products.productId', 'name price image')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (q) {
+      const term = q.toLowerCase();
+      orders = orders.filter(o =>
+        o._id.toString().includes(term) ||
+        (o.user_id && o.user_id.full_name && o.user_id.full_name.toLowerCase().includes(term))
+      );
+    }
+
+    res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -37,8 +37,9 @@ function renderUsers(users, append = false) {
   if (!append) tbody.innerHTML = '';
   users.forEach(u => {
     const tr = document.createElement('tr');
+    const avatarUrl = u.avatar || 'https://via.placeholder.com/40';
     tr.innerHTML = `
-      <td class="px-6 py-4"><img src="${u.avatar||'/admin/static/images/default-avatar.png'}" alt="" class="w-10 h-10 rounded-full"></td>
+      <td class="px-6 py-4"><img src="${avatarUrl}" alt="avatar" class="w-10 h-10 rounded-full object-cover"></td>
       <td class="px-6 py-4">${u.name}</td>
       <td class="px-6 py-4">${u.email}</td>
       <td class="px-6 py-4">${u.role}</td>
