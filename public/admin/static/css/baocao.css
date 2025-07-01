@@ -1,0 +1,58 @@
+:root {
+  --premium-primary: #6a11cb;
+  --premium-secondary: #2575fc;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(120deg, #fdfbfb, #ebedee);
+}
+
+.premium-header {
+  background: linear-gradient(135deg, var(--premium-primary), var(--premium-secondary));
+  color: #fff;
+}
+
+.premium-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-fullscreen {
+  width: 100vw;
+  height: 70vh;
+  margin-left: calc(50% - 50vw);
+  position: relative;
+}
+
+.chart-fullscreen canvas {
+  width: 100% !important;
+  height: 100% !important;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.param-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.param-row > * {
+  flex: 1;
+  min-width: 150px;
+}
+
+.chart-container canvas {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
