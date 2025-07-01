@@ -111,3 +111,70 @@ exports.compareMonths = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ===== Doanh thu tuỳ chọn theo ngày/tuần/tháng =====
+function isoWeekStart(year, week) {
+  const simple = new Date(year, 0, 1 + (week - 1) * 7);
+  const dow = simple.getDay();
+  const ISOweekStart = new Date(simple);
+  if (dow <= 4) ISOweekStart.setDate(simple.getDate() - dow + 1);
+  else ISOweekStart.setDate(simple.getDate() + 8 - dow);
+  ISOweekStart.setHours(0,0,0,0);
+  return ISOweekStart;
+}
+
+exports.getRevenue = async (req, res) => {
+  try {
+    const period = req.query.period || 'month';
+    const match = { status: 'delivered' };
+    let labels = [], data = [], groupExpr;
+
+    if (period === 'week') {
+      const weekStr = req.query.week;
+      if (!weekStr) return res.status(400).json({ error: 'week required' });
+      const [y, w] = weekStr.split('-W').map(Number);
+      const start = isoWeekStart(y, w);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      match.order_date = { $gte: start, $lt: end };
+      groupExpr = { $dayOfWeek: '$order_date' };
+      labels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      data = Array(7).fill(0);
+    } else if (period === 'month') {
+      const monthStr = req.query.month;
+      if (!monthStr) return res.status(400).json({ error: 'month required' });
+      const [y, m] = monthStr.split('-').map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 1);
+      match.order_date = { $gte: start, $lt: end };
+      const days = new Date(y, m, 0).getDate();
+      groupExpr = { $dayOfMonth: '$order_date' };
+      labels = Array.from({ length: days }, (_, i) => String(i + 1));
+      data = Array(days).fill(0);
+    } else {
+      const year = parseInt(req.query.year) || new Date().getFullYear();
+      const start = new Date(year, 0, 1);
+      const end = new Date(year + 1, 0, 1);
+      match.order_date = { $gte: start, $lt: end };
+      groupExpr = { $month: '$order_date' };
+      labels = Array.from({ length: 12 }, (_, i) => `Th${i + 1}`);
+      data = Array(12).fill(0);
+    }
+
+    const agg = await Order.aggregate([
+      { $match: match },
+      { $group: { _id: groupExpr, revenue: { $sum: '$total' } } }
+    ]);
+
+    agg.forEach(r => {
+      const idx = (period === 'week' ? r._id - 1 : r._id - 1);
+      if (data[idx] != null) data[idx] = r.revenue;
+    });
+
+    res.json({ labels, data });
+  } catch (err) {
+    console.error('Error in getRevenue:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
