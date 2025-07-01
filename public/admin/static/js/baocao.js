@@ -1,3 +1,4 @@
+
 // Báo cáo doanh thu - sử dụng dữ liệu từ API
 
 // Định dạng tiền tệ
@@ -214,3 +215,4 @@ function populateMonthSelectors() {
     s2.add(opt2);
   }
 }
+
