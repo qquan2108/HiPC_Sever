@@ -150,8 +150,12 @@ router.get('/', async (req, res) => {
     ]);
     res.json({
       users: users.map(u => ({
-        _id: u._id, name: u.full_name, email: u.email,
-        role: u.role, active: u.active, avatar: u.avatar
+        _id   : u._id,
+        name  : u.full_name,
+        email : u.email,
+        role  : u.role,
+        active: u.active,
+        avatar: u.avatarUrl
       })),
       hasMore: skip + users.length < total
     });

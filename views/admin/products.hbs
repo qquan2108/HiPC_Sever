@@ -19,5 +19,16 @@
 </table>
 
 <script>
-  document.addEventListener('DOMContentLoaded', fetchProducts);
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchProducts(1);
+    const search = document.getElementById('searchInput');
+    if (search) {
+      search.addEventListener('input', () => {
+        productQuery = search.value.trim();
+        currentPage = 1;
+        hasMore = true;
+        fetchProducts(1, productQuery);
+      });
+    }
+  });
 </script>
