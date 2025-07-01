@@ -63,6 +63,11 @@ router.get('/banner', (req, res) => {
   res.render('admin/qlbanner', { layout: 'admin/layout' });
 });
 
+// FAQ page
+router.get('/faq', (req, res) => {
+  res.render('admin/faq', { layout: 'admin/layout' });
+});
+
 //order
 const Order = require('../models/Order');
 const { transitions } = require('../utils/orderStatus');
