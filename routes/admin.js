@@ -97,5 +97,4 @@ router.get('/orders/:id/edit', async (req, res) => {
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 
-
 module.exports = router;
