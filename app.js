@@ -7,6 +7,7 @@ var hbs = require('hbs');
 var { default: mongoose } = require('mongoose');
 var fs = require('fs');
 
+var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -73,8 +74,8 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
   });
 
 app.use('/', indexRouter);
-  app.use('/admin', adminRouter);
-  app.use('/users', usersRouter);
+app.use('/admin', adminRouter);
+app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
 app.use('/orders', ordersRouter);
@@ -92,6 +93,7 @@ app.use('/vouchers', vouchersRouter);
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
+app.use('/vnpay', vnpayRouter);
 
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
