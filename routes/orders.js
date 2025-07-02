@@ -89,7 +89,14 @@ router.post('/add-to-cart', async (req, res) => {
 });
 
 // Các route động đặt sau cùng
-
+// 5) Checkout: duyệt đơn và trừ stock
+router.post('/checkout', async (req, res) => {
+  try {
+    const { user_id, address, paymentMethod, shippingMethod, voucher, total } = req.body;
+    const order = await Order.findOne({ user_id, status: 'pending' });
+    if (!order || !order.products.length) {
+      return res.status(400).json({ error: 'Giỏ hàng trống' });
+    }
 
     // Kiểm tra và trừ stock atomic
     for (const item of order.products) {
@@ -117,6 +124,11 @@ router.post('/add-to-cart', async (req, res) => {
     await order.save();
 
     res.status(200).json({ message: 'Đặt hàng thành công', orderId: order._id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET by id
 router.get('/:id', async (req, res) => {
