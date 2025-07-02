@@ -90,6 +90,34 @@ router.post('/add-to-cart', async (req, res) => {
 
 // Các route động đặt sau cùng
 
+
+    // Kiểm tra và trừ stock atomic
+    for (const item of order.products) {
+      const prod = await Product.findById(item.productId).select('stock name');
+      if (!prod) {
+        return res.status(400).json({ error: `Không tìm thấy sản phẩm ${item.productId}` });
+      }
+      if (prod.stock < item.quantity) {
+        return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+      }
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+
+    // Cập nhật đơn thành confirmed
+    order.address        = address;
+    order.paymentMethod  = paymentMethod;
+    order.shippingMethod = shippingMethod;
+    order.voucher        = voucher;
+    order.total          = total;
+    // order.status         = 'confirmed';
+    order.createdAt      = new Date();
+    await order.save();
+
+    res.status(200).json({ message: 'Đặt hàng thành công', orderId: order._id });
+
 // GET by id
 router.get('/:id', async (req, res) => {
   try {
@@ -98,6 +126,7 @@ router.get('/:id', async (req, res) => {
       .populate('products.productId', 'name price image')
       .lean();
     return res.json(order);
+
   } catch (err) {
     return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
   }

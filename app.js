@@ -1,3 +1,4 @@
+require('dotenv').config();
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -7,6 +8,7 @@ var hbs = require('hbs');
 var { default: mongoose } = require('mongoose');
 var fs = require('fs');
 
+var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -89,9 +91,13 @@ app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
+
+app.use('/vnpay', vnpayRouter);
+
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
+
 
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
