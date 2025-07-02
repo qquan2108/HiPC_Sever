@@ -73,6 +73,10 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Invalid role' });
+    }
+
     // Generate JWT
     const token = jwt.sign(
       { userId: user._id, role: user.role },
