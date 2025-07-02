@@ -1,3 +1,4 @@
+require('dotenv').config();
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -90,10 +91,14 @@ app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
+
+app.use('/vnpay', vnpayRouter);
+
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
 app.use('/vnpay', vnpayRouter);
+
 
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
