@@ -9,13 +9,15 @@ const ctrl = require('../controllers/orderCtrl')
 
 router.get('/status-tabs', (req, res) => {
   res.json([
-    { key: '',          label: 'Tất cả'       },
-    { key: 'pending',   label: 'Chờ duyệt'    },
-    { key: 'confirmed', label: 'Đã xác nhận' },
-    { key: 'shipped',   label: 'Đã giao hàng'},
-    { key: 'delivered', label: 'Đã nhận'      },
-    { key: 'return_requested', label: 'Yêu cầu hủy'      },
-    { key: 'canceled',  label: 'Đã hủy'       },
+    { key: 'pending', label: 'Chờ xác nhận', icon: 'clock-outline' },
+    { key: 'confirmed', label: 'Chờ lấy hàng', icon: 'truck-outline' },
+    { key: 'packed', label: 'Đã đóng gói', icon: 'package-variant-closed' },
+    { key: 'picked', label: 'Đã lấy hàng', icon: 'cube-send' },
+    { key: 'shipping', label: 'Đang giao', icon: 'truck-fast-outline' },
+    { key: 'delivered', label: 'Đã giao', icon: 'check-circle-outline' },
+    { key: 'cancelled', label: 'Đã huỷ', icon: 'close-circle-outline' },
+    // Thêm các trạng thái khác nếu cần
+
   ]);
 });
 

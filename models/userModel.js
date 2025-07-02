@@ -54,7 +54,21 @@ const userSchema = new mongoose.Schema({
   updated_at: {
     type: Date,
     default: Date.now
-  }
+  },
+  addresses: [
+    {
+      _id: false,
+      id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+      label: String, // Ví dụ: "Nhà riêng", "Công ty"
+      address: String,
+      latitude: Number,
+      longitude: Number,
+      provinceId: String,
+      districtId: String,
+      wardCode: String,
+      isDefault: { type: Boolean, default: false }
+    }
+  ]
 });
 
 // Middleware to automatically update updated_at on save
