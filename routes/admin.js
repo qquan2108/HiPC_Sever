@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const Brand = require('../models/Brand');
 const TsktProduct = require('../models/TsktProduct');
+const User = require('../models/userModel');
 
 // Dashboard
 router.get('/', (req, res) => {
@@ -14,6 +15,13 @@ router.get('/', (req, res) => {
 // Quản lý Người dùng (static + JS fetch)
 router.get('/users', (req, res) => {
   res.render('admin/user', { layout: 'admin/layout' });
+});
+router.get('/users/create', (req, res) => {
+  res.render('admin/user-form', { layout: 'admin/layout', user: {} });
+});
+router.get('/users/:id/edit', async (req, res) => {
+  const user = await User.findById(req.params.id).lean();
+  res.render('admin/user-form', { layout: 'admin/layout', user });
 });
 
 // Quản lý Sản phẩm
@@ -88,6 +96,5 @@ router.get('/orders/:id/edit', async (req, res) => {
     .lean();
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
-
 
 module.exports = router;

@@ -68,12 +68,13 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
 });
 
 // Đăng ký helper JSON stringify
-hbs.registerHelper('json', function (context) {
-  return JSON.stringify(context);
-});
+  hbs.registerHelper('json', function (context) {
+    return JSON.stringify(context);
+  });
 
-app.use('/admin', adminRouter);
-app.use('/users', usersRouter);
+app.use('/', indexRouter);
+  app.use('/admin', adminRouter);
+  app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
 app.use('/orders', ordersRouter);
