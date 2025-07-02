@@ -1,3 +1,4 @@
+require('dotenv').config();
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -5,6 +6,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan'); 
 var hbs     = require('hbs');
 
+var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -80,7 +82,7 @@ app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
-
+app.use('/vnpay', vnpayRouter);
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
 

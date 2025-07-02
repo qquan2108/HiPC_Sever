@@ -111,7 +111,7 @@ router.post('/checkout', async (req, res) => {
     order.shippingMethod = shippingMethod;
     order.voucher        = voucher;
     order.total          = total;
-    order.status         = 'confirmed';
+    // order.status         = 'confirmed';
     order.createdAt      = new Date();
     await order.save();
 
