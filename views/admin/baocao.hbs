@@ -1,0 +1,147 @@
+
+{{#*inline "title"}}Báo cáo Thống kê Doanh thu{{/inline}}
+
+<!-- Bootstrap CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<!-- AOS & Animate.css -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+<!-- Premium font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<!-- Custom CSS for báo cáo -->
+<link rel="stylesheet" href="/admin/static/css/baocao.css" />
+
+<header class="premium-header">
+    <div class="container">
+        <h1 class="text-center">
+            <i class="fas fa-chart-line me-3"></i>
+            Báo cáo Thống kê Doanh thu
+        </h1>
+    </div>
+</header>
+
+<main class="container-fluid px-3 px-md-4">
+    <div class="row">
+        <div class="col-lg-6">
+
+            <section class="chart-section" data-aos="fade-up" data-aos-delay="150">
+                <h3 class="chart-title">
+                    <i class="fas fa-line-chart"></i>
+                    Biểu đồ doanh thu
+                </h3>
+                <div class="chart-container large fullscreen">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-6">
+
+            <section class="controls-section" data-aos="fade-up" data-aos-delay="100">
+                <h3 class="controls-title">
+                    <i class="fas fa-filter"></i>
+                    Bộ lọc thời gian
+                </h3>
+                <div class="row g-3 align-items-end controls-row">
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">Loại thống kê</label>
+                        <select id="periodSelect" class="form-select">
+                            <option value="month" selected>Theo tháng</option>
+                            <option value="week">Theo tuần</option>
+                            <option value="year">Theo năm</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">Chọn thời gian</label>
+                        <input type="month" id="monthInput" class="form-control" />
+                        <input type="week" id="weekInput" class="form-control d-none" />
+                        <input type="number" id="yearInput" class="form-control d-none" min="2000" max="2100" placeholder="Năm" />
+                    </div>
+                    <div class="col-md-12">
+                        <button id="loadRevenue" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>
+                            Xem báo cáo
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <section class="controls-section mt-3" data-aos="fade-up" data-aos-delay="200">
+                <h3 class="controls-title">
+                    <i class="fas fa-balance-scale"></i>
+                    So sánh doanh thu
+                </h3>
+                <div class="comparison-controls">
+                    <div>
+                        <label class="form-label fw-semibold">Tháng thứ nhất</label>
+                        <select id="month1" class="form-select" aria-label="Tháng so sánh 1">
+                            <option value="">Chọn tháng...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold">Tháng thứ hai</label>
+                        <select id="month2" class="form-select" aria-label="Tháng so sánh 2">
+                            <option value="">Chọn tháng...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button id="compareBtn" class="btn btn-primary w-100">
+                            <i class="fas fa-chart-line me-2"></i>
+                            So sánh
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#tableModal">
+                    <i class="fas fa-table me-2"></i>
+                    Xem bảng chi tiết
+                </button>
+            </section>
+        </div>
+    </div>
+</main>
+
+<!-- Detail Table Modal -->
+<div class="modal fade" id="tableModal" tabindex="-1" aria-labelledby="tableModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tableModalLabel">
+                    <i class="fas fa-table me-2"></i>Bảng chi tiết doanh thu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-calendar me-2"></i>Thời gian</th>
+                                <th class="text-end"><i class="fas fa-money-bill-wave me-2"></i>Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="revenueTable">
+                            <tr>
+                                <td colspan="2" class="text-center text-muted py-4">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Chọn thời gian và nhấn "Xem báo cáo" để hiển thị dữ liệu
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner" id="loadingSpinner">
+    <div class="spinner"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.9.0/countUp.umd.js"></script>
+<script src="/admin/static/js/baocao.js"></script>

@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const Banner = require('../models/Banner');
 require('dotenv').config();
 
 const fs = require('fs');
@@ -82,7 +83,63 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Invalid role' });
+    }
+
     // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    const banner = await Banner.findOne({ isActive: true })
+      .sort('-createdAt')
+      .lean();
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role
+      },
+      banner
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Google login
+router.post('/google-login', async (req, res) => {
+  try {
+    const { firebaseUid, full_name, email, avatarUrl } = req.body;
+
+    if (!firebaseUid || !email) {
+      return res.status(400).json({ message: 'Missing firebaseUid or email' });
+    }
+
+    let user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      user = await User.findOne({ email });
+    }
+
+    if (!user) {
+      user = new User({ firebaseUid, full_name, email, avatarUrl });
+    } else {
+      if (!user.firebaseUid) user.firebaseUid = firebaseUid;
+      if (full_name && !user.full_name) user.full_name = full_name;
+      if (avatarUrl) user.avatarUrl = avatarUrl;
+    }
+
+    await user.save();
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -96,11 +153,12 @@ router.post('/login', async (req, res) => {
         id: user._id,
         full_name: user.full_name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
         role: user.role
       }
     });
-
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
@@ -259,4 +317,40 @@ router.put('/:id/addresses/:addrId/default', async (req, res) => {
   res.json(user.addresses);
 });
 
+router.get('/', async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)||1);
+    const limit = Math.max(1, parseInt(req.query.limit)||20);
+    const skip  = (page-1)*limit;
+    const [ users, total ] = await Promise.all([
+      User.find().skip(skip).limit(limit).lean(),
+      User.countDocuments()
+    ]);
+    res.json({
+      users: users.map(u => ({
+        _id   : u._id,
+        name  : u.full_name,
+        email : u.email,
+        role  : u.role,
+        active: u.active,
+        avatar: u.avatarUrl
+      })),
+      hasMore: skip + users.length < total
+    });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.sendStatus(204);
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message: 'Xóa lỗi' });
+  }
+});
+  
 module.exports = router;

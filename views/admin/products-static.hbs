@@ -1,31 +1,56 @@
-{{#*inline "title"}}Quản lý Sản phẩm{{/inline}}
+{{#*inline "title"}}Danh sách Sản phẩm{{/inline}}
+
+<!-- 1. CSS riêng cho products -->
+<link rel="stylesheet" href="/admin/static/css/products.css">
 
 <div class="container">
+  <!-- 2. Header Actions: Thêm + Search -->
   <div class="header-actions">
-    <input type="text" id="searchInput" placeholder="Tìm sản phẩm...">
-    <button class="btn" id="addBtn"><i class="bx bx-plus"></i> Thêm sản phẩm</button>
+    <a href="/admin/products/create" class="btn">
+      <i class="bx bx-plus"></i> Thêm sản phẩm
+    </a>
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Tìm sản phẩm..."
+      class="px-4 py-2 border rounded"
+    />
   </div>
 
-  <div id="tableContainer" class="table-container">
-    <table>
-      <thead>
+  <!-- 3. Bảng products -->
+  <div class="table-container">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
         <tr>
-          <th>Hình</th>
-          <th>Tên</th>
-          <th>Giá</th>
-          <th>Kho</th>
-          <th>Hành động</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hình</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giá</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kho</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
         </tr>
       </thead>
-      <tbody id="productTable"></tbody>
+      <tbody id="productTable" class="bg-white divide-y divide-gray-200"></tbody>
     </table>
-    <!-- sentinel để detect scroll tới cuối -->
-    <div id="scrollSentinel"></div>
+
+    <!-- sentinel để infinite scroll -->
+    <div id="scrollSentinel" class="h-1"></div>
   </div>
 </div>
 
 <script>
+  // Khi DOM sẵn sàng, khởi động fetch & scroll
   document.addEventListener('DOMContentLoaded', () => {
     initProductScroll();
+    fetchProducts(1);
+    const search = document.getElementById('searchInput');
+    if (search) {
+      search.addEventListener('input', () => {
+        productQuery = search.value.trim();
+        currentPage = 1;
+        hasMore = true;
+        fetchProducts(1, productQuery);
+      });
+    }
   });
+
 </script>

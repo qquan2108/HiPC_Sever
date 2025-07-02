@@ -1,0 +1,22 @@
+@import 'categories.css';
+
+/* File: public/admin/static/css/order.css */
+
+/* Style chung cho mọi button trên trang đơn hàng */
+
+.input {
+  width: 100%; padding: .5rem; border:1px solid #ccc; border-radius: .25rem;
+}
+
+.order-btn {
+  background-color: #4F46E5; /* indigo-600 */
+  color: white; padding: .5rem 1rem; border:none; border-radius:.25rem;
+  transition: ease .2s;
+}
+.order-btn:hover { background-color: #4338CA; /* indigo-700 */ }
+
+/* Nút xóa */
+.btn-danger {
+  background-color: #DC2626; color: white; padding: .5rem 1rem;
+  border:none; border-radius:.25rem;
+}
