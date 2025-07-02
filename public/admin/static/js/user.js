@@ -37,12 +37,13 @@ function renderUsers(users, append = false) {
   if (!append) tbody.innerHTML = '';
   users.forEach(u => {
     const tr = document.createElement('tr');
+    const avatarUrl = u.avatar || 'https://via.placeholder.com/40';
     tr.innerHTML = `
-      <td class="px-6 py-4"><img src="${u.avatar||'/admin/static/images/default-avatar.png'}" alt="" class="w-10 h-10 rounded-full"></td>
+      <td class="px-6 py-4"><img src="${avatarUrl}" alt="avatar" class="w-10 h-10 rounded-full object-cover"></td>
       <td class="px-6 py-4">${u.name}</td>
       <td class="px-6 py-4">${u.email}</td>
       <td class="px-6 py-4">${u.role}</td>
-      <td class="px-6 py-4">${u.active ? 'Kích hoạt' : 'Chưa kích hoạt'}</td>
+      <td class="px-6 py-4"> </td>
       <td class="px-6 py-4 text-center">
         <a href="/admin/users/${u._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
           <i class="bx bx-edit text-xl"></i>

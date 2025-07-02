@@ -1,0 +1,47 @@
+{{#*inline "title"}}FAQ{{/inline}}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/admin/static/css/faq.css">
+
+<div class="container faq-container">
+  <h2 class="mb-4">Câu hỏi thường gặp</h2>
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="faqHeadingOne">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true" aria-controls="faq1">
+          Làm sao để tạo sản phẩm mới?
+        </button>
+      </h2>
+      <div id="faq1" class="accordion-collapse collapse show" aria-labelledby="faqHeadingOne" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+          Vào mục <strong>Sản phẩm</strong> và nhấn nút <em>Tạo sản phẩm</em>, điền đầy đủ thông tin rồi lưu lại.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="faqHeadingTwo">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
+          Tôi có thể chỉnh sửa trạng thái đơn hàng ở đâu?
+        </button>
+      </h2>
+      <div id="faq2" class="accordion-collapse collapse" aria-labelledby="faqHeadingTwo" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+          Truy cập trang <strong>Đơn hàng</strong>, chọn đơn cần chỉnh sửa và sử dụng các nút thay đổi trạng thái trong phần chi tiết đơn.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="faqHeadingThree">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+          Làm thế nào gửi thông báo đến người dùng?
+        </button>
+      </h2>
+      <div id="faq3" class="accordion-collapse collapse" aria-labelledby="faqHeadingThree" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+          Trong mục <strong>Thông báo</strong> bạn điền nội dung và nhấn <em>Tạo Thông Báo</em>. Người dùng đang trực tuyến sẽ nhận ngay lập tức.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>

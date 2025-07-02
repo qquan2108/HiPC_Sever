@@ -1,0 +1,49 @@
+{{#*inline "title"}}
+{{#ifEquals mode 'edit'}}Chỉnh sửa Đơn hàng{{else}}Tạo Đơn hàng{{/ifEquals}}
+{{/inline}}
+
+<link rel="stylesheet" href="/admin/static/css/order.css">
+
+<div class="container mx-auto p-6">
+    <form id="orderForm" data-mode="{{mode}}" data-id="{{order._id}}" data-status="{{order.status}}">
+        <div class="mb-4">
+            <label class="block">Khách hàng</label>
+            <input type="text" name="user_id" value="{{order.user_id.full_name}}" class="input" {{#ifEquals mode 'edit'}}disabled{{/ifEquals}}>
+        </div>
+        <div class="mb-4">
+            <label class="block">Địa chỉ</label>
+            <textarea name="address" class="input">{{order.address}}</textarea>
+        </div>
+        <div class="mb-4">
+            <label class="block">Phương thức thanh toán</label>
+            <input type="text" name="paymentMethod" value="{{order.paymentMethod}}" class="input">
+        </div>
+        <div class="mb-4">
+            <label class="block">Phương thức vận chuyển</label>
+            <input type="text" name="shippingMethod" value="{{order.shippingMethod}}" class="input">
+        </div>
+        <div class="mb-4">
+            <label class="block">Tổng tiền</label>
+            <input type="number" name="total" value="{{order.total}}" class="input">
+        </div>
+        {{#ifEquals mode 'edit'}}
+        <div class="mb-4">
+            <label class="block">Trạng thái hiện tại</label>
+            <input type="text" value="{{order.status}}" class="input" disabled>
+        </div>
+        <div id="statusButtons" class="flex space-x-2 mb-4"></div>
+        {{/ifEquals}}
+        <div class="flex space-x-2">
+            <button type="submit" class="btn order-btn">Lưu</button>
+            <a href="/admin/orders" class="btn btn-secondary">Hủy</a>
+            {{#ifEquals mode 'edit'}}
+            <button type="button" id="deleteBtn" class="btn btn-danger">Xóa</button>
+            {{/ifEquals}}
+        </div>
+    </form>
+</div>
+
+<script>
+  window.orderTransitions = {{{json transitions}}};
+</script>
+<script src="/admin/static/js/order.js"></script>
