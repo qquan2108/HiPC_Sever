@@ -105,6 +105,54 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Google login
+router.post('/google-login', async (req, res) => {
+  try {
+    const { firebaseUid, full_name, email, avatarUrl } = req.body;
+
+    if (!firebaseUid || !email) {
+      return res.status(400).json({ message: 'Missing firebaseUid or email' });
+    }
+
+    let user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      user = await User.findOne({ email });
+    }
+
+    if (!user) {
+      user = new User({ firebaseUid, full_name, email, avatarUrl });
+    } else {
+      if (!user.firebaseUid) user.firebaseUid = firebaseUid;
+      if (full_name && !user.full_name) user.full_name = full_name;
+      if (avatarUrl) user.avatarUrl = avatarUrl;
+    }
+
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        full_name: user.full_name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // Get all users
 router.get('/all', async (req, res) => {
   try {
