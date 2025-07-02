@@ -162,6 +162,7 @@ function renderCompareChart(data) {
   }
   compareChart = new Chart(ctx, {
     type: 'bar',
+
     data: {
       labels: data.labels,
       datasets: [{
