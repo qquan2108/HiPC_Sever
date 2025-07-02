@@ -200,7 +200,8 @@
             border-radius: var(--border-radius);
             box-shadow: var(--card-shadow);
             padding: 2rem;
-            margin: 2rem 0;
+            margin: 0 0 2rem;
+
         }
 
         .chart-title {
