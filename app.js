@@ -75,8 +75,8 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
   });
 
 app.use('/', indexRouter);
-  app.use('/admin', adminRouter);
-  app.use('/users', usersRouter);
+app.use('/admin', adminRouter);
+app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
 app.use('/orders', ordersRouter);
@@ -97,6 +97,7 @@ app.use('/vnpay', vnpayRouter);
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
+app.use('/vnpay', vnpayRouter);
 
 
 
