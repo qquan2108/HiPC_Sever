@@ -1,18 +1,17 @@
-// models/Order.js
 const mongoose = require('mongoose');
 
-// Sub-schema cho lịch sử trạng thái
 const statusHistorySchema = new mongoose.Schema({
   status:    { type: String, required: true },
   changedAt: { type: Date,   default: Date.now }
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({
-  user_id:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  build_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Build' },
   products: [
     {
       productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-      quantity:  { type: Number, default: 1 }
+      quantity: { type: Number, default: 1 }
     }
   ],
   status: {
@@ -32,7 +31,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: String,
   shippingMethod:String,
   voucher:       { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher', default: null },
-  total:         Number,
+  total:         {type: Number, default: 0},
   cancelledAt:   Date
 }, { timestamps: true });
 

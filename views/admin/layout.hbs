@@ -1,32 +1,106 @@
-<!DOCTYPE html>
-<html lang="vi">
+<!-- File: views/admin/layout.hbs (mới) -->
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="vi" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin {{title}}</title>
-    <link rel="stylesheet" href="/admin/static/css/splash.css">
-    <link rel="stylesheet" href="admin/static/css/categories.css">
-    <link rel="stylesheet" href="/admin/static/css/products.css">
-    <link rel="stylesheet" href="/admin/static/css/user.css">
-    <link rel="stylesheet" href="/admin/static/css/form.css">
 
-</head>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+    <!-- Animate.css -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+    <!-- Main admin CSS (index style) -->
+    <link rel="stylesheet" href="/admin/static/css/index.css" />
 
-<body>
-    <header>
-        <div class="logo-admin"><img src="/admin/static/images/logo.png" alt="Logo"></div>
-        <nav>
-            <ul>
-                <li><a href="/admin/products">Sản phẩm</a></li>
-                <li><a href="/admin/products/create">Tạo mới</a></li>
-            </ul>
-        </nav>
+    <!-- Custom CSS -->
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+
+  </head>
+  <body class="h-full">
+    <div id="particles-js"></div>
+
+    <header id="mainHeader">
+      <i class="fas fa-heart decorative-icon left"></i>
+      <a href="/admin" class="logo-admin">
+        <img src="/admin/static/images/logo.png" alt="Logo" class="logo-img" />
+      </a>
+      <i class="fas fa-bars" id="menuBtn"></i>
+      <nav id="mainNav">
+        <ul>
+          <li><a href="/admin"><i class="fas fa-home"></i> Trang chủ</a></li>
+          <li><a href="/admin/users"><i class="fas fa-users"></i>
+              Người dùng</a></li>
+          <li><a href="/admin/products"><i class="fas fa-box-open"></i>
+              Sản phẩm</a></li>
+          <li><a href="/admin/categories"><i class="fas fa-tags"></i>
+              Danh mục</a></li>
+          <li><a href="/admin/orders"><i class="fas fa-shopping-cart"></i>
+              Đơn hàng</a></li>
+          <li><a href="/admin/reports"><i class="fas fa-chart-line"></i>
+              Báo cáo</a></li>
+          <li><a href="/admin/notifications"><i class="fas fa-bell"></i>
+              Thông báo</a></li>
+          <li><a href="/admin/faq"><i class="fas fa-share"></i> FAQ</a></li>
+          <li><a href="/logout"><i class="fas fa-sign-out-alt"></i>
+              Đăng xuất</a></li>
+        </ul>
+      </nav>
+      <i class="fas fa-star decorative-icon right"></i>
     </header>
-    <div class="container" style="margin-top:100px;">
-        {{{body}}}
-    </div>
-    <script src="/admin/static/js/admin.js"></script>
-</body>
 
+    <main>
+      <div class="main-container animate__animated animate__fadeInUp">
+        {{{body}}}
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-section">
+        <h4>HIPC Công ty TNHH</h4>
+        <p>Địa chỉ: Số 123, Đường ABC, Quận XYZ, TP HCM<br />
+          Điện thoại: (028) 1234 5678<br />
+          Email: support@hipc.vn
+        </p>
+      </div>
+      <div class="footer-section">
+        <h4>Liên kết nhanh</h4>
+        <ul>
+          <li><a href="/admin/users">Quản lý người dùng</a></li>
+          <!-- … -->
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Kết nối với chúng tôi</h4>
+        <div class="social-links">
+          <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#" title="YouTube"><i class="fab fa-youtube"></i></a>
+          <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
+        </div>
+      </div>
+      <div class="footer-bottom">&copy; 2025 HIPC Công ty TNHH. Bản quyền thuộc
+        về HIPC.</div>
+    </footer>
+
+    <i class="fas fa-comments chatbot-icon"></i>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="/admin/static/js/admin.js"></script>
+    <script src="/admin/static/js/banner-popup.js"></script>
+  </body>
 </html>
