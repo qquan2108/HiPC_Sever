@@ -1,124 +1,56 @@
 {{!-- File: views/index.hbs --}}
 {{#*inline "title"}}Dashboard Admin{{/inline}}
 
-<!DOCTYPE html>
-<html lang="vi">
+<div id="particles-js"></div>
+<main>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-users"></i>
+        <h3>Quản lý người dùng</h3>
+        <p>Thêm, sửa, xóa và phân quyền tài khoản Admin/Người dùng.</p>
+        <a href="/admin/users" title="Quản lý người dùng"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-box-open"></i>
+        <h3>Quản lý sản phẩm</h3>
+        <p>Thêm mới, chỉnh sửa thông tin và xóa/tắt sản phẩm.</p>
+        <a href="/admin/products" title="Quản lý sản phẩm"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-tags"></i>
+        <h3>Quản lý danh mục</h3>
+        <p>Tạo, cập nhật và xóa các danh mục sản phẩm.</p>
+        <a href="/admin/categories" title="Quản lý danh mục"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-shopping-cart"></i>
+        <h3>Quản lý đơn hàng</h3>
+        <p>Xem đơn hàng, cập nhật trạng thái và xử lý vận chuyển.</p>
+        <a href="/admin/orders" title="Quản lý đơn hàng"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-chart-line"></i>
+        <h3>Quản lý báo cáo</h3>
+        <p>Xem doanh thu, thống kê bán hàng và xuất báo cáo.</p>
+        <a href="/admin/reports" title="Quản lý báo cáo"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-bell"></i>
+        <h3>Thông báo</h3>
+        <p>Tạo, gửi và quản lý thông báo đến người dùng.</p>
+        <a href="/admin/notifications" title="Thông báo"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-share"></i>
+        <h3>FAQ</h3>
+        <p>Các câu hỏi thường gặp và hướng dẫn nhanh.</p>
+        <a href="/admin/faq" title="FAQ"></a>
+    </div>
+    <div class="card animate__animated animate__fadeInUp">
+        <i class="fas fa-share"></i>
+        <h3>Quản lý banner</h3>
+        <p>Thêm xóa sửa, cập nhật</p>
+        <a href="/admin/banner" title="Quản lý banner và popup"></a>
+    </div>
+</main>
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{> title}}</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
-        rel="stylesheet" />
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
-    <!-- Animate.css -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-    <link rel="stylesheet" href="/admin/static/css/index.css" />
-</head>
-
-<body>
-    <div id="particles-js"></div>
-
-    <header id="mainHeader">
-        <i class="fas fa-heart decorative-icon left"></i>
-        <a href="#" class="logo-admin">
-            <img src="img/logo.png" alt="HIPC Logo" class="logo-img" />
-        </a>
-        <i class="fas fa-bars" id="menuBtn"></i>
-        <nav id="mainNav">
-            <ul>
-                <li><a href="/admin"><i class="fas fa-home"></i> Trang chủ</a></li>
-                <li><a href="/admin/users"><i class="fas fa-users"></i> Người dùng</a></li>
-                <li><a href="/admin/products"><i class="fas fa-box-open"></i> Sản phẩm</a></li>
-                <li><a href="/admin/categories"><i class="fas fa-tags"></i> Danh mục</a></li>
-                <li><a href="/admin/orders"><i class="fas fa-shopping-cart"></i> Đơn hàng</a></li>
-                <li><a href="/admin/reports"><i class="fas fa-chart-line"></i> Báo cáo</a></li>
-                <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
-            </ul>
-        </nav>
-        <i class="fas fa-star decorative-icon right"></i>
-    </header>
-
-    <main>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-users"></i>
-            <h3>Quản lý người dùng</h3>
-            <p>Thêm, sửa, xóa và phân quyền tài khoản Admin/Người dùng.</p>
-            <a href="/admin/users" title="Quản lý người dùng"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-box-open"></i>
-            <h3>Quản lý sản phẩm</h3>
-            <p>Thêm mới, chỉnh sửa thông tin và xóa/tắt sản phẩm.</p>
-            <a href="/admin/products" title="Quản lý sản phẩm"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-tags"></i>
-            <h3>Quản lý danh mục</h3>
-            <p>Tạo, cập nhật và xóa các danh mục sản phẩm.</p>
-            <a href="/admin/categories" title="Quản lý danh mục"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-shopping-cart"></i>
-            <h3>Quản lý đơn hàng</h3>
-            <p>Xem đơn hàng, cập nhật trạng thái và xử lý vận chuyển.</p>
-            <a href="/admin/orders" title="Quản lý đơn hàng"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-chart-line"></i>
-            <h3>Quản lý báo cáo</h3>
-            <p>Xem doanh thu, thống kê bán hàng và xuất báo cáo.</p>
-            <a href="/admin/report" title="Quản lý báo cáo"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-bell"></i>
-            <h3>Thông báo</h3>
-            <p>Tạo, gửi và quản lý thông báo đến người dùng.</p>
-            <a href="/admin/thongbao" title="Thông báo"></a>
-        </div>
-        <div class="card animate__animated animate__fadeInUp">
-            <i class="fas fa-share"></i>
-            <h3>FAQ</h3>
-            <p>Các câu hỏi thường gặp và hướng dẫn nhanh.</p>
-            <a href="/admin/faq" title="FAQ"></a>
-        </div>
-    </main>
-
-    <footer>
-        <div class="footer-section">
-            <h4>HIPC Công ty TNHH</h4>
-            <p>Địa chỉ: Số 123, Đường ABC, Quận XYZ, TP HCM<br>Điện thoại: (028) 1234 5678<br>Email: support@hipc.vn</p>
-        </div>
-        <div class="footer-section">
-            <h4>Liên kết nhanh</h4>
-            <ul>
-                <li><a href="/admin/users">Quản lý người dùng</a></li>
-                <li><a href="/admin/products">Quản lý sản phẩm</a></li>
-                <li><a href="/admin/categories">Quản lý danh mục</a></li>
-                <li><a href="/admin/orders">Quản lý đơn hàng</a></li>
-                <li><a href="/admin/reports">Quản lý báo cáo</a></li>
-                <li><a href="/admin/notifications">Thông báo</a></li>
-            </ul>
-        </div>
-        <div class="footer-section">
-            <h4>Kết nối với chúng tôi</h4>
-            <div class="social-links">
-                <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
-                <a href="#" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-                <a href="#" title="YouTube"><i class="fab fa-youtube"></i></a>
-                <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
-            </div>
-        </div>
-        <div class="footer-bottom">&copy; 2025 HIPC Công ty TNHH. Bản quyền thuộc về HIPC.</div>
-    </footer>
-
-    <i class="fas fa-comments chatbot-icon"></i>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script>  src = "/admin/static/js/index.js" </script>
-</body>
-
-</html>
+<script src="/admin/static/js/index.js"></script>

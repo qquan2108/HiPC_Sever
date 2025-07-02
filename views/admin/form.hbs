@@ -2,6 +2,8 @@
   {{#ifEquals mode 'edit'}}Chỉnh sửa sản phẩm{{else}}Tạo sản phẩm{{/ifEquals}}
 {{/inline}}
 
+<link rel="stylesheet" href="/admin/static/css/form.css">
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 <div class="form-scroll-container">
   <form id="productForm" data-mode="{{mode}}">
     {{#ifEquals mode 'edit'}}
@@ -62,13 +64,16 @@
     </div>
 
     <div class="form-group">
-      <label>URL ảnh</label>
-      <input type="url" name="image" value="{{product.image}}">
+      <label>Ảnh sản phẩm</label>
+      <input type="file" id="imageFile" accept="image/*">
+      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2" {{#unless product.image}}style="display:none"{{/unless}}>
+      <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
 
     <div class="form-group">
       <label>Mô tả</label>
-      <textarea name="description" rows="3">{{product.description}}</textarea>
+      <div id="descriptionEditor" style="height:150px"></div>
+      <input type="hidden" name="description" id="descriptionInput">
     </div>
 
     <div class="modal-footer">
@@ -78,6 +83,7 @@
   </form>
 </div>
 
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', initProductForm);
 </script>
