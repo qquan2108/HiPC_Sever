@@ -130,3 +130,33 @@ exports.deleteOrder = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.returnStockForCancelledOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn' });
+    if (order.status !== 'cancelled') {
+      return res.status(400).json({ error: 'Chỉ hoàn stock cho đơn đã hủy' });
+    }
+    if (order.isStockReturned) {
+      return res.status(400).json({ error: 'Đơn này đã hoàn kho trước đó' });
+    }
+    if (!order.products || !order.products.length) {
+      return res.status(400).json({ error: 'Đơn không có sản phẩm' });
+    }
+
+    // Hoàn lại stock cho từng sản phẩm
+    for (const item of order.products) {
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: { stock: item.quantity } }
+      );
+    }
+    order.isStockReturned = true;
+    await order.save();
+
+    res.json({ message: 'Đã hoàn lại kho cho đơn đã hủy', orderId: order._id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};

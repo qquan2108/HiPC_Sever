@@ -8,6 +8,7 @@ var hbs = require('hbs');
 var { default: mongoose } = require('mongoose');
 var fs = require('fs');
 
+var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
@@ -51,6 +52,9 @@ const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(logger('dev'));
+
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -73,7 +77,7 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
   hbs.registerHelper('json', function (context) {
     return JSON.stringify(context);
   });
-
+app.use('/stripe', stripeRouter);
 app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);

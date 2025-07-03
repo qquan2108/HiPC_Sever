@@ -172,4 +172,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.post('/:orderId/return-stock', orderCtrl.returnStockForCancelledOrder);
+
 module.exports = router;
