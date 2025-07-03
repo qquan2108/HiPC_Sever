@@ -71,10 +71,10 @@ exports.updateStatus = async (req, res) => {
       return res.status(400).json({ error: `Không thể chuyển từ trạng thái ${order.status} sang ${status}` });
     }
 
-    // Nếu chuyển sang cancelled và đơn đã confirmed/packed/picked, hoàn lại stock
+    // Nếu chuyển sang cancelled và đơn đang ở các trạng thái này, hoàn lại stock
     if (
       status === 'cancelled' &&
-      ['confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
+      ['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
       order.products && order.products.length > 0
     ) {
       for (const item of order.products) {
@@ -101,9 +101,9 @@ exports.cancelOrder = async (req, res) => {
     if (!['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status)) {
       return res.status(400).json({ error: 'Không thể hủy đơn ở trạng thái hiện tại' });
     }
-    // Hoàn stock nếu đã qua xác nhận
+    // Hoàn stock nếu đơn chưa bị hủy và có sản phẩm
     if (
-      ['confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
+      ['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
       order.products && order.products.length > 0
     ) {
       for (const item of order.products) {
@@ -116,7 +116,7 @@ exports.cancelOrder = async (req, res) => {
     order.status = 'cancelled';
     order.cancelledAt = new Date();
     await order.save();
-    res.json({ message: 'Đã hủy đơn', order });
+    res.json({ message: 'Đã hủy đơn và hoàn lại kho', order });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
