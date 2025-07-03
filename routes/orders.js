@@ -154,17 +154,36 @@ router.put('/:orderId/cancel', orderCtrl.cancelOrder);
 // 10) Lấy tất cả đơn (GET /orders)
 router.get('/', async (req, res) => {
   try {
-    const items = await Order.find().populate('products.productId');
-    res.json(items);
+    const { status, q } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter)
+      .populate('products.productId')
+      .populate('user_id', 'full_name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let result = orders;
+    if (q) {
+      const keyword = q.toLowerCase();
+      result = orders.filter(o =>
+        o._id.toString().toLowerCase().includes(keyword) ||
+        (o.user_id?.full_name && o.user_id.full_name.toLowerCase().includes(keyword))
+      );
+    }
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
-  console.log('GET /orders/:id', req.params.id); // Thêm dòng này
   try {
-    const order = await Order.findById(req.params.id).populate('products.productId');
+    const order = await Order.findById(req.params.id)
+      .populate('products.productId')
+      .populate('user_id', 'full_name email');
     if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
     res.json(order);
   } catch (err) {
