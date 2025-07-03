@@ -1,24 +1,24 @@
 // File: routes/vnpay.js
-// MÔI TRƯỜNG:
-// - Đặt biến ENV VNPAY_RETURNURL thành URL return (user redirect) đã đăng ký trên dashboard VNPAY
-//   ví dụ: VNPAY_RETURNURL=https://yourdomain.com/vnpay/return
-// - FRONTEND_URL để redirect deep-link/universal link trên app mobile
-//   ví dụ: FRONTEND_URL=hipcapp://vnpay-return
+// ENVIRONMENT VARIABLES:
+// - VNPAY_TMNCODE: merchant terminal code
+// - VNPAY_HASHSECRET: merchant secret key
+// - VNPAY_APIURL: payment URL (sandbox or production)
+// - VNPAY_RETURNURL: return URL registered in VNPAY dashboard
+// - FRONTEND_URL: deep-link/universal link for mobile app
 
 const express = require('express');
-const crypto = require('crypto');
-const qs     = require('qs');
-const router = express.Router();
-const Order  = require('../models/Order');
+const crypto  = require('crypto');
+const router  = express.Router();
+const Order   = require('../models/Order');
 
-// Chuẩn hoá địa chỉ IP
+// Normalize IP address
 function normalizeIp(rawIp) {
   if (!rawIp) return '127.0.0.1';
   const ip = rawIp.replace(/^::ffff:/, '');
   return ip === '::1' ? '127.0.0.1' : ip;
 }
 
-// Xây dựng URL thanh toán VNPAY với SHA256 (đảm bảo khớp cấu hình merchant)
+// Build VNPAY payment URL (checksum via HMAC-SHA512 per docs)
 function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const tmnCode   = process.env.VNPAY_TMNCODE;
   const secret    = process.env.VNPAY_HASHSECRET;
@@ -26,16 +26,17 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const returnUrl = process.env.VNPAY_RETURNURL;
   const ipAddr    = normalizeIp(rawIp);
 
-  // Tạo timestamp theo GMT+7
+  // CreateDate in GMT+7, format yyyyMMddHHmmss
   const now    = new Date();
   const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
-  const createDate = vnTime.toISOString().replace(/[-:T]/g, '').substring(0, 14);
+  const createDate = vnTime.toISOString().replace(/[-:T]/g, '').slice(0, 14);
 
-  const vnpParams = {
+  // Prepare parameters
+  const params = {
     vnp_Version:   '2.1.0',
     vnp_Command:   'pay',
     vnp_TmnCode:   tmnCode,
-    vnp_Amount:    Math.round(amount * 100).toString(),
+    vnp_Amount:    String(Math.round(amount * 100)),
     vnp_CurrCode:  'VND',
     vnp_TxnRef:    orderId,
     vnp_OrderInfo: orderInfo,
@@ -46,21 +47,29 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
     vnp_CreateDate:createDate
   };
 
-  // Tính hashData
-  const sortedParams = Object.keys(vnpParams)
-    .sort()
-    .reduce((acc, key) => (acc[key] = vnpParams[key], acc), {});
-  const hashData = qs.stringify(sortedParams, { encode: false });
+  // Sort keys
+  const sortedKeys = Object.keys(params).sort();
+  // Build hash data string: urlencode(key)=urlencode(value)&...
+  const hashData = sortedKeys
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join('&');
 
-  // Sử dụng SHA256 theo docs (nếu merchant config SHA256)
-  const secureHash = crypto.createHmac('sha256', secret)
-                           .update(hashData, 'utf8')
-                           .digest('hex');
-  sortedParams.vnp_SecureHashType = 'SHA256';
-  sortedParams.vnp_SecureHash     = secureHash;
+  // Compute HMAC-SHA512
+  const secureHash = crypto
+    .createHmac('sha512', secret)
+    .update(hashData, 'utf8')
+    .digest('hex');
 
-  // Build URL thanh toán
-  const query = qs.stringify(sortedParams, { encode: true });
+  // Append hash to params
+  params.vnp_SecureHashType = 'HMACSHA512';
+  params.vnp_SecureHash     = secureHash;
+
+  // Build query string (include hash fields last)
+  const query = sortedKeys
+    .concat(['vnp_SecureHashType', 'vnp_SecureHash'])
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join('&');
+
   return `${apiUrl}?${query}`;
 }
 
@@ -87,13 +96,19 @@ router.get('/ipn', async (req, res) => {
   delete vnpData.vnp_SecureHash;
   delete vnpData.vnp_SecureHashType;
 
-  const sorted     = Object.keys(vnpData).sort().reduce((a, k) => (a[k] = vnpData[k], a), {});
-  const hashData   = qs.stringify(sorted, { encode: false });
-  const calcHash   = crypto.createHmac('sha256', process.env.VNPAY_HASHSECRET)
-                          .update(hashData, 'utf8')
-                          .digest('hex');
+  const sortedKeys = Object.keys(vnpData).sort();
+  const hashData   = sortedKeys
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(vnpData[key])}`)
+    .join('&');
+  const calcHash   = crypto
+    .createHmac('sha512', process.env.VNPAY_HASHSECRET)
+    .update(hashData, 'utf8')
+    .digest('hex');
 
-  if (calcHash !== secureHash) return res.status(200).send('97');
+  if (calcHash !== secureHash) {
+    console.warn('IPN signature mismatch');
+    return res.status(200).send('97');
+  }
 
   const { vnp_TxnRef, vnp_ResponseCode } = vnpData;
   const status = vnp_ResponseCode === '00' ? 'paid' : 'payment_failed';
@@ -112,18 +127,21 @@ router.get('/return', async (req, res) => {
   delete vnpData.vnp_SecureHash;
   delete vnpData.vnp_SecureHashType;
 
-  const sorted     = Object.keys(vnpData).sort().reduce((a, k) => (a[k] = vnpData[k], a), {});
-  const hashData   = qs.stringify(sorted, { encode: false });
-  const calcHash   = crypto.createHmac('sha256', process.env.VNPAY_HASHSECRET)
-                          .update(hashData, 'utf8')
-                          .digest('hex');
+  const sortedKeys = Object.keys(vnpData).sort();
+  const hashData   = sortedKeys
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(vnpData[key])}`)
+    .join('&');
+  const calcHash   = crypto
+    .createHmac('sha512', process.env.VNPAY_HASHSECRET)
+    .update(hashData, 'utf8')
+    .digest('hex');
 
   if (calcHash !== secureHash) {
     return res.status(400).json({ code: 1, message: 'Chữ ký không hợp lệ' });
   }
+
   const { vnp_TxnRef, vnp_ResponseCode } = vnpData;
   const success = vnp_ResponseCode === '00';
-
   await Order.findByIdAndUpdate(vnp_TxnRef, { status: success ? 'paid' : 'payment_failed' });
 
   const FE = process.env.FRONTEND_URL;
@@ -133,7 +151,7 @@ router.get('/return', async (req, res) => {
   return res.redirect(target);
 });
 
-// POST /vnpay/verify_payment – front-end callback
+// POST /vnpay/verify_payment – Front-end callback
 router.post('/verify_payment', async (req, res) => {
   const { orderId, code } = req.body;
   const status = code === '00' ? 'paid' : 'payment_failed';
