@@ -27,6 +27,10 @@ router.post('/upload', upload.single('image'), (req, res) => {
   const url = `/uploads/products/${req.file.filename}`;
   res.json({ url });
 });
+// Upload products via Excel file
+router.post('/upload-excel', upload.single('file'), ctrl.uploadProductsFromExcel);
+// Export products to Excel file
+router.get('/export-excel', ctrl.exportProductsToExcel);
 router.get('/:id', ctrl.getProductById);
 router.post('/',   ctrl.createProduct);
 router.put('/:id', ctrl.updateProduct);

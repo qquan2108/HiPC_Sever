@@ -253,6 +253,46 @@ function initCategoryForm() {
 }
 
 /**
+ * Initialize Excel upload for products
+ */
+function initExcelUpload() {
+  const input = document.getElementById('excelFile');
+  if (!input) return;
+  input.addEventListener('change', async () => {
+    if (!input.files[0]) return;
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    try {
+      const res = await fetch(`${apiProduct}/upload-excel`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      await res.json();
+      currentPage = 1;
+      hasMore = true;
+      fetchProducts(1);
+    } catch (err) {
+      console.error('Excel upload error:', err);
+    } finally {
+      input.value = '';
+    }
+  });
+}
+
+/**
+ * Initialize Excel export for products
+ */
+function initExcelExport() {
+  const btn = document.getElementById('excelExportBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    window.location.href = `${apiProduct}/export-excel`;
+  });
+}
+
+/**
  * Initialize infinite scroll for products
  */
 function initProductScroll() {
@@ -281,6 +321,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("productTable")) {
     initProductScroll();
     fetchProducts(1);
+    initExcelUpload();
+    initExcelExport();
     const search = document.getElementById('searchInput');
     if (search) {
       search.addEventListener('input', () => {
