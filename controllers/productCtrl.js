@@ -168,3 +168,41 @@ exports.deleteProduct = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Upload products from Excel file
+exports.uploadProductsFromExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const xlsx = require('xlsx');
+    const fs = require('fs');
+
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    const created = [];
+    for (const row of rows) {
+      if (!row.name || !row.category_id || !row.price) continue;
+
+      const product = new Product({
+        name: row.name,
+        category_id: row.category_id,
+        brand_id: row.brand_id || null,
+        price: row.price,
+        description: row.description || '',
+        stock: row.stock || 0,
+      });
+      await product.save();
+      created.push(product);
+    }
+
+    fs.unlink(req.file.path, () => {});
+    res.json({ success: true, createdCount: created.length });
+  } catch (err) {
+    console.error('Error in uploadProductsFromExcel:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
