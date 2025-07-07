@@ -187,13 +187,25 @@ exports.uploadProductsFromExcel = async (req, res) => {
     for (const row of rows) {
       if (!row.name || !row.category_id || !row.price) continue;
 
+      let specs = [];
+      if (row.specifications) {
+        try {
+          const parsed = JSON.parse(row.specifications);
+          if (Array.isArray(parsed)) specs = parsed;
+        } catch (e) {
+          // ignore invalid specs
+        }
+      }
+
       const product = new Product({
-        name: row.name,
+        name:        row.name,
         category_id: row.category_id,
-        brand_id: row.brand_id || null,
-        price: row.price,
+        brand_id:    row.brand_id || undefined,
+        price:       row.price,
         description: row.description || '',
-        stock: row.stock || 0,
+        stock:       row.stock || 0,
+        image:       row.image ? { url: row.image } : undefined,
+        specifications: specs
       });
       await product.save();
       created.push(product);
@@ -215,13 +227,24 @@ exports.exportProductsToExcel = async (req, res) => {
       .populate('brand_id', 'name')
       .lean();
 
+    const ids = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: ids } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) imageMap[img.product_id] = img.url;
+    });
+
     const rows = products.map(p => ({
-      name: p.name,
-      category: p.category_id?.name || '',
-      brand: p.brand_id?.name || '',
-      price: p.price,
-      stock: p.stock,
-      description: p.description
+      name:        p.name,
+      category_id: p.category_id?._id?.toString() || '',
+      category:    p.category_id?.name || '',
+      brand_id:    p.brand_id?._id?.toString() || '',
+      brand:       p.brand_id?.name || '',
+      price:       p.price,
+      description: p.description,
+      stock:       p.stock,
+      image:       imageMap[p._id] || '',
+      specifications: JSON.stringify(p.specifications || [])
     }));
 
     const xlsx = require('xlsx');
