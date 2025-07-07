@@ -5,6 +5,15 @@ const apiUsers    = "/users/all";
 const apiCategory = "/category";
 const apiTskt     = "/tsktproducts";
 
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = type;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
 /* —— PRODUCTS —— */
 let currentPage = 1;
 let hasMore     = true;
@@ -272,8 +281,10 @@ function initExcelUpload() {
       currentPage = 1;
       hasMore = true;
       fetchProducts(1);
+      showToast('Tải lên thành công', 'success');
     } catch (err) {
       console.error('Excel upload error:', err);
+      showToast('Tải lên thất bại', 'error');
     } finally {
       input.value = '';
     }
@@ -286,14 +297,29 @@ function initExcelUpload() {
 function initExcelExport() {
   const btn = document.getElementById('excelExportBtn');
   if (!btn) return;
-  btn.addEventListener('click', e => {
+  btn.addEventListener('click', async e => {
     e.preventDefault();
-    window.location.href = `${apiProduct}/export-excel`;
+    try {
+      const res = await fetch(`${apiProduct}/export-excel`);
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('Xuất Excel thành công', 'success');
+    } catch (err) {
+      console.error('Excel export error:', err);
+      showToast('Xuất Excel thất bại', 'error');
+    }
   });
 }
 
 /**
-
  * Initialize infinite scroll for products
  */
 function initProductScroll() {
