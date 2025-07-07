@@ -4,7 +4,7 @@
 <!-- Boxicons đã include ở layout, CSS riêng nếu cần -->
 <link rel="stylesheet" href="/admin/static/css/user.css" />
 
-<div class="container">
+<div class="container glass-card rounded-2xl p-6 fade-in">
   <!-- Header actions: Thêm & Search -->
   <div class="header-actions mb-4 flex justify-between items-center">
     <a href="/admin/users/create" class="btn inline-flex items-center">
@@ -14,12 +14,12 @@
       type="text"
       id="userSearch"
       placeholder="Tìm kiếm theo tên hoặc email..."
-      class="px-4 py-2 border rounded w-1/3"
+      class="search-input w-1/3 px-4 py-2 rounded"
     />
   </div>
 
   <!-- Bảng danh sách users -->
-  <div class="table-container overflow-auto shadow rounded">
+  <div class="glass-card table-container overflow-auto shadow rounded-2xl slide-up">
     <table class="min-w-full divide-y divide-gray-200 bg-white">
       <thead class="bg-gray-50">
         <tr>

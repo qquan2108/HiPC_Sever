@@ -293,6 +293,7 @@ function initExcelExport() {
 }
 
 /**
+
  * Initialize infinite scroll for products
  */
 function initProductScroll() {
