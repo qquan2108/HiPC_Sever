@@ -281,6 +281,19 @@ function initExcelUpload() {
 }
 
 /**
+ * Initialize Excel export for products
+ */
+function initExcelExport() {
+  const btn = document.getElementById('excelExportBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    window.location.href = `${apiProduct}/export-excel`;
+  });
+}
+
+/**
+
  * Initialize infinite scroll for products
  */
 function initProductScroll() {
@@ -310,6 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initProductScroll();
     fetchProducts(1);
     initExcelUpload();
+    initExcelExport();
     const search = document.getElementById('searchInput');
     if (search) {
       search.addEventListener('input', () => {

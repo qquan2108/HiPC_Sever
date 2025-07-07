@@ -206,3 +206,42 @@ exports.uploadProductsFromExcel = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Export all products to Excel file
+exports.exportProductsToExcel = async (req, res) => {
+  try {
+    const products = await Product.find()
+      .populate('category_id', 'name')
+      .populate('brand_id', 'name')
+      .lean();
+
+    const rows = products.map(p => ({
+      name: p.name,
+      category: p.category_id?.name || '',
+      brand: p.brand_id?.name || '',
+      price: p.price,
+      stock: p.stock,
+      description: p.description
+    }));
+
+    const xlsx = require('xlsx');
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(wb, ws, 'Products');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="products.xlsx"'
+    );
+    res.send(buf);
+  } catch (err) {
+    console.error('Error in exportProductsToExcel:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
