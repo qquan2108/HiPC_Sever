@@ -23,9 +23,8 @@ const upload = multer({ storage });
 router.get('/', ctrl.getAll);
 router.get('/latest', ctrl.getLatest);
 router.post('/', ctrl.create);
-router.delete('/:id', ctrl.delete);
 
-// ★ Upload endpoint ★
+// ★ Upload endpoint (đặt trước các route "/:id") ★
 router.post('/upload',
   upload.single('image'),
   (req, res) => {
@@ -37,5 +36,9 @@ router.post('/upload',
     res.json({ url });
   }
 );
+
+router.get('/:id', ctrl.getById);
+router.put('/:id', ctrl.update);
+router.delete('/:id', ctrl.delete);
 
 module.exports = router;
