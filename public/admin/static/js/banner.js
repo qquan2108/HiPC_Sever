@@ -4,6 +4,7 @@ const BannerManager = {
   // API endpoints
   UPLOAD_API: '/banners/upload',
   BANNER_API: '/banners',
+  currentId: null,
 
   // Initialize: tải banner và gắn event
   init() {
@@ -69,18 +70,23 @@ const BannerManager = {
               <h5 class="card-title">${title}</h5>
               <small class="text-muted d-block mb-2">${createdDate}</small>
               <p class="card-text flex-grow-1">${content}</p>
-              <div class="btn-group mt-auto" role="group">
-                <button class="btn btn-sm btn-outline-primary"
-                        onclick="BannerManager.previewBanner('${fullImageUrl}', '${title}')"
-                        title="Xem trước">
-                  <i class="bi bi-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger"
-                        onclick="BannerManager.deleteBanner('${banner._id}')"
-                        title="Xóa">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
+                <div class="btn-group mt-auto" role="group">
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="BannerManager.previewBanner('${fullImageUrl}', '${title}')"
+                          title="Xem trước">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary"
+                          onclick="BannerManager.editBanner('${banner._id}')"
+                          title="Sửa">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger"
+                          onclick="BannerManager.deleteBanner('${banner._id}')"
+                          title="Xóa">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
             </div>
           </div>`;
         container.appendChild(col);
@@ -110,6 +116,10 @@ const BannerManager = {
     modalEl.addEventListener('hidden.bs.modal', () => {
       form.reset();
       this.clearErrors();
+      this.currentId = null;
+      document.getElementById('previewCurrent').classList.add('d-none');
+      document.getElementById('bannerFile').required = true;
+      document.getElementById('addBannerModalLabel').textContent = 'Thêm Banner';
     });
   },
 
@@ -137,7 +147,7 @@ const BannerManager = {
     document.getElementById('fileError').textContent = '';
   },
 
-  // Xử lý submit tạo mới banner
+  // Xử lý submit tạo/sửa banner
   async handleSubmit(e) {
     e.preventDefault();
     this.clearErrors();
@@ -145,13 +155,14 @@ const BannerManager = {
     const title = document.getElementById('bannerTitle').value.trim();
     const content = document.getElementById('bannerContent').value.trim();
     const file = document.getElementById('bannerFile').files[0];
+    const isEdit = !!this.currentId;
     let hasError = false;
 
     if (!title) {
       document.getElementById('titleError').textContent = 'Vui lòng nhập tiêu đề.';
       hasError = true;
     }
-    if (!file) {
+    if (!file && !isEdit) {
       document.getElementById('fileError').textContent = 'Vui lòng chọn file hình ảnh.';
       hasError = true;
     }
@@ -163,36 +174,71 @@ const BannerManager = {
     spinner.classList.remove('d-none');
 
     try {
-      // Upload ảnh
-      const formData = new FormData();
-      formData.append('image', file);
-      const uploadRes = await fetch(this.UPLOAD_API, {
-        method: 'POST',
-        body: formData
-      });
-      if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-      const { url } = await uploadRes.json();
+      let imageUrl = '';
+      if (file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const uploadRes = await fetch(this.UPLOAD_API, { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
+        const data = await uploadRes.json();
+        imageUrl = data.url;
+      }
 
-      // Tạo record banner
-      const createRes = await fetch(this.BANNER_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, imageUrl: url })
-      });
-      if (!createRes.ok) throw new Error(`Create failed: ${createRes.status}`);
+      if (isEdit) {
+        const payload = { title, content };
+        if (imageUrl) payload.imageUrl = imageUrl;
+        const updateRes = await fetch(`${this.BANNER_API}/${this.currentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!updateRes.ok) throw new Error(`Update failed: ${updateRes.status}`);
+      } else {
+        const createRes = await fetch(this.BANNER_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, imageUrl })
+        });
+        if (!createRes.ok) throw new Error(`Create failed: ${createRes.status}`);
+      }
 
       // Thành công: refresh list và đóng modal
       document.getElementById('bannerForm').reset();
+      this.currentId = null;
+      document.getElementById('bannerFile').required = true;
+      document.getElementById('previewCurrent').classList.add('d-none');
       this.loadBanners();
       const bsModal = bootstrap.Modal.getInstance(document.getElementById('addBannerModal'));
       bsModal.hide();
-      this.showToast('Thêm banner thành công!', 'success');
+      document.getElementById('addBannerModalLabel').textContent = 'Thêm Banner';
+      this.showToast(isEdit ? 'Cập nhật banner thành công!' : 'Thêm banner thành công!', 'success');
     } catch (err) {
       console.error('Lỗi tạo banner:', err);
       this.showToast(`Lỗi tạo banner: ${err.message}`, 'danger');
     } finally {
       submitBtn.disabled = false;
       spinner.classList.add('d-none');
+    }
+  },
+
+  // Mở modal chỉnh sửa banner
+  async editBanner(id) {
+    try {
+      const res = await fetch(`${this.BANNER_API}/${id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const banner = await res.json();
+      document.getElementById('bannerTitle').value = banner.title || '';
+      document.getElementById('bannerContent').value = banner.content || '';
+      const preview = document.getElementById('previewCurrent');
+      preview.src = this.getFullImageUrl(banner.imageUrl);
+      preview.classList.remove('d-none');
+      document.getElementById('bannerFile').required = false;
+      document.getElementById('addBannerModalLabel').textContent = 'Sửa Banner';
+      this.currentId = id;
+      new bootstrap.Modal(document.getElementById('addBannerModal')).show();
+    } catch (err) {
+      console.error('Lỗi tải banner:', err);
+      this.showToast('Không thể tải banner', 'danger');
     }
   },
 

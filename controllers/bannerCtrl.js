@@ -57,3 +57,31 @@ exports.uploadImage = (req, res) => {
   }
 };
 
+// Lấy banner theo id
+exports.getById = async (req, res, next) => {
+  try {
+    const banner = await Banner.findById(req.params.id);
+    if (!banner) return res.status(404).json({});
+    res.json(banner);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Chỉnh sửa banner
+exports.update = async (req, res, next) => {
+  try {
+    const { title, imageUrl, content, link, isActive } = req.body;
+    const updates = { title, imageUrl, content, link, isActive };
+    const banner = await Banner.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!banner) return res.status(404).json({ error: 'Không tìm thấy banner' });
+    res.json(banner);
+  } catch (err) {
+    next(err);
+  }
+};
+
