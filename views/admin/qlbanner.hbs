@@ -98,8 +98,9 @@
   const BANNER_API = '/banners';
 
   function getFullImageUrl(imageUrl) {
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-    return imageUrl;
+    if (!imageUrl) return '';
+    if (/^https?:\/\//.test(imageUrl)) return imageUrl;
+    return imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
   }
 
   async function loadBanners() {
