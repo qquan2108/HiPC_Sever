@@ -100,6 +100,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <form id="bannerForm" enctype="multipart/form-data">
+        <input type="hidden" id="bannerId">
         <div class="modal-header">
           <h5 class="modal-title" id="addBannerModalLabel">Thêm Banner</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
@@ -114,6 +115,7 @@
             <label for="bannerFile" class="form-label">Chọn hình <span class="text-danger">*</span></label>
             <input type="file" id="bannerFile" class="form-control" accept="image/*" required>
             <div class="form-text">Hỗ trợ: JPG, PNG, GIF. Tối đa 5MB</div>
+            <img id="previewCurrent" src="" class="img-thumbnail mt-2 d-none" style="max-height: 150px;">
             <div class="error-message" id="fileError"></div>
           </div>
           <div class="mb-3">
