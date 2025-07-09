@@ -168,3 +168,102 @@ exports.deleteProduct = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Upload products from Excel file
+exports.uploadProductsFromExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const xlsx = require('xlsx');
+    const fs = require('fs');
+
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    const created = [];
+    for (const row of rows) {
+      if (!row.name || !row.category_id || !row.price) continue;
+
+      let specs = [];
+      if (row.specifications) {
+        try {
+          const parsed = JSON.parse(row.specifications);
+          if (Array.isArray(parsed)) specs = parsed;
+        } catch (e) {
+          // ignore invalid specs
+        }
+      }
+
+      const product = new Product({
+        name:        row.name,
+        category_id: row.category_id,
+        brand_id:    row.brand_id || undefined,
+        price:       row.price,
+        description: row.description || '',
+        stock:       row.stock || 0,
+        image:       row.image ? { url: row.image } : undefined,
+        specifications: specs
+      });
+      await product.save();
+      created.push(product);
+    }
+
+    fs.unlink(req.file.path, () => {});
+    res.json({ success: true, createdCount: created.length });
+  } catch (err) {
+    console.error('Error in uploadProductsFromExcel:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Export all products to Excel file
+exports.exportProductsToExcel = async (req, res) => {
+  try {
+    const products = await Product.find()
+      .populate('category_id', 'name')
+      .populate('brand_id', 'name')
+      .lean();
+
+    const ids = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: ids } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) imageMap[img.product_id] = img.url;
+    });
+
+    const rows = products.map(p => ({
+      name:        p.name,
+      category_id: p.category_id?._id?.toString() || '',
+      category:    p.category_id?.name || '',
+      brand_id:    p.brand_id?._id?.toString() || '',
+      brand:       p.brand_id?.name || '',
+      price:       p.price,
+      description: p.description,
+      stock:       p.stock,
+      image:       imageMap[p._id] || '',
+      specifications: JSON.stringify(p.specifications || [])
+    }));
+
+    const xlsx = require('xlsx');
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(wb, ws, 'Products');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="products.xlsx"'
+    );
+    res.send(buf);
+  } catch (err) {
+    console.error('Error in exportProductsToExcel:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

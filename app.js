@@ -8,6 +8,7 @@ var hbs = require('hbs');
 var { default: mongoose } = require('mongoose');
 var fs = require('fs');
 
+var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
@@ -22,7 +23,7 @@ var comparisonproductsRouter = require('./routes/comparisonproducts');
 var comparisonsRouter = require('./routes/comparisons');
 var imagesRouter = require('./routes/image');
 var productreviewsRouter = require('./routes/productreviews');
-var tsktproductsRouter = require('./routes/tsktproducts'); // Thêm dòng này
+var tsktproductsRouter = require('./routes/tsktproducts');
 var brandsRouter = require('./routes/brands');
 var vouchersRouter = require('./routes/vouchers');
 var searchRouter = require('./routes/search');
@@ -51,8 +52,11 @@ const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads/banners', express.static(uploadDir));
@@ -73,7 +77,7 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
   hbs.registerHelper('json', function (context) {
     return JSON.stringify(context);
   });
-
+app.use('/stripe', stripeRouter);
 app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
