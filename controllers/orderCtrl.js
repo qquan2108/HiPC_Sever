@@ -71,10 +71,10 @@ exports.updateStatus = async (req, res) => {
       return res.status(400).json({ error: `Không thể chuyển từ trạng thái ${order.status} sang ${status}` });
     }
 
-    // Nếu chuyển sang cancelled và đơn đã confirmed/packed/picked, hoàn lại stock
+    // Nếu chuyển sang cancelled và đơn đang ở các trạng thái này, hoàn lại stock
     if (
       status === 'cancelled' &&
-      ['confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
+      ['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
       order.products && order.products.length > 0
     ) {
       for (const item of order.products) {
@@ -101,9 +101,9 @@ exports.cancelOrder = async (req, res) => {
     if (!['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status)) {
       return res.status(400).json({ error: 'Không thể hủy đơn ở trạng thái hiện tại' });
     }
-    // Hoàn stock nếu đã qua xác nhận
+    // Hoàn stock nếu đơn chưa bị hủy và có sản phẩm
     if (
-      ['confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
+      ['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
       order.products && order.products.length > 0
     ) {
       for (const item of order.products) {
@@ -116,7 +116,7 @@ exports.cancelOrder = async (req, res) => {
     order.status = 'cancelled';
     order.cancelledAt = new Date();
     await order.save();
-    res.json({ message: 'Đã hủy đơn', order });
+    res.json({ message: 'Đã hủy đơn và hoàn lại kho', order });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -128,5 +128,35 @@ exports.deleteOrder = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.returnStockForCancelledOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn' });
+    if (order.status !== 'cancelled') {
+      return res.status(400).json({ error: 'Chỉ hoàn stock cho đơn đã hủy' });
+    }
+    if (order.isStockReturned) {
+      return res.status(400).json({ error: 'Đơn này đã hoàn kho trước đó' });
+    }
+    if (!order.products || !order.products.length) {
+      return res.status(400).json({ error: 'Đơn không có sản phẩm' });
+    }
+
+    // Hoàn lại stock cho từng sản phẩm
+    for (const item of order.products) {
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: { stock: item.quantity } }
+      );
+    }
+    order.isStockReturned = true;
+    await order.save();
+
+    res.json({ message: 'Đã hoàn lại kho cho đơn đã hủy', orderId: order._id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };

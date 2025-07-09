@@ -49,12 +49,15 @@ router.get('/products/:id/edit', async (req, res) => {
 router.get('/categories', (req, res) => {
   res.render('admin/categories', { layout: 'admin/layout' });
 });
+// Trang tạo danh mục
 router.get('/categories/create', (req, res) => {
-  res.render('admin/category-form', { layout: 'admin/layout', category: {} });
+  res.render('admin/category-form', { category: {} });
 });
-router.get('/categories/:id/edit', async (req, res) => {
-  const category = await Category.findById(req.params.id);
-  res.render('admin/category-form', { layout: 'admin/layout', category });
+
+// Trang sửa danh mục
+router.get('/categories/edit/:id', async (req, res) => {
+  const category = await Category.findById(req.params.id).lean();
+  res.render('admin/category-form', { category });
 });
 
 // bao cao
