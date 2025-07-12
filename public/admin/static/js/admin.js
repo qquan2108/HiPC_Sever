@@ -298,4 +298,25 @@ document.addEventListener("DOMContentLoaded", () => {
   // Forms
   initProductForm();
   initCategoryForm();
+
+  // Responsive menu: Hiện/ẩn nav khi bấm nút 3 sọc
+  const menuBtn = document.getElementById('menuBtn');
+  const mainNav = document.getElementById('mainNav');
+  if (menuBtn && mainNav) {
+    menuBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      mainNav.classList.toggle('active');
+    });
+    // Đóng menu khi click ra ngoài (mobile)
+    document.addEventListener('click', function (e) {
+      if (
+        window.innerWidth < 900 &&
+        !mainNav.contains(e.target) &&
+        e.target !== menuBtn &&
+        !menuBtn.contains(e.target)
+      ) {
+        mainNav.classList.remove('active');
+      }
+    });
+  }
 });

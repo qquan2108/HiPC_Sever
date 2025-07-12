@@ -1,106 +1,362 @@
-<!-- File: views/admin/layout.hbs (mới) -->
-
+<!-- File: views/admin/layout.hbs (rainbow theme) -->
 <html lang="vi" class="h-full">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin {{title}}</title>
 
-    <!-- Google Fonts -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Font Awesome -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-    />
-    <!-- Animate.css -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    />
-    <!-- Main admin CSS (index style) -->
-    <link rel="stylesheet" href="/admin/static/css/index.css" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin {{title}}</title>
 
-    <!-- Custom CSS -->
-    <link
-      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
-      rel="stylesheet"
-    />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <!-- Animate.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <!-- Custom CSS -->
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/admin/static/css/index.css" />
 
-  </head>
-  <body class="h-full">
-    <div id="particles-js"></div>
+  <style>
+    body {
+      font-family: 'Poppins', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background:#fff;
+      background-size: 1000% 1000%;
+      animation: rainbowBackground 18s ease infinite;
+    }
 
-    <header id="mainHeader">
-      <i class="fas fa-heart decorative-icon left"></i>
-      <a href="/admin" class="logo-admin">
-        <img src="/admin/static/images/logo.png" alt="Logo" class="logo-img" />
-      </a>
-      <i class="fas fa-bars" id="menuBtn"></i>
-      <nav id="mainNav">
-        <ul>
-          <li><a href="/admin"><i class="fas fa-home"></i> Trang chủ</a></li>
-          <li><a href="/admin/users"><i class="fas fa-users"></i>
-              Người dùng</a></li>
-          <li><a href="/admin/products"><i class="fas fa-box-open"></i>
-              Sản phẩm</a></li>
-          <li><a href="/admin/categories"><i class="fas fa-tags"></i>
-              Danh mục</a></li>
-          <li><a href="/admin/orders"><i class="fas fa-shopping-cart"></i>
-              Đơn hàng</a></li>
-          <li><a href="/admin/reports"><i class="fas fa-chart-line"></i>
-              Báo cáo</a></li>
-          <li><a href="/admin/notifications"><i class="fas fa-bell"></i>
-              Thông báo</a></li>
-          <li><a href="/admin/faq"><i class="fas fa-share"></i> FAQ</a></li>
-          <li><a href="/logout"><i class="fas fa-sign-out-alt"></i>
-              Đăng xuất</a></li>
-        </ul>
-      </nav>
-      <i class="fas fa-star decorative-icon right"></i>
-    </header>
+    @keyframes rainbowBackground {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
 
-    <main>
-      <div class="main-container animate__animated animate__fadeInUp">
-        {{{body}}}
+    #mainHeader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(90deg, #ff6ec4, #7873f5);
+      padding: 0 32px;
+      min-height: 72px;
+      box-shadow: 0 2px 16px rgba(25, 187, 167, 0.08);
+      border-radius: 0 0 18px 18px;
+      position: relative;
+      z-index: 10;
+      flex-wrap: nowrap;
+      gap: 24px;
+    }
+
+    .logo-admin {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 170px;
+      margin: 0 auto;
+    }
+
+    .logo-img {
+      height: 48px;
+      width: 48px;
+      border-radius: 12px;
+      background: #fff;
+      padding: 4px;
+      object-fit: contain;
+      box-shadow: 0 2px 8px rgba(255, 105, 180, 0.1);
+    }
+
+    .logo-title {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px rgba(255, 105, 180, 0.13);
+    }
+
+    #menuBtn {
+      display: block;
+      border: none;
+      border-radius: 12px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      margin-left: 12px;
+      background: transparent;
+      transition: background 0.2s, color 0.2s;
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      z-index: 100;
+    }
+
+    #menuBtn:hover {
+      background: #ffe0f5;
+      color: #ff6ec4;
+    }
+
+    #mainNav {
+      display: none;
+      position: absolute;
+      top: 72px;
+      right: 18px;
+      min-width: 220px;
+      background: #fff;
+      border-radius: 0 0 18px 18px;
+      box-shadow: 0 2px 16px rgba(255, 105, 180, 0.13);
+      z-index: 999;
+      animation: fadeInDash 0.4s;
+    }
+
+    #mainNav.active {
+      display: block;
+    }
+
+    #mainNav ul {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #mainNav ul li a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 24px;
+      font-size: 1.1rem;
+      color: #322f3d;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+
+    #mainNav ul li a:hover {
+      background: #ffe0f5;
+      color: #ff6ec4;
+    }
+
+   .footer-hipc {
+  background: linear-gradient(135deg, #ff6ec4, #7873f5, #4ade80);
+  color: #fff;
+  padding: 0;
+  margin-top: 0;
+  font-size: 0.7rem;
+  transition: background 0.5s ease-in-out;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  flex-wrap: wrap;
+  gap: 48px;
+}
+
+
+.footer-logo {
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.footer-hotline, .footer-email {
+  justify-content: center;
+}
+
+
+.footer-logo img {
+  width: 48px;
+  height: 48px;
+  background: #fff;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.footer-logo span {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.footer-col h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+.footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-col ul li {
+  margin-bottom: 8px;
+}
+
+.footer-col ul li a {
+  color: #e5e5e5;
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.footer-col ul li a:hover {
+  color: #fffb91;
+  text-decoration: underline;
+}
+
+.footer-social-links {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.footer-social-links a {
+  color: #fff;
+  font-size: 1.4rem;
+  transition: transform 0.2s;
+}
+
+.footer-social-links a:hover {
+  transform: scale(1.2);
+  color: #fffb91;
+}
+
+.footer-hotline,
+.footer-email {
+  margin-bottom: 8px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding: 18px 0;
+  font-size: 0.95rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 24px;
+  color: #fff;
+  background: transparent;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .footer-container {
+    flex-direction: column;
+    padding: 0 24px;
+  }
+
+  .footer-col {
+    margin-bottom: 24px;
+  }
+}
+
+  </style>
+</head>
+
+<body class="h-full">
+  <div id="particles-js"></div>
+
+  <header id="mainHeader">
+    <a href="/admin" class="logo-admin">
+      <img src="/admin/static/images/logo.png" alt="Logo" class="logo-img" />
+      <span class="logo-title">HiPC</span>
+    </a>
+    <button id="menuBtn" aria-label="Mở menu" type="button">
+      <i class="fas fa-bars"></i>
+    </button>
+  </header>
+
+  <nav id="mainNav">
+    <ul>
+      <li><a href="/admin"><i class="fas fa-home"></i> Trang chủ</a></li>
+      <li><a href="/admin/users"><i class="fas fa-users"></i> Người dùng</a></li>
+      <li><a href="/admin/products"><i class="fas fa-box-open"></i> Sản phẩm</a></li>
+      <li><a href="/admin/categories"><i class="fas fa-tags"></i> Danh mục</a></li>
+      <li><a href="/admin/orders"><i class="fas fa-shopping-cart"></i> Đơn hàng</a></li>
+      <li><a href="/admin/reports"><i class="fas fa-chart-line"></i> Báo cáo</a></li>
+      <li><a href="/admin/notifications"><i class="fas fa-bell"></i> Thông báo</a></li>
+      <li><a href="/admin/faq"><i class="fas fa-share"></i> FAQ</a></li>
+      <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="main-container animate__animated animate__fadeInUp">
+      {{{body}}}
+    </div>
+  </main>
+
+  <footer class="footer-hipc">
+  <div class="footer-container">
+    <!-- Cột 1: Logo + Thông tin -->
+    <div class="footer-col company">
+      <div class="footer-logo">
+        <img src="/admin/static/images/logo.png" alt="HiPC Logo" />
+        <span>HiPC Công ty TNHH</span>
       </div>
-    </main>
+      <p>
+        Địa chỉ: Số 123, Đường ABC, Quận XYZ, TP HCM<br />
+        Hotline: <a href="tel:02812345678">(028) 1234 5678</a><br />
+        Email: <a href="mailto:support@hipc.vn">support@hipc.vn</a>
+      </p>
+    </div>
 
-    <footer>
-      <div class="footer-section">
-        <h4>HIPC Công ty TNHH</h4>
-        <p>Địa chỉ: Số 123, Đường ABC, Quận XYZ, TP HCM<br />
-          Điện thoại: (028) 1234 5678<br />
-          Email: support@hipc.vn
-        </p>
-      </div>
-      <div class="footer-section">
-        <h4>Liên kết nhanh</h4>
-        <ul>
-          <li><a href="/admin/users">Quản lý người dùng</a></li>
-          <!-- … -->
-        </ul>
-      </div>
-      <div class="footer-section">
-        <h4>Kết nối với chúng tôi</h4>
-        <div class="social-links">
-          <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
-          <a href="#" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-          <a href="#" title="YouTube"><i class="fab fa-youtube"></i></a>
-          <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
-        </div>
-      </div>
-      <div class="footer-bottom">&copy; 2025 HIPC Công ty TNHH. Bản quyền thuộc
-        về HIPC.</div>
-    </footer>
+    <!-- Cột 2: Liên kết nhanh -->
+    <div class="footer-col links">
+      <h4>Liên kết nhanh</h4>
+      <ul>
+        <li><a href="/admin">Trang chủ</a></li>
+        <li><a href="/admin/users">Quản lý người dùng</a></li>
+        <li><a href="/admin/products">Quản lý sản phẩm</a></li>
+        <li><a href="/admin/categories">Quản lý danh mục</a></li>
+        <li><a href="/admin/orders">Quản lý đơn hàng</a></li>
+        <li><a href="/admin/reports">Báo cáo</a></li>
+        <li><a href="/admin/notifications">Thông báo</a></li>
+        <li><a href="/admin/faq">FAQ</a></li>
+      </ul>
+    </div>
 
-    <i class="fas fa-comments chatbot-icon"></i>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="/admin/static/js/admin.js"></script>
-    <script src="/admin/static/js/banner-popup.js"></script>
-  </body>
+    <!-- Cột 3: Mạng xã hội -->
+    <div class="footer-col social">
+      <h4>Kết nối với chúng tôi</h4>
+      <div class="footer-social-links">
+        <a href="#"><i class="fab fa-facebook-f"></i></a>
+        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+        <a href="#"><i class="fab fa-youtube"></i></a>
+        <a href="#"><i class="fab fa-github"></i></a>
+      </div>
+      <div class="footer-hotline">
+        <i class="fas fa-phone-alt"></i> <a href="tel:02812345678">(028) 1234 5678</a>
+      </div>
+      <div class="footer-email">
+        <i class="fas fa-envelope"></i> <a href="mailto:support@hipc.vn">support@hipc.vn</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    &copy; 2025 HiPC Công ty TNHH. Đã đăng ký bản quyền.
+  </div>
+</footer>
+
+  <i class="fas fa-comments chatbot-icon"></i>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+  <script src="/admin/static/js/admin.js"></script>
+  <script src="/admin/static/js/banner-popup.js"></script>
+</body>
+
 </html>
