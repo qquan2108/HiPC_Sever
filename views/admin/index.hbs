@@ -2,7 +2,8 @@
 {{#*inline "title"}}Dashboard Admin{{/inline}}
 
 <div id="particles-js"></div>
-<main>
+
+<main class="dashboard-cards">
     <div class="card animate__animated animate__fadeInUp">
         <i class="fas fa-users"></i>
         <h3>Quản lý người dùng</h3>
@@ -40,17 +41,166 @@
         <a href="/admin/notifications" title="Thông báo"></a>
     </div>
     <div class="card animate__animated animate__fadeInUp">
-        <i class="fas fa-share"></i>
+        <i class="fas fa-question-circle"></i>
         <h3>FAQ</h3>
         <p>Các câu hỏi thường gặp và hướng dẫn nhanh.</p>
         <a href="/admin/faq" title="FAQ"></a>
     </div>
     <div class="card animate__animated animate__fadeInUp">
-        <i class="fas fa-share"></i>
+        <i class="fas fa-images"></i>
         <h3>Quản lý banner</h3>
-        <p>Thêm xóa sửa, cập nhật</p>
+        <p>Thêm, sửa, xóa và cập nhật banner.</p>
         <a href="/admin/banner" title="Quản lý banner và popup"></a>
     </div>
 </main>
+
+<!-- Rainbow style -->
+<style>
+body {
+  background-color: #f1f5f9; /* màu nền sáng dịu, dễ nhìn */
+}
+
+
+
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 32px;
+    padding: 40px 4vw;
+    justify-items: center;
+    align-items: stretch;
+    animation: fadeInDash 1s;
+}
+
+@keyframes fadeInDash {
+    from { opacity: 0; transform: translateY(40px);}
+    to { opacity: 1; transform: none;}
+}
+
+.card {
+    background: linear-gradient(135deg, #ffffffaa, #ffe0f5aa);
+    border-radius: 22px;
+    box-shadow: 0 4px 24px rgba(255, 105, 180, 0.15), 0 2px 12px rgba(0, 0, 0, 0.06);
+    width: 100%;
+    max-width: 340px;
+    min-height: 240px;
+    padding: 36px 24px 28px;
+    text-align: center;
+    transition: 
+        transform 0.28s cubic-bezier(.4,2,.6,1), 
+        box-shadow 0.28s, 
+        border 0.2s,
+        background 0.4s;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 0; height: 0;
+    background: radial-gradient(circle, #ff6ec4 0%, transparent 80%);
+    opacity: 0.1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s, opacity 0.5s;
+    z-index: 0;
+}
+
+.card:active::before {
+    width: 320px;
+    height: 320px;
+    opacity: 0.2;
+    transition: 0s;
+}
+
+.card i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8rem;
+    color: #fff;
+    background: linear-gradient(135deg, #ff6ec4, #7873f5, #42e695);
+    border-radius: 50%;
+    width: 68px;
+    height: 68px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(255, 105, 180, 0.2);
+    z-index: 2;
+    position: relative;
+}
+
+.card h3 {
+    font-size: 1.28rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #322f3d;
+    z-index: 2;
+    position: relative;
+}
+
+.card p {
+    color: #4b4b4b;
+    font-size: 1rem;
+    z-index: 2;
+    position: relative;
+}
+
+.card a {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+}
+
+.card:hover {
+    transform: translateY(-12px) scale(1.05);
+    box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4);
+    border: 2px solid #ff6ec4;
+    background: linear-gradient(135deg, #ffe0f5, #fff);
+}
+
+.card:hover::before {
+    width: 360px;
+    height: 360px;
+    opacity: 0.15;
+}
+
+.card:hover i {
+    transform: scale(1.2) rotate(8deg);
+    background: linear-gradient(135deg, #ff6ec4, #f9ed69, #42e695);
+    box-shadow: 0 6px 28px rgba(255, 105, 180, 0.35);
+}
+
+.card:active {
+    transform: scale(0.96);
+}
+
+@media (max-width: 900px) {
+    .dashboard-cards {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
+        padding: 28px 2vw;
+    }
+
+    .card {
+        max-width: 98vw;
+        min-height: 200px;
+        padding: 28px 12px 18px;
+    }
+}
+</style>
+
+<!-- Font Awesome & Animate.css (if not loaded globally) -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+/>
 
 <script src="/admin/static/js/index.js"></script>

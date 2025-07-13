@@ -3,11 +3,13 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var hbs = require('hbs');
-var { default: mongoose } = require('mongoose');
+var logger = require('morgan'); 
+var hbs     = require('hbs');
 var fs = require('fs');
-
+var reportRoutes = require('./routes/reports');
+var notificationsRouter = require('./routes/notifications');
+var bannerRoutes = require('./routes/banners');
+var vnpayRouter = require('./routes/vnpay');
 var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
 var adminRouter = require('./routes/admin');
@@ -27,10 +29,7 @@ var tsktproductsRouter = require('./routes/tsktproducts');
 var brandsRouter = require('./routes/brands');
 var vouchersRouter = require('./routes/vouchers');
 var searchRouter = require('./routes/search');
-var reportRoutes = require('./routes/reports');
-var notificationsRouter = require('./routes/notifications');
-var bannerRoutes = require('./routes/banners');
-
+const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
 var app = express();
