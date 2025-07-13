@@ -112,6 +112,52 @@ router.post('/login', async (req, res) => {
   }
 });
 
+//admin
+router.post('/logadmin', async (req, res) => { try { const { email, password } = req.body;
+
+// Tìm user theo email
+const user = await User.findOne({ email });
+if (!user) {
+  return res.status(404).json({ message: 'User not found' });
+}
+
+// Xác thực mật khẩu
+const isMatch = await bcrypt.compare(password, user.password);
+if (!isMatch) {
+  return res.status(400).json({ message: 'Invalid credentials' });
+}
+
+// Kiểm tra quyền admin
+if (user.role !== 'admin') {
+  return res.status(403).json({ message: 'Access denied: Admins only' });
+}
+
+// Tạo JWT
+const token = jwt.sign(
+  { userId: user._id, role: user.role },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
+
+// Lấy banner active nhất
+const banner = await Banner.findOne({ isActive: true })
+  .sort('-createdAt')
+  .lean();
+
+// Trả về kết quả
+res.status(200).json({
+  message: 'Login successful',
+  token,
+  user: {
+    id: user._id,
+    full_name: user.full_name,
+    email: user.email,
+    role: user.role
+  },
+  banner
+});
+
+} catch (err) { console.error('Admin login error:', err); res.status(500).json({ message: 'Server error', error: err.message }); } });
 // Google login
 router.post('/google-login', async (req, res) => {
   try {

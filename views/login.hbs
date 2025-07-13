@@ -1,24 +1,94 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập Admin - HIPC</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/admin/static/css/glass.css" />
+  <link rel="stylesheet" href="/stylesheets/style.css" />
+  <!-- Tailwind (chỉ nên dùng trong dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    .btn-primary {
+      background: linear-gradient(to right, #ff6f61, #de4d7b);
+      border: none;
+      transition: transform 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+    }
+    .error-message {
+      color: #ff4d4d;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    .spinner {
+      display: none;
+    }
+    .spinner.active {
+      display: inline-block;
+    }
+  </style>
 </head>
-<body class="container py-5">
-  <h1 class="mb-4">Đăng nhập Admin</h1>
-  <form id="loginForm" class="mb-3" style="max-width:400px;">
-    <div class="mb-3">
-      <label for="email" class="form-label">Email</label>
-      <input type="email" class="form-control" id="email" required>
+<body>
+  <div class="login-card fade-in">
+    <div class="text-center mb-4">
+      <img src="/admin/static/images/logo.png" alt="HIPC Logo" class="mb-3" style="max-width: 100px;" />
+      <h2 class="text-white">Đăng nhập Admin</h2>
     </div>
-    <div class="mb-3">
-      <label for="password" class="form-label">Mật khẩu</label>
-      <input type="password" class="form-control" id="password" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Đăng nhập</button>
-    <div id="error" class="text-danger mt-3"></div>
-  </form>
-  <script src="/js/login.js"></script>
+    <form id="loginForm">
+      <div class="mb-3">
+        <label for="email" class="form-label text-white">Email</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+          <input type="email" class="form-control" id="email" required />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label text-white">Mật khẩu</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-lock"></i></span>
+          <input type="password" class="form-control" id="password" required />
+        </div>
+      </div>
+      <div class="error-message" id="error"></div>
+      <div class="mb-3 text-end">
+        <a href="/forgot-password" class="text-white text-decoration-underline">Quên mật khẩu?</a>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">
+        <span class="spinner spinner-border spinner-border-sm me-2" id="loadingSpinner"></span>
+        Đăng nhập
+      </button>
+    </form>
+  </div>
+
+  <!-- JS Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/admin/static/js/login.js"></script>
+  <script src="/admin/static/js/banner-popup.js"></script>
 </body>
 </html>
