@@ -1,14 +1,13 @@
-
 {{#*inline "title"}}Quản lý Người dùng{{/inline}}
 
-<!-- Boxicons đã include ở layout, CSS riêng nếu cần -->
 <link rel="stylesheet" href="/admin/static/css/user.css" />
 
 <div class="container glass-card rounded-2xl p-6 fade-in">
   <!-- Header actions: Thêm & Search -->
   <div class="header-actions mb-4 flex justify-between items-center">
-    <a href="/admin/users/create" class="btn inline-flex items-center">
-      <i class="bx bx-user-plus mr-2"></i> Thêm Người dùng
+    <a href="/admin/users/create" class="btn-add-user">
+      <span class="icon"><i class="bx bx-user-plus"></i></span>
+      <span>Thêm Người dùng</span>
     </a>
     <input
       type="text"
@@ -17,40 +16,116 @@
       class="search-input w-1/3 px-4 py-2 rounded"
     />
   </div>
-
-  <!-- Bảng danh sách users -->
-  <div class="glass-card table-container overflow-auto shadow rounded-2xl slide-up">
-    <table class="min-w-full divide-y divide-gray-200 bg-white">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avatar</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vai trò</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
-        </tr>
-      </thead>
-      <tbody id="userTable" class="bg-white divide-y divide-gray-200"></tbody>
-    </table>
-    <!-- sentinel infinite scroll -->
-    <div id="userScrollSentinel" class="h-1"></div>
-  </div>
 </div>
 
-<script src="/admin/static/js/user.js"></script>
+<!-- Bảng danh sách users -->
+<div class="table-container overflow-auto shadow rounded">
+  <table class="min-w-full divide-y divide-gray-200 bg-white">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avatar</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vai trò</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="userTable" class="bg-white divide-y divide-gray-200"></tbody>
+  </table>
+
+  <!-- Pagination Controls -->
+  <div id="pagination" class="flex justify-center items-center gap-2 py-4"></div>
+</div>
 
 <script>
+  let userCurrentPage = 1;
+  let userTotalPages = 1;
+  const userLimit = 20;
+  let allUsers = [];
+
+  async function fetchUsers(page = 1) {
+    try {
+      const res = await fetch(`/users?page=${page}&limit=${userLimit}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const { users, totalPages } = await res.json();
+
+      allUsers = users;
+      renderUsers(users);
+      renderPagination(page, totalPages);
+      userCurrentPage = page;
+      userTotalPages = totalPages;
+    } catch (err) {
+      console.error('Lỗi tải user:', err);
+    }
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('userTable');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const avatarUrl = u.avatar || 'https://via.placeholder.com/40';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="px-6 py-4"><img src="${avatarUrl}" alt="avatar" class="w-10 h-10 rounded-full object-cover" /></td>
+        <td class="px-6 py-4">${u.name}</td>
+        <td class="px-6 py-4">${u.email}</td>
+        <td class="px-6 py-4">${u.role}</td>
+        <td class="px-6 py-4"> </td>
+        <td class="px-6 py-4 text-center">
+          <a href="/admin/users/${u._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-edit text-xl"></i>
+          </a>
+          <a href="#" onclick="deleteUser('${u._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-trash text-xl"></i>
+          </a>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderPagination(current, totalPages) {
+    const container = document.getElementById('pagination');
+    container.innerHTML = '';
+
+    const createBtn = (label, page, active = false, disabled = false) => {
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.className = `px-3 py-1 rounded border text-sm font-medium ${
+        active ? 'bg-purple-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`;
+      if (!disabled) {
+        btn.addEventListener('click', () => fetchUsers(page));
+      }
+      return btn;
+    };
+
+    container.appendChild(createBtn('«', current - 1, false, current === 1));
+    for (let i = 1; i <= totalPages; i++) {
+      container.appendChild(createBtn(i, i, i === current));
+    }
+    container.appendChild(createBtn('»', current + 1, false, current === totalPages));
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('Bạn có chắc muốn xóa user này?')) return;
+    try {
+      const res = await fetch(`/users/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Xóa thất bại: ${res.status}`);
+      fetchUsers(userCurrentPage); // reload lại trang hiện tại
+    } catch (err) {
+      console.error('Lỗi xóa user:', err);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    initUserScroll();
     fetchUsers(1);
-    // filter search
     document.getElementById('userSearch').addEventListener('input', e => {
       const q = e.target.value.trim().toLowerCase();
       renderUsers(allUsers.filter(u =>
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q)
-      ), false);
+      ));
     });
   });
 </script>
