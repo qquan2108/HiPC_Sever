@@ -79,6 +79,9 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
   });
 app.use('/stripe', stripeRouter);
 app.use('/', indexRouter);
+app.get('/admin', (req, res) => {
+  return res.redirect('/login');
+});
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
