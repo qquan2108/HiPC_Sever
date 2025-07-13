@@ -8,7 +8,7 @@ const TsktProduct = require('../models/TsktProduct');
 const User = require('../models/userModel');
 
 // Dashboard
-router.get('/', (req, res) => {
+router.get('/dashboard', (req, res) => {
   res.render('admin/index', { layout: 'admin/layout' });
 });
 

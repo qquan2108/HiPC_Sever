@@ -32,4 +32,7 @@ function showBannerPopup(banner, key) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', fetchBanner);
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.pathname.startsWith('/admin')) return;
+  fetchBanner();
+});

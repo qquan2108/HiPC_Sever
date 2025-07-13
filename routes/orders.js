@@ -123,6 +123,21 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+// GET by id
+router.get('/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user_id', 'full_name')           
+      .populate('products.productId', 'name price image')
+      .lean();
+    return res.json(order);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 
 // 7) Cập nhật chung - PHẢI ĐẶT SAU route cancel
