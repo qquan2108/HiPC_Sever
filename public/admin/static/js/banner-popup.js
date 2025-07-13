@@ -31,8 +31,3 @@ function showBannerPopup(banner, key) {
     overlay.remove();
   });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.location.pathname.startsWith('/admin')) return;
-  fetchBanner();
-});
