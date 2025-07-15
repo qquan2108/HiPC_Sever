@@ -1,6 +1,55 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { canTransition } = require('../utils/orderStatus');
+const Notification = require('../models/Notification');
+
+//thong bao 
+const createOrderNotification = async (order, status) => {
+  let title, message, type;
+  
+  switch(status) {
+    case 'pending':
+      title = 'Đơn hàng mới';
+      message = `Đơn hàng #${order._id} đã được tạo và đang chờ xử lý`;
+      type = 'info';
+      break;
+    case 'confirmed':
+      title = 'Đơn hàng đã xác nhận';
+      message = `Đơn hàng #${order._id} đã được xác nhận`;
+      type = 'info';
+      break;
+    case 'packed':
+      title = 'Đơn hàng đã đóng gói';
+      message = `Đơn hàng #${order._id} đã được đóng gói và chuẩn bị vận chuyển`;
+      type = 'info';
+      break;
+    case 'shipping':
+      title = 'Đơn hàng đang vận chuyển';
+      message = `Đơn hàng #${order._id} đang trên đường giao đến bạn`;
+      type = 'info';
+      break;
+    case 'delivered':
+      title = 'Đơn hàng đã giao thành công';
+      message = `Đơn hàng #${order._id} đã được giao thành công`;
+      type = 'success';
+      break;
+    case 'cancelled':
+      title = 'Đơn hàng đã hủy';
+      message = `Đơn hàng #${order._id} đã được hủy`;
+      type = 'danger';
+      break;
+    default:
+      return;
+  }
+
+  await Notification.create({
+    type,
+    title,
+    message,
+    user_id: order.user_id,
+    // Bạn có thể thêm userId nếu cần gửi thông báo cho user cụ thể
+  });
+};
 
 // Tạo mới đơn hàng
 exports.createOrder = async (req, res) => {
@@ -87,6 +136,7 @@ exports.updateStatus = async (req, res) => {
 
     order.status = status;
     await order.save();
+    await createOrderNotification(order, status);
     res.json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -116,6 +166,7 @@ exports.cancelOrder = async (req, res) => {
     order.status = 'cancelled';
     order.cancelledAt = new Date();
     await order.save();
+    await createOrderNotification(order, 'cancelled');
     res.json({ message: 'Đã hủy đơn và hoàn lại kho', order });
   } catch (err) {
     res.status(400).json({ error: err.message });

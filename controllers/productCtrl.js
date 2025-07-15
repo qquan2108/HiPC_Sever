@@ -1,6 +1,7 @@
 const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
+const mongoose    = require('mongoose');
 
 // Create product
 exports.createProduct = async (req, res) => {
@@ -116,10 +117,16 @@ exports.getProducts = async (req, res) => {
 // Get product by ID with all images and TSKT template data
 exports.getProductById = async (req, res) => {
   try {
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
+    }
+
     const item = await Product.findById(req.params.id)
       .populate('category_id', 'name')
       .populate('brand_id', 'name')
       .lean();
+    
     if (!item) {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
@@ -160,12 +167,154 @@ exports.getProductById = async (req, res) => {
 // Delete product and its images
 exports.deleteProduct = async (req, res) => {
   try {
-    await Product.findByIdAndDelete(req.params.id);
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
+    }
+
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    }
+
     await Image.deleteMany({ product_id: req.params.id });
     res.json({ success: true });
   } catch (err) {
     console.error('Error in deleteProduct:', err);
     res.status(400).json({ error: err.message });
+  }
+};
+// Enhanced filter products with proper sorting and filtering
+exports.filterProducts = async (req, res) => {
+  try {
+    const {
+      q, category, brand, priceMin, priceMax,
+      specKey, specValue, sort,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    console.log('Filter request params:', req.query);
+
+    const filter = {};
+    let sortOptions = {};
+
+    // Text search
+    if (q && q.trim()) {
+      filter.name = { $regex: q.trim(), $options: 'i' };
+    }
+
+    // Category filter
+    if (category && mongoose.Types.ObjectId.isValid(category)) {
+      filter.category_id = category;
+    }
+
+    // Brand filter - handle both single brand and comma-separated brands
+    if (brand) {
+      const brandIds = brand.split(',').map(id => id.trim()).filter(id => mongoose.Types.ObjectId.isValid(id));
+      if (brandIds.length > 0) {
+        filter.brand_id = { $in: brandIds };
+      }
+    }
+
+    // Price range filter
+    if (priceMin || priceMax) {
+      filter.price = {};
+      if (priceMin && !isNaN(priceMin)) {
+        filter.price.$gte = parseInt(priceMin);
+      }
+      if (priceMax && !isNaN(priceMax)) {
+        filter.price.$lte = parseInt(priceMax);
+      }
+    }
+
+    // Specification filter
+    if (specKey && specValue) {
+      const specValues = specValue.split(',').map(val => val.trim());
+      filter.specifications = {
+        $elemMatch: { 
+          key: specKey, 
+          value: { $in: specValues }
+        }
+      };
+    }
+
+    // Sorting logic
+    switch (sort) {
+      case 'price_asc':
+        sortOptions = { price: 1 };
+        break;
+      case 'price_desc':
+        sortOptions = { price: -1 };
+        break;
+      case 'name_asc':
+        sortOptions = { name: 1 };
+        break;
+      case 'name_desc':
+        sortOptions = { name: -1 };
+        break;
+      case 'newest':
+        sortOptions = { createdAt: -1 };
+        break;
+      case 'popular':
+        sortOptions = { createdAt: -1 };
+        break;
+      case 'promotion':
+        sortOptions = { createdAt: -1 };
+        break;
+      default:
+        sortOptions = { createdAt: -1 };
+    }
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    console.log('Filter query:', filter);
+    console.log('Sort options:', sortOptions);
+
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limitNum)
+        .populate('category_id', 'name')
+        .populate('brand_id', 'name')
+        .lean(),
+      Product.countDocuments(filter)
+    ]);
+
+    // Get primary images for all products
+    const productIds = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    
+    // Create image mapping for better performance
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    // Add primary image to each product
+    const productsWithImages = products.map(p => ({
+      ...p,
+      image: imageMap[p._id] || null
+    }));
+
+    console.log(`Found ${productsWithImages.length} products out of ${total} total`);
+
+    res.json({
+      products: productsWithImages,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      hasMore: skip + products.length < total,
+      totalPages: Math.ceil(total / limitNum)
+    });
+  } catch (err) {
+    console.error('Error in filterProducts:', err);
+    res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
   }
 };
 
@@ -184,35 +333,61 @@ exports.uploadProductsFromExcel = async (req, res) => {
     const rows = xlsx.utils.sheet_to_json(sheet);
 
     const created = [];
+    const errors = [];
+
     for (const row of rows) {
-      if (!row.name || !row.category_id || !row.price) continue;
-
-      let specs = [];
-      if (row.specifications) {
-        try {
-          const parsed = JSON.parse(row.specifications);
-          if (Array.isArray(parsed)) specs = parsed;
-        } catch (e) {
-          // ignore invalid specs
+      try {
+        if (!row.name || !row.category_id || !row.price) {
+          errors.push(`Row skipped: Missing required fields (name, category_id, price)`);
+          continue;
         }
-      }
 
-      const product = new Product({
-        name:        row.name,
-        category_id: row.category_id,
-        brand_id:    row.brand_id || undefined,
-        price:       row.price,
-        description: row.description || '',
-        stock:       row.stock || 0,
-        image:       row.image ? { url: row.image } : undefined,
-        specifications: specs
-      });
-      await product.save();
-      created.push(product);
+        let specs = [];
+        if (row.specifications) {
+          try {
+            const parsed = JSON.parse(row.specifications);
+            if (Array.isArray(parsed)) specs = parsed;
+          } catch (e) {
+            errors.push(`Row ${row.name}: Invalid specifications format`);
+          }
+        }
+
+        const product = new Product({
+          name:        row.name,
+          category_id: row.category_id,
+          brand_id:    row.brand_id || undefined,
+          price:       parseFloat(row.price),
+          description: row.description || '',
+          stock:       parseInt(row.stock) || 0,
+          specifications: specs
+        });
+        
+        await product.save();
+        
+        // Add image if provided
+        if (row.image) {
+          await new Image({
+            product_id: product._id,
+            url: row.image
+          }).save();
+        }
+        
+        created.push(product);
+      } catch (error) {
+        errors.push(`Row ${row.name || 'Unknown'}: ${error.message}`);
+      }
     }
 
-    fs.unlink(req.file.path, () => {});
-    res.json({ success: true, createdCount: created.length });
+    // Clean up uploaded file
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('Error deleting uploaded file:', err);
+    });
+
+    res.json({ 
+      success: true, 
+      createdCount: created.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (err) {
     console.error('Error in uploadProductsFromExcel:', err);
     res.status(500).json({ error: err.message });
