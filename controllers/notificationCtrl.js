@@ -46,3 +46,26 @@ exports.remove = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+// Lấy thông báo chưa đọc
+exports.getUnread = async (req, res) => {
+  try {
+    const notifs = await Notification.find({ isRead: false })
+      .sort({ createdAt: -1 });
+    res.json(notifs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Đánh dấu tất cả là đã đọc
+exports.markAllRead = async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

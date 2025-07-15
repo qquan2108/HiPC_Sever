@@ -53,3 +53,17 @@ exports.deleteTskt = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+exports.getFilterFieldsByCategory = async (req, res) => {
+  try {
+    const { category_id } = req.params;
+    const template = await TsktProduct.findOne({ category_id }).lean();
+
+    if (!template || !Array.isArray(template.value)) {
+      return res.json({ fields: [] });
+    }
+
+    res.json({ fields: template.value }); // trả về mảng ["socket", "core", "thread", ...]
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

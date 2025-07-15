@@ -18,7 +18,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// IMPORTANT: Specific routes must come BEFORE parameterized routes
 router.get('/',    ctrl.getProducts);
+
+// Filter route - MUST come before /:id route
+router.get('/filter', ctrl.filterProducts);
+
 // Upload product image (needs to come before "/:id" route)
 router.post('/upload', upload.single('image'), (req, res) => {
   if (!req.file) {
@@ -27,10 +32,14 @@ router.post('/upload', upload.single('image'), (req, res) => {
   const url = `/uploads/products/${req.file.filename}`;
   res.json({ url });
 });
+
 // Upload products via Excel file
 router.post('/upload-excel', upload.single('file'), ctrl.uploadProductsFromExcel);
+
 // Export products to Excel file
 router.get('/export-excel', ctrl.exportProductsToExcel);
+
+// Parameterized route - MUST come after all specific routes
 router.get('/:id', ctrl.getProductById);
 router.post('/',   ctrl.createProduct);
 router.put('/:id', ctrl.updateProduct);
