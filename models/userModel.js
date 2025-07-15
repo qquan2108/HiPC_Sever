@@ -19,10 +19,15 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
+  facebookUid: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   password: {
     type: String,
     required: function () {
-      return !this.firebaseUid;
+      return !this.firebaseUid && !this.facebookUid;
     }
   },
   phone: {
