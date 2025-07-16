@@ -29,6 +29,8 @@ var tsktproductsRouter = require('./routes/tsktproducts');
 var brandsRouter = require('./routes/brands');
 var vouchersRouter = require('./routes/vouchers');
 var searchRouter = require('./routes/search');
+var comboRoutes = require('./routes/comboRoutes');
+var videoRoutes = require('./routes/videoRoutes');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -60,6 +62,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads/banners', express.static(uploadDir));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/videos', express.static('uploads/videos')); // cho phép truy cập file video
 
 // Đăng ký helper so sánh
 hbs.registerHelper('ifEquals', function (a, b, options) {
@@ -97,7 +100,8 @@ app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
-
+app.use('/combo',comboRoutes);
+app.use('/videocombo',videoRoutes);
 app.use('/vnpay', vnpayRouter);
 
 app.use('/reports', reportRoutes);

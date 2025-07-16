@@ -1,0 +1,47 @@
+<h1>Tải video mới</h1>
+
+<form action="/api/videos/upload" method="POST" enctype="multipart/form-data">
+  <label>Tiêu đề video:</label><br />
+  <input type="text" name="title" required><br /><br />
+
+  <label>Chọn combo có sẵn:</label><br />
+  <select name="comboIds" required>
+    {{#each combos}}
+      <option value="{{this._id}}">{{this.name}}</option>
+    {{/each}}
+  </select><br /><br />
+
+  <label>Chọn file video:</label><br />
+  <input type="file" name="video" accept="video/*" required><br /><br />
+
+  <button type="submit">Upload Video</button>
+</form>
+
+<hr>
+
+<h2>Hoặc tạo combo mới</h2>
+
+<form action="/api/combos" method="POST">
+  <label>Tên combo:</label><br />
+  <input type="text" name="name" required><br /><br />
+
+  <label>Giá combo (VNĐ):</label><br />
+  <input type="number" name="price" required><br /><br />
+
+  <label>Link ảnh đại diện combo:</label><br />
+  <input type="text" name="image"><br /><br />
+
+  <label>Chọn sản phẩm trong combo:</label><br />
+  <ul>
+    {{#each products}}
+      <li>
+        <label>
+          <input type="checkbox" name="productIds" value="{{this._id}}">
+          {{this.name}} - {{this.brand_id.name}} - {{this.price}}₫
+        </label>
+      </li>
+    {{/each}}
+  </ul>
+
+  <button type="submit">Tạo Combo</button>
+</form>
