@@ -1,0 +1,35 @@
+<h1>Danh sách Video</h1>
+
+<a href="/admin/videos/create">+ Tải video mới</a>
+
+<table border="1" cellpadding="8">
+  <thead>
+    <tr>
+      <th>Tiêu đề</th>
+      <th>Video</th>
+      <th>Combo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each videos}}
+    <tr>
+      <td>{{this.title}}</td>
+      <td>
+        <video src="{{this.videoUrl}}" width="200" controls></video>
+      </td>
+      <td>
+        {{#if this.comboIds}}
+          <strong>{{this.comboIds.name}}</strong>
+          <ul>
+            {{#each this.comboIds.productIds}}
+              <li>{{this.name}} - {{this.price}}₫</li>
+            {{/each}}
+          </ul>
+        {{else}}
+          Không có combo
+        {{/if}}
+      </td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>

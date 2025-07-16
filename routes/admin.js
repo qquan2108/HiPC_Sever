@@ -6,7 +6,8 @@ const Category = require('../models/Category');
 const Brand = require('../models/Brand');
 const TsktProduct = require('../models/TsktProduct');
 const User = require('../models/userModel');
-
+const Video = require('../models/Video');
+const Combo = require('../models/Combo');
 // Dashboard
 router.get('/dashboard', (req, res) => {
   res.render('admin/index', { layout: 'admin/layout' });
@@ -100,4 +101,26 @@ router.get('/orders/:id/edit', async (req, res) => {
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 
+router.get('/videos', async (req, res) => {
+  const videos = await Video.find().populate({
+    path: 'comboIds',
+    populate: { path: 'productIds' }
+  }).lean();
+
+  res.render('admin/videos', { layout: 'admin/layout', videos });
+});
+
+// Trang upload video
+router.get('/videos/create', async (req, res) => {
+  const [combos, products] = await Promise.all([
+    Combo.find().lean(),
+    Product.find().populate('brand_id').lean()
+  ]);
+
+  res.render('admin/video-form', {
+    layout: 'admin/layout',
+    combos,
+    products
+  });
+});
 module.exports = router;
