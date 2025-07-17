@@ -1,35 +1,734 @@
-<h1>Danh sách Video</h1>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Video - Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<a href="/admin/videos/create">+ Tải video mới</a>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-<table border="1" cellpadding="8">
-  <thead>
-    <tr>
-      <th>Tiêu đề</th>
-      <th>Video</th>
-      <th>Combo</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each videos}}
-    <tr>
-      <td>{{this.title}}</td>
-      <td>
-        <video src="{{this.videoUrl}}" width="200" controls></video>
-      </td>
-      <td>
-        {{#if this.comboIds}}
-          <strong>{{this.comboIds.name}}</strong>
-          <ul>
-            {{#each this.comboIds.productIds}}
-              <li>{{this.name}} - {{this.price}}₫</li>
-            {{/each}}
-          </ul>
-        {{else}}
-          Không có combo
-        {{/if}}
-      </td>
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 i {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .search-filter {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        .filter-select {
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent, rgba(0,0,0,0.7));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-card:hover .video-overlay {
+            opacity: 1;
+        }
+
+        .play-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        .play-btn i {
+            font-size: 1.5rem;
+            color: #3498db;
+            margin-left: 3px;
+        }
+
+        .video-info {
+            padding: 25px;
+        }
+
+        .video-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .combo-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .combo-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .products-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .product-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .product-price {
+            font-weight: 600;
+            color: #f1c40f;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .edit-btn {
+            background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+            color: white;
+        }
+
+        .delete-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .no-combo {
+            background: #95a5a6;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #bdc3c7;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-filter {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .videos-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-video"></i>
+                Quản Lý Video
+            </h1>
+            <a href="/admin/videos/create" class="add-btn">
+                <i class="fas fa-plus"></i>
+                Tải Video Mới
+            </a>
+        </div>
+
+        <div class="content">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-video"></i>
+                    <h3 id="totalVideos">0</h3>
+                    <p>Tổng Video</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-box"></i>
+                    <h3 id="totalCombos">0</h3>
+                    <p>Combo Liên Kết</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <h3 id="recentUploads">0</h3>
+                    <p>Tải Lên Gần Đây</p>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="search-filter">
+                <div class="search-box">
+                    <input type="text" placeholder="Tìm kiếm video..." id="searchInput">
+                    <i class="fas fa-search"></i>
+                </div>
+                <select class="filter-select" id="comboFilter">
+                    <option value="">Tất cả combo</option>
+                    <option value="with-combo">Có combo</option>
+                    <option value="no-combo">Không có combo</option>
+                </select>
+                <select class="filter-select" id="sortBy">
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="title">Theo tiêu đề</option>
+                </select>
+            </div>
+
+            <!-- Videos Grid -->
+            <div class="videos-grid" id="videosGrid">
+
+            </div>
+        </div>
+    </div>
+
+<script>
+        // Thay thế toàn bộ script cũ bằng script mới sau:
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Hiển thị trạng thái loading
+        document.getElementById('videosGrid').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        `;
+        
+        // Lấy dữ liệu video từ API
+        const response = await fetch('/admin/api/videos');
+        const videos = await response.json();
+        
+        updateStats(videos);
+        renderVideos(videos);
+        setupEventListeners();
+    } catch (error) {
+        console.error('Error fetching videos:', error);
+        showNotification('Không thể tải dữ liệu video', 'error');
+        renderErrorState();
+    }
+});
+function renderErrorState() {
+    document.getElementById('videosGrid').innerHTML = `
+        <div class="empty-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Lỗi tải dữ liệu</h3>
+            <p>Không thể kết nối đến server. Vui lòng thử lại sau.</p>
+        </div>
+    `;
+}
+
+function updateStats(videos) {
+    document.getElementById('totalVideos').textContent = videos.length;
+    
+    // Sửa lại cách đếm video có combo
+    const videosWithCombo = videos.filter(v => v.comboIds && v.comboIds.length > 0).length;
+    document.getElementById('totalCombos').textContent = videosWithCombo;
+    
+    // Tính số video tải lên trong 7 ngày gần đây
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const recentUploads = videos.filter(v => new Date(v.createdAt) > oneWeekAgo).length;
+    document.getElementById('recentUploads').textContent = recentUploads;
+}
+
+function renderVideos(videos) {
+    const videosGrid = document.getElementById('videosGrid');
+    videosGrid.innerHTML = '';
+
+    if (videos.length === 0) {
+        videosGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-video-slash"></i>
+                <h3>Không có video nào</h3>
+                <p>Bạn chưa tải lên video nào. Nhấn nút "Tải Video Mới" để bắt đầu.</p>
+            </div>
+        `;
+        return;
+    }
+
+    videos.forEach(video => {
+        const videoCard = createVideoCard(video);
+        videosGrid.appendChild(videoCard);
+    });
+}
+
+function createVideoCard(video) {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    card.dataset.id = video._id;
+    
+    let comboHtml = '';
+    if (video.comboIds && video.comboIds.length > 0) {
+        // Xử lý trường hợp comboIds là mảng
+        comboHtml = video.comboIds.map(combo => `
+            <div class="combo-info">
+                <div class="combo-name">
+                    <i class="fas fa-box"></i>
+                    ${combo.name}
+                </div>
+                <div class="products-list">
+                    ${combo.productIds.map(product => `
+                        <div class="product-item">
+                            <span>${product.name}</span>
+                            <span class="product-price">${formatPrice(product.price)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    } else {
+        comboHtml = `
+            <div class="no-combo">
+                <i class="fas fa-info-circle"></i>
+                Không có combo liên kết
+            </div>
+        `;
+    }
+    
+    card.innerHTML = `
+        <div class="video-container">
+            <video preload="metadata">
+                <source src="${video.videoUrl}" type="video/mp4">
+            </video>
+            <div class="video-overlay">
+                <button class="play-btn">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+        </div>
+        <div class="video-info">
+            <div class="video-title">${video.title}</div>
+            ${comboHtml}
+            <div class="video-actions">
+                <button class="action-btn edit-btn">
+                    <i class="fas fa-edit"></i>
+                    Sửa
+                </button>
+                <button class="action-btn delete-btn">
+                    <i class="fas fa-trash"></i>
+                    Xóa
+                </button>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+            document.getElementById('comboFilter').addEventListener('change', handleFilter);
+            document.getElementById('sortBy').addEventListener('change', handleSort);
+
+            // Video play buttons (sử dụng event delegation)
+            document.getElementById('videosGrid').addEventListener('click', function(e) {
+                if (e.target.closest('.play-btn')) {
+                    const btn = e.target.closest('.play-btn');
+                    const video = btn.closest('.video-container').querySelector('video');
+                    
+                    if (video.paused) {
+                        video.play();
+                        btn.innerHTML = '<i class="fas fa-pause"></i>';
+                    } else {
+                        video.pause();
+                        btn.innerHTML = '<i class="fas fa-play"></i>';
+                    }
+                }
+                
+                // Xử lý nút xóa
+                if (e.target.closest('.delete-btn')) {
+                    const card = e.target.closest('.video-card');
+                    const videoId = card.dataset.id;
+                    deleteVideo(videoId);
+                }
+                
+                // Xử lý nút sửa
+                if (e.target.closest('.edit-btn')) {
+                    const card = e.target.closest('.video-card');
+                    const videoId = card.dataset.id;
+                    window.location.href = `/admin/videos/edit/${videoId}`;
+                }
+            });
+        }
+
+async function deleteVideo(videoId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa video này?')) return;
+    
+    try {
+        const response = await fetch(`/admin/videos/${videoId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            showNotification('Video đã được xóa thành công', 'success');
+            // Làm mới danh sách video
+            const newResponse = await fetch('/admin/api/videos');
+            const videos = await newResponse.json();
+            renderVideos(videos);
+            updateStats(videos);
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Xóa video không thành công');
+        }
+    } catch (error) {
+        console.error('Error deleting video:', error);
+        showNotification('Xóa video không thành công: ' + error.message, 'error');
+    }
+}
+
+        async function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            try {
+                const response = await fetch(`/admin/videos?search=${encodeURIComponent(searchTerm)}`);
+                const videos = await response.json();
+                renderVideos(videos);
+            } catch (error) {
+                console.error('Error searching videos:', error);
+                showNotification('Tìm kiếm không thành công', 'error');
+            }
+        }
+
+async function handleFilter() {
+    const filterValue = document.getElementById('comboFilter').value;
+    try {
+        let url = '/admin/api/videos';
+        if (filterValue === 'with-combo') {
+            url += '?hasCombo=true';
+        } else if (filterValue === 'no-combo') {
+            url += '?hasCombo=false';
+        }
+        
+        const response = await fetch(url);
+        const videos = await response.json();
+        renderVideos(videos);
+    } catch (error) {
+        console.error('Error filtering videos:', error);
+        showNotification('Lọc video không thành công', 'error');
+    }
+}
+
+        async function handleSort() {
+            const sortValue = document.getElementById('sortBy').value;
+            try {
+                let url = '/admin/videos?sort=';
+                if (sortValue === 'newest') {
+                    url += '-createdAt';
+                } else if (sortValue === 'oldest') {
+                    url += 'createdAt';
+                } else if (sortValue === 'title') {
+                    url += 'title';
+                }
+                
+                const response = await fetch(url);
+                const videos = await response.json();
+                renderVideos(videos);
+            } catch (error) {
+                console.error('Error sorting videos:', error);
+                showNotification('Sắp xếp video không thành công', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.innerHTML = `<span>${message}</span>`;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(price);
+        }
+    </script>
+</body>
+</html>

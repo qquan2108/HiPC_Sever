@@ -8,6 +8,7 @@ const TsktProduct = require('../models/TsktProduct');
 const User = require('../models/userModel');
 const Video = require('../models/Video');
 const Combo = require('../models/Combo');
+
 // Dashboard
 router.get('/dashboard', (req, res) => {
   res.render('admin/index', { layout: 'admin/layout' });
@@ -122,5 +123,73 @@ router.get('/videos/create', async (req, res) => {
     combos,
     products
   });
+});
+
+// API endpoints để lấy dữ liệu JSON
+router.get('/api/combos', async (req, res) => {
+  try {
+    const combos = await Combo.find().populate('productIds');
+    res.json(combos);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/api/products', async (req, res) => {
+  try {
+    const products = await Product.find().populate('brand_id').lean();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Thêm route API mới trước module.exports
+router.get('/api/videos', async (req, res) => {
+    try {
+        const { search, hasCombo, sort } = req.query;
+        
+        let query = {};
+        
+        if (search) {
+            query.title = { $regex: search, $options: 'i' };
+        }
+        
+        if (hasCombo === 'true') {
+            query.comboIds = { $exists: true, $not: { $size: 0 } };
+        } else if (hasCombo === 'false') {
+            query.$or = [
+                { comboIds: { $exists: false } },
+                { comboIds: { $size: 0 } }
+            ];
+        }
+        
+        let sortOption = '-createdAt';
+        if (sort === 'createdAt') sortOption = 'createdAt';
+        if (sort === 'title') sortOption = 'title';
+        
+        const videos = await Video.find(query)
+            .sort(sortOption)
+            .populate({
+                path: 'comboIds',
+                populate: {
+                    path: 'productIds',
+                    model: 'Product'
+                }
+            });
+
+        res.json(videos);
+    } catch (err) {
+        console.error('Error in /api/videos:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+router.delete('/videos/:id', async (req, res) => {
+  try {
+    await Video.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Video đã được xóa thành công' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 module.exports = router;
