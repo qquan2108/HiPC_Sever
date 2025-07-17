@@ -44,5 +44,5 @@ router.get('/:id', ctrl.getProductById);
 router.post('/',   ctrl.createProduct);
 router.put('/:id', ctrl.updateProduct);
 router.delete('/:id', ctrl.deleteProduct);
-
+router.get('/',ctrl.getAllProducts);
 module.exports = router;
