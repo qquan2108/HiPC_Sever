@@ -193,8 +193,12 @@
                         class="search-input w-full pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:ring-0 text-gray-700"
                     />
                 </div>
-                <!-- Status Tabs -->
-                <div id="statusTabs" class="flex flex-wrap gap-3"></div>
+                <!-- Status Dropdown -->
+                <div>
+                    <select id="statusFilter" class="rounded-xl px-4 py-3 border text-gray-700 focus:outline-none">
+                        <option value="">Tất cả trạng thái</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -241,26 +245,33 @@
                 </table>
             </div>
         </div>
+        <div id="pagination" class="mt-4 flex justify-center space-x-2"></div>
     </div>
 
     <script>
         let currentStatus = '';
         let currentOrders = [];
         let isLoading = false;
+        let currentPage = 1;
+        let totalPages = 1;
 
         async function fetchStatusTabs() {
             const res = await fetch('/orders/status-tabs');
             return await res.json();
         }
 
-        async function fetchOrders(status = '', query = '') {
+        const LIMIT = 10;
+        async function fetchOrders(status = '', query = '', page = 1) {
             setLoading(true);
             let url = '/orders?';
             if (status) url += `status=${encodeURIComponent(status)}&`;
             if (query) url += `q=${encodeURIComponent(query)}&`;
+            url += `page=${page}&limit=${LIMIT}`;
             const res = await fetch(url);
             const data = await res.json();
-            currentOrders = data;
+            currentOrders = data.data;
+            totalPages = data.totalPages;
+            currentPage = data.page;
             setLoading(false);
             return data;
         }
@@ -297,23 +308,15 @@
             return texts[status] || status;
         }
 
-        function renderStatusTabs(tabs) {
-            const container = document.getElementById('statusTabs');
-            container.innerHTML = '';
+        function renderStatusOptions(tabs) {
+            const select = document.getElementById('statusFilter');
+            select.innerHTML = '<option value="">Tất cả trạng thái</option>';
             tabs.forEach(tab => {
-                const btn = document.createElement('button');
-                btn.innerHTML = `<i class="${tab.icon} mr-2"></i>${tab.label}`;
-                btn.className = `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                    tab.key === currentStatus ? 'tab-active' : 'tab-inactive'
-                }`;
-                btn.onclick = async () => {
-                    currentStatus = tab.key;
-                    document.getElementById('searchInput').value = '';
-                    await fetchOrders(currentStatus);
-                    renderOrders(currentOrders);
-                    renderStatusTabs(tabs);
-                };
-                container.appendChild(btn);
+                const opt = document.createElement('option');
+                opt.value = tab.key;
+                opt.textContent = tab.label;
+                if (tab.key === currentStatus) opt.selected = true;
+                select.appendChild(opt);
             });
         }
 
@@ -345,12 +348,11 @@
                     currency: 'VND'
                 }).format(order.total);
 
-                // Hiển thị danh sách sản phẩm và số lượng, mỗi sản phẩm 1 dòng
+                // Tổng số lượng sản phẩm trong đơn
                 let productsHtml = '';
                 if (Array.isArray(order.products)) {
-                    productsHtml = order.products.map(p =>
-                        `<div><strong>${p.product?.name || 'Sản phẩm'}</strong> <span class="qty">x${p.quantity}</span></div>`
-                    ).join('');
+                    const totalQty = order.products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+                    productsHtml = `<div><strong>${totalQty}</strong> sản phẩm</div>`;
                 }
 
                 const tr = document.createElement('tr');
@@ -403,6 +405,25 @@
                 `;
                 tbody.appendChild(tr);
             });
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(total) {
+            const container = document.getElementById('pagination');
+            container.innerHTML = '';
+            if (total <= 1) return;
+            for (let i = 1; i <= total; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `px-3 py-1 rounded text-sm ${i === currentPage ? 'bg-purple-500 text-white' : 'bg-white text-purple-500 border border-purple-500'}`;
+                btn.onclick = async () => {
+                    if (i === currentPage) return;
+                    currentPage = i;
+                    await fetchOrders(currentStatus, document.getElementById('searchInput').value.trim(), currentPage);
+                    renderOrders(currentOrders);
+                };
+                container.appendChild(btn);
+            }
         }
 
         function editOrder(id) {
@@ -449,13 +470,19 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             const tabs = await fetchStatusTabs();
-            renderStatusTabs(tabs);
+            renderStatusOptions(tabs);
             await fetchOrders();
             renderOrders(currentOrders);
 
             document.getElementById('searchInput').addEventListener('input', async (e) => {
                 const query = e.target.value.trim();
-                await fetchOrders(currentStatus, query);
+                await fetchOrders(currentStatus, query, 1);
+                renderOrders(currentOrders);
+            });
+
+            document.getElementById('statusFilter').addEventListener('change', async (e) => {
+                currentStatus = e.target.value;
+                await fetchOrders(currentStatus, document.getElementById('searchInput').value.trim(), 1);
                 renderOrders(currentOrders);
             });
         });

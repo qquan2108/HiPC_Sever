@@ -166,29 +166,38 @@ router.put('/:orderId/status', orderCtrl.updateStatus);
 // 9) Hủy đơn (giữ logic hoàn stock)
 router.put('/:orderId/cancel', orderCtrl.cancelOrder);
 
-// 10) Lấy tất cả đơn (GET /orders)
+// 10) Lấy tất cả đơn (GET /orders) với phân trang
 router.get('/', async (req, res) => {
   try {
-    const { status, q } = req.query;
+    const { status, q, page = 1, limit = 10 } = req.query;
     const filter = {};
     if (status) filter.status = status;
 
-    const orders = await Order.find(filter)
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Order.countDocuments(filter);
+
+    let orders = await Order.find(filter)
       .populate('products.productId')
       .populate('user_id', 'full_name')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
       .lean();
 
-    let result = orders;
     if (q) {
       const keyword = q.toLowerCase();
-      result = orders.filter(o =>
+      orders = orders.filter(o =>
         o._id.toString().toLowerCase().includes(keyword) ||
         (o.user_id?.full_name && o.user_id.full_name.toLowerCase().includes(keyword))
       );
     }
 
-    res.json(result);
+    res.json({
+      data: orders,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
