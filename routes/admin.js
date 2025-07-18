@@ -192,4 +192,15 @@ router.delete('/videos/:id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+router.post('/api/cart', async (req, res) => {
+  try {
+    const { comboId } = req.body;
+    // Thêm logic xử lý giỏ hàng ở đây
+    // Ví dụ: thêm combo vào giỏ hàng của user
+    
+    res.json({ success: true, message: 'Đã thêm vào giỏ hàng' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 module.exports = router;
