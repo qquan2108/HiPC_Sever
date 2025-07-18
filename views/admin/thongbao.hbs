@@ -1,14 +1,130 @@
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <!-- Toastr CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<style>
+  body {
+    background: linear-gradient(120deg, #a18cd1 0%, #fbc2eb 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+  }
+  .card {
+    border-radius: 1.2rem;
+    box-shadow: 0 4px 24px 0 rgba(161,140,209,0.10);
+    border: none;
+  }
+  .card-header {
+    background: linear-gradient(90deg, #a18cd1 0%, #fbc2eb 100%);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 1.2rem 1.2rem 0 0;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+  }
+  .btn-primary, .btn-success, .btn-danger {
+    border-radius: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px 0 rgba(161,140,209,0.10);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #ffb6b9 0%, #a18cd1 100%);
+    border: none;
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(90deg, #a18cd1 0%, #ffb6b9 100%);
+    transform: translateY(-2px) scale(1.03);
+    color: #fff;
+  }
+  .btn-success {
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    border: none;
+    color: #fff;
+  }
+  .btn-success:hover {
+    background: linear-gradient(90deg, #38f9d7 0%, #43e97b 100%);
+    color: #fff;
+  }
+  .btn-danger {
+    background: linear-gradient(90deg, #f5576c 0%, #f093fb 100%);
+    border: none;
+    color: #fff;
+  }
+  .btn-danger:hover {
+    background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    color: #fff;
+  }
+  .form-label {
+    color: #a18cd1;
+    font-weight: 500;
+  }
+  .form-select, .form-control {
+    border-radius: 0.8rem;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 1px 4px 0 rgba(161,140,209,0.07);
+    font-size: 1rem;
+    transition: box-shadow 0.2s, background 0.2s;
+  }
+  .form-select:focus, .form-control:focus {
+    box-shadow: 0 0 0 2px #a18cd1, 0 0 8px #fbc2eb;
+    background: #fff;
+  }
+  .list-group-item {
+    border-radius: 0.7rem !important;
+    margin-bottom: 0.5rem;
+    border: none;
+    transition: background 0.2s;
+  }
+  .list-group-item-action:focus, .list-group-item-action:hover {
+    background: #fbc2eb33;
+  }
+  .list-group-item-secondary {
+    background: #f3e8ff !important;
+    color: #a18cd1 !important;
+  }
+  .badge {
+    font-size: 0.95em;
+    padding: 0.5em 1em;
+    border-radius: 1em;
+    font-weight: 500;
+  }
+  #notifDetail .card-header {
+    background: linear-gradient(90deg, #a18cd1 0%, #fbc2eb 100%);
+    color: #fff;
+    border-radius: 1.2rem 1.2rem 0 0;
+  }
+  #notifDetail .card-footer {
+    background: #fff;
+    border-radius: 0 0 1.2rem 1.2rem;
+    border-top: none;
+  }
+  #emptyState {
+    font-size: 1.1rem;
+    color: #a18cd1;
+    margin-top: 3rem;
+    opacity: 0.7;
+  }
+  @media (max-width: 991px) {
+    .container {
+      padding: 0 0.5rem;
+    }
+    .row {
+      gap: 1.5rem 0;
+    }
+  }
+</style>
 
 <div class="container my-5">
-  <h2 class="mb-4">Thông Báo</h2>
-  <div class="card mb-4">
+  <h2 class="mb-4 fw-bold text-gradient" style="color:#a18cd1;">
+    <i class="fas fa-bell me-2"></i>Thông Báo
+  </h2>
+  <div class="card mb-4 shadow-sm">
     <div class="card-header">Tạo Thông Báo</div>
     <div class="card-body">
-      <form id="createForm" class="row g-3">
+      <form id="createForm" class="row g-3 align-items-end">
         <div class="col-md-3">
           <label class="form-label">Loại</label>
           <select id="typeInput" class="form-select">
@@ -27,7 +143,9 @@
           <input id="messageInput" class="form-control" required>
         </div>
         <div class="col-12 text-end">
-          <button class="btn btn-primary" type="submit">Gửi</button>
+          <button class="btn btn-primary px-4" type="submit">
+            <i class="fas fa-paper-plane me-2"></i>Gửi
+          </button>
         </div>
       </form>
     </div>
@@ -37,26 +155,38 @@
 
   <div class="row">
     <!-- Danh sách thông báo -->
-    <div class="col-md-4">
-      <div class="list-group" id="notifList"></div>
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white text-gradient fw-bold" style="color:#a18cd1;">
+          <i class="fas fa-list me-2"></i>Danh sách thông báo
+        </div>
+        <div class="card-body p-2" style="min-height: 350px;">
+          <div class="list-group" id="notifList"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Chi tiết thông báo -->
-    <div class="col-md-8">
-      <div id="notifDetail" class="card d-none">
+    <div class="col-md-8 mb-4">
+      <div id="notifDetail" class="card d-none shadow-sm">
         <div class="card-header">
-          <h5 id="notifDetailTitle"></h5>
-          <small id="notifDetailDate" class="text-muted"></small>
+          <h5 id="notifDetailTitle" class="mb-1"></h5>
+          <small id="notifDetailDate" class="text-light"></small>
         </div>
         <div class="card-body">
-          <p id="notifDetailMessage"></p>
+          <p id="notifDetailMessage" class="mb-0"></p>
         </div>
-        <div class="card-footer">
-          <button id="markReadBtn" class="btn btn-success me-2">Đánh dấu đã đọc</button>
-          <button id="deleteBtn" class="btn btn-danger">Xóa</button>
+        <div class="card-footer d-flex justify-content-end gap-2">
+          <button id="markReadBtn" class="btn btn-success me-2">
+            <i class="fas fa-check-circle me-1"></i>Đánh dấu đã đọc
+          </button>
+          <button id="deleteBtn" class="btn btn-danger">
+            <i class="fas fa-trash me-1"></i>Xóa
+          </button>
         </div>
       </div>
       <div id="emptyState" class="text-center text-muted mt-5">
+        <i class="fas fa-bell-slash fa-2x mb-3"></i><br>
         Chọn một thông báo để xem chi tiết.
       </div>
     </div>
@@ -65,7 +195,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
 <script>
@@ -85,11 +214,14 @@
       default:        toastr.info(message, title);
     }
   }
+
+  let notifications = [];
+
   document.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await fetch('/notifications');
       if (!res.ok) throw new Error('Không lấy được thông báo');
-      window.notifications = await res.json();
+      notifications = await res.json();
       renderList();
 
       // Hiển thị toast với những thông báo mới
@@ -125,12 +257,20 @@
       });
     } catch (err) {
       console.error(err);
+      document.getElementById('notifList').innerHTML = `<div class="text-danger p-3">Không thể tải danh sách thông báo.</div>`;
     }
   });
 
   function renderList() {
     const listEl = document.getElementById('notifList');
     listEl.innerHTML = '';
+
+    if (!notifications.length) {
+      document.getElementById('notifDetail').classList.add('d-none');
+      document.getElementById('emptyState').classList.remove('d-none');
+      listEl.innerHTML = `<div class="text-center text-muted py-4">Chưa có thông báo nào.</div>`;
+      return;
+    }
 
     notifications.forEach(n => {
       const a = document.createElement('a');
@@ -144,17 +284,28 @@
         </div>
         <span class="badge bg-${n.isRead ? 'secondary' : 'primary'} rounded-pill">${n.isRead ? 'Đã xem' : 'Mới'}</span>
       `;
-      a.addEventListener('click', () => showDetail(n._id));
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        showDetail(n._id);
+      });
       listEl.appendChild(a);
     });
+
+    // Nếu chưa chọn thông báo nào thì hiện emptyState
+    if (!document.getElementById('notifDetail').classList.contains('showing')) {
+      document.getElementById('notifDetail').classList.add('d-none');
+      document.getElementById('emptyState').classList.remove('d-none');
+    }
   }
 
   function showDetail(id) {
     const n = notifications.find(x => x._id === id);
+    if (!n) return;
     document.getElementById('notifDetailTitle').textContent = n.title;
     document.getElementById('notifDetailDate').textContent = new Date(n.createdAt).toLocaleString();
     document.getElementById('notifDetailMessage').textContent = n.message;
     document.getElementById('notifDetail').classList.remove('d-none');
+    document.getElementById('notifDetail').classList.add('showing');
     document.getElementById('emptyState').classList.add('d-none');
 
     document.getElementById('markReadBtn').onclick = () => markRead(id);
@@ -177,6 +328,7 @@
 
   function resetDetail() {
     document.getElementById('notifDetail').classList.add('d-none');
+    document.getElementById('notifDetail').classList.remove('showing');
     document.getElementById('emptyState').classList.remove('d-none');
   }
 </script>

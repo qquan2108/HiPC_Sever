@@ -1,29 +1,219 @@
-{{#*inline "title"}}
+  {{#*inline "title"}}
   {{#ifEquals mode 'edit'}}Chỉnh sửa sản phẩm{{else}}Tạo sản phẩm{{/ifEquals}}
 {{/inline}}
 
-<link rel="stylesheet" href="/admin/static/css/form.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-<div class="form-scroll-container">
+<style>
+  body {
+    min-height: 100vh;
+  }
+  .product-form-card {
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(18px);
+    border-radius: 2rem;
+    box-shadow: 0 12px 40px 0 rgba(161,140,209,0.25), 0 1.5px 8px 0 #fff2;
+    max-width: 540px;
+    margin: 48px auto;
+    padding: 2.7rem 2.2rem 2.2rem 2.2rem;
+    animation: fadeInUp 0.9s cubic-bezier(.39,.575,.565,1) both;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(40px);}
+    100% { opacity: 1; transform: translateY(0);}
+  }
+  .product-form-card h2 {
+    color: #a18cd1;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1.7rem;
+    text-shadow: 0 2px 12px #fbc2eb55, 0 1px 0 #fff;
+    letter-spacing: 1px;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    animation: fadeIn 1.2s;
+  }
+  .form-label {
+    color: #6c3483;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.5px;
+  }
+  .form-control, .form-select {
+    border-radius: 1rem;
+    border: none;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 2px 8px 0 rgba(161,140,209,0.08);
+    transition: box-shadow 0.2s, background 0.2s;
+    font-size: 1.05rem;
+    padding: 0.7rem 1rem;
+  }
+  .form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 2px #a18cd1, 0 0 8px #fbc2eb;
+    background: #fff;
+  }
+  .input-group-text {
+    background: rgba(255,255,255,0.7);
+    border: none;
+    color: #a18cd1;
+    border-radius: 1rem 0 0 1rem;
+    font-size: 1.1rem;
+    transition: background 0.2s;
+  }
+  .input-group:focus-within .input-group-text {
+    background: #fbc2eb;
+    color: #fff;
+  }
+  .spec-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.7rem;
+    background: rgba(255,255,255,0.6);
+    border-radius: 0.7rem;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 1px 4px 0 rgba(161,140,209,0.07);
+    transition: box-shadow 0.2s;
+  }
+  .spec-item label {
+    min-width: 120px;
+    color: #a18cd1;
+    font-weight: 500;
+    margin-bottom: 0;
+  }
+  .spec-item input {
+    flex: 1;
+    border-radius: 0.7rem;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: box-shadow 0.2s;
+  }
+  .spec-item input:focus {
+    box-shadow: 0 0 0 2px #a18cd1, 0 0 8px #fbc2eb;
+    background: #fff;
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #ffb6b9 0%, #a18cd1 100%);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 16px 0 rgba(255,182,185,0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    padding: 0.7rem 2.2rem;
+  }
+  .btn-primary:before {
+    content: "";
+    position: absolute;
+    left: -75%;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    background: rgba(255,255,255,0.2);
+    transform: skewX(-20deg);
+    transition: left 0.4s;
+    z-index: 0;
+  }
+  .btn-primary:hover:before {
+    left: 120%;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 24px 0 rgba(255,182,185,0.25);
+  }
+  .btn-secondary {
+    border-radius: 1rem;
+    padding: 0.7rem 2.2rem;
+    background: #fff;
+    color: #a18cd1;
+    border: 1.5px solid #a18cd1;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+  }
+  .btn-secondary:hover {
+    background: #a18cd1;
+    color: #fff;
+    border: 1.5px solid #a18cd1;
+  }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.7rem;
+  }
+  .fade-in {
+    animation: fadeIn 1.2s;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0;}
+    to { opacity: 1;}
+  }
+  /* Hiệu ứng icon khi focus input */
+  .input-group:focus-within .input-group-text i {
+    animation: bounce 0.5s;
+    color: #fff;
+    text-shadow: 0 0 8px #a18cd1;
+  }
+  @keyframes bounce {
+    0% { transform: scale(1);}
+    30% { transform: scale(1.2);}
+    60% { transform: scale(0.95);}
+    100% { transform: scale(1);}
+  }
+  #imagePreview {
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px 0 rgba(161,140,209,0.13);
+    max-width: 100%;
+    max-height: 120px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  #descriptionEditor {
+    border-radius: 1rem;
+    background: #fff;
+    margin-bottom: 0.5rem;
+  }
+</style>
+
+<div class="product-form-card fade-in">
+  <h2>
+    {{#ifEquals mode 'edit'}}<i class="fas fa-edit"></i> Chỉnh sửa sản phẩm{{else}}<i class="fas fa-plus"></i> Tạo sản phẩm{{/ifEquals}}
+  </h2>
   <form id="productForm" data-mode="{{mode}}">
     {{#ifEquals mode 'edit'}}
       <input type="hidden" name="id" value="{{product._id}}">
     {{/ifEquals}}
 
-    <div class="form-group">
-      <label>Danh mục</label>
-      <select name="category_id" id="categorySelect" required>
-        <option value="">-- Chọn danh mục --</option>
-        {{#each categories}}
-          <option value="{{_id}}" {{#ifEquals _id ../product.category_id._id}}selected{{/ifEquals}}>
-            {{name}}
-          </option>
-        {{/each}}
-      </select>
+    <div class="mb-3">
+      <label class="form-label">Danh mục</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-list"></i></span>
+        <select class="form-select" name="category_id" id="categorySelect" required>
+          <option value="">-- Chọn danh mục --</option>
+          {{#each categories}}
+            <option value="{{_id}}" {{#ifEquals _id ../product.category_id._id}}selected{{/ifEquals}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Thông số kỹ thuật</label>
+    <div class="mb-3">
+      <label class="form-label">Thông số kỹ thuật</label>
       <div id="specContainer">
         {{#ifEquals mode 'edit'}}
           {{#each product.specifications}}
@@ -36,48 +226,62 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Brand</label>
-      <select name="brand_id" id="brandSpinner" required>
-        <option value="">-- Chọn brand --</option>
-        {{#each brands}}
-          <option value="{{_id}}" {{#ifEquals _id ../product.brand_id._id}}selected{{/ifEquals}}>
-            {{name}}
-          </option>
-        {{/each}}
-      </select>
+    <div class="mb-3">
+      <label class="form-label">Brand</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-copyright"></i></span>
+        <select class="form-select" name="brand_id" id="brandSpinner" required>
+          <option value="">-- Chọn brand --</option>
+          {{#each brands}}
+            <option value="{{_id}}" {{#ifEquals _id ../product.brand_id._id}}selected{{/ifEquals}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Tên sản phẩm</label>
-      <input type="text" name="name" value="{{product.name}}" required>
+    <div class="mb-3">
+      <label class="form-label">Tên sản phẩm</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-tag"></i></span>
+        <input type="text" class="form-control" name="name" value="{{product.name}}" required>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Giá (VNĐ)</label>
-      <input type="number" name="price" value="{{product.price}}" min="0" required>
+    <div class="mb-3">
+      <label class="form-label">Giá (VNĐ)</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
+        <input type="number" class="form-control" name="price" value="{{product.price}}" min="0" required>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Stock</label>
-      <input type="number" name="stock" value="{{product.stock}}" min="0" required>
+    <div class="mb-3">
+      <label class="form-label">Stock</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-boxes"></i></span>
+        <input type="number" class="form-control" name="stock" value="{{product.stock}}" min="0" required>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Ảnh sản phẩm</label>
-      <input type="file" id="imageFile" accept="image/*">
-      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2" {{#unless product.image}}style="display:none"{{/unless}}>
+    <div class="mb-3">
+      <label class="form-label">Ảnh sản phẩm</label>
+      <input type="file" id="imageFile" accept="image/*" class="form-control">
+      <img id="imagePreview" src="{{product.image}}" {{#unless product.image}}style="display:none"{{/unless}}>
       <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
 
-    <div class="form-group">
-      <label>Mô tả</label>
+    <div class="mb-3">
+      <label class="form-label">Mô tả</label>
       <div id="descriptionEditor" style="height:150px"></div>
       <input type="hidden" name="description" id="descriptionInput">
     </div>
 
     <div class="modal-footer">
-      <button type="submit" class="btn btn-primary">Lưu</button>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save me-2"></i>Lưu
+      </button>
       <a href="/admin/products" class="btn btn-secondary">Hủy</a>
     </div>
   </form>
