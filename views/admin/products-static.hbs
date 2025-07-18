@@ -41,22 +41,19 @@
       <tbody id="productTable" class="bg-white divide-y divide-gray-200"></tbody>
     </table>
 
-    <!-- sentinel để infinite scroll -->
-    <div id="scrollSentinel" class="h-1"></div>
+    </div>
+    <div id="pagination" class="mt-4 flex justify-center space-x-2"></div>
   </div>
-</div>
 
 <script>
-  // Khi DOM sẵn sàng, khởi động fetch & scroll
+  // Khi DOM sẵn sàng, khởi động fetch
   document.addEventListener('DOMContentLoaded', () => {
-    initProductScroll();
     fetchProducts(1);
     const search = document.getElementById('searchInput');
     if (search) {
       search.addEventListener('input', () => {
         productQuery = search.value.trim();
         currentPage = 1;
-        hasMore = true;
         fetchProducts(1, productQuery);
       });
     }

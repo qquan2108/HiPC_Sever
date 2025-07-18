@@ -8,6 +8,7 @@ const TsktProduct = require('../models/TsktProduct');
 const User = require('../models/userModel');
 const Video = require('../models/Video');
 const Combo = require('../models/Combo');
+const Image = require('../models/Image');
 
 // Dashboard
 router.get('/dashboard', (req, res) => {
@@ -138,7 +139,17 @@ router.get('/api/combos', async (req, res) => {
 router.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find().populate('brand_id').lean();
-    res.json(products);
+    const ids = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: ids } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) imageMap[img.product_id] = img.url;
+    });
+    const productsWithImage = products.map(p => ({
+      ...p,
+      image: imageMap[p._id] || null
+    }));
+    res.json(productsWithImage);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

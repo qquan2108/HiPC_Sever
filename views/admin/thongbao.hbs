@@ -174,7 +174,11 @@
           <small id="notifDetailDate" class="text-light"></small>
         </div>
         <div class="card-body">
-          <p id="notifDetailMessage" class="mb-0"></p>
+          <p id="notifDetailMessage" class="mb-2"></p>
+          <div id="notifOrder" class="border-top pt-2 d-none">
+            <h6 class="mb-1">Thông tin đơn hàng</h6>
+            <div id="notifOrderInfo" class="small"></div>
+          </div>
         </div>
         <div class="card-footer d-flex justify-content-end gap-2">
           <button id="markReadBtn" class="btn btn-success me-2">
@@ -304,6 +308,20 @@
     document.getElementById('notifDetailTitle').textContent = n.title;
     document.getElementById('notifDetailDate').textContent = new Date(n.createdAt).toLocaleString();
     document.getElementById('notifDetailMessage').textContent = n.message;
+    const orderInfoDiv = document.getElementById('notifOrder');
+    const orderContent = document.getElementById('notifOrderInfo');
+    if (n.relatedOrder) {
+      orderInfoDiv.classList.remove('d-none');
+      const o = n.relatedOrder;
+      orderContent.innerHTML = `
+        <div><strong>Mã đơn:</strong> ${o._id}</div>
+        <div><strong>Khách:</strong> ${o.user_id?.full_name || ''}</div>
+        <div><strong>Tổng:</strong> ${o.total || o.total_price || 0}</div>
+        <div><strong>Trạng thái:</strong> ${o.status}</div>`;
+    } else {
+      orderInfoDiv.classList.add('d-none');
+      orderContent.innerHTML = '';
+    }
     document.getElementById('notifDetail').classList.remove('d-none');
     document.getElementById('notifDetail').classList.add('showing');
     document.getElementById('emptyState').classList.add('d-none');
@@ -330,5 +348,11 @@
     document.getElementById('notifDetail').classList.add('d-none');
     document.getElementById('notifDetail').classList.remove('showing');
     document.getElementById('emptyState').classList.remove('d-none');
+    const orderDiv = document.getElementById('notifOrder');
+    const orderContent = document.getElementById('notifOrderInfo');
+    if (orderDiv && orderContent) {
+      orderDiv.classList.add('d-none');
+      orderContent.innerHTML = '';
+    }
   }
 </script>
