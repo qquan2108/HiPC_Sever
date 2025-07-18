@@ -17,34 +17,110 @@
 
   <style>
     body {
-      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      background: linear-gradient(120deg, #a18cd1 0%, #fbc2eb 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float 10s infinite linear;
+      z-index: 0;
+    }
+    .bubble1 { width: 120px; height: 120px; left: 10%; top: 10%; background: #fff; animation-delay: 0s;}
+    .bubble2 { width: 80px; height: 80px; right: 15%; top: 30%; background: #ffb6b9; animation-delay: 2s;}
+    .bubble3 { width: 100px; height: 100px; left: 20%; bottom: 15%; background: #a18cd1; animation-delay: 4s;}
+    .bubble4 { width: 60px; height: 60px; right: 20%; bottom: 10%; background: #fbc2eb; animation-delay: 6s;}
+    @keyframes float {
+      0% { transform: translateY(0) scale(1);}
+      50% { transform: translateY(-40px) scale(1.1);}
+      100% { transform: translateY(0) scale(1);}
     }
     .login-card {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 1rem;
-      padding: 2rem;
-      max-width: 400px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      border-radius: 1.5rem;
+      padding: 2.5rem 2rem 2rem 2rem;
+      max-width: 410px;
       width: 100%;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 12px 40px 0 rgba(161, 140, 209, 0.25);
+      position: relative;
+      z-index: 1;
+      animation: fadeInUp 1s cubic-bezier(.39,.575,.565,1) both;
+    }
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(40px);}
+      100% { opacity: 1; transform: translateY(0);}
+    }
+    .login-card .form-label, .login-card h2 {
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(161,140,209,0.2);
+    }
+    .login-card .input-group-text {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #a18cd1;
+    }
+    .login-card .form-control {
+      background: rgba(255,255,255,0.25);
+      border: none;
+      color: #333;
+      transition: box-shadow 0.2s;
+    }
+    .login-card .form-control:focus {
+      box-shadow: 0 0 0 2px #a18cd1;
+      background: rgba(255,255,255,0.4);
     }
     .btn-primary {
-      background: linear-gradient(to right, #ff6f61, #de4d7b);
+      background: linear-gradient(90deg, #ffb6b9 0%, #a18cd1 100%);
       border: none;
-      transition: transform 0.2s;
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 16px 0 rgba(255,182,185,0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:before {
+      content: "";
+      position: absolute;
+      left: -75%;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background: rgba(255,255,255,0.2);
+      transform: skewX(-20deg);
+      transition: left 0.4s;
+      z-index: 0;
+    }
+    .btn-primary:hover:before {
+      left: 120%;
     }
     .btn-primary:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 0 8px 24px 0 rgba(255,182,185,0.25);
     }
     .error-message {
       color: #ff4d4d;
-      font-size: 0.875rem;
+      font-size: 0.95rem;
       margin-top: 0.5rem;
+      min-height: 1.2em;
+      text-align: center;
+      animation: shake 0.3s;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0);}
+      25% { transform: translateX(-5px);}
+      50% { transform: translateX(5px);}
+      75% { transform: translateX(-5px);}
+      100% { transform: translateX(0);}
     }
     .spinner {
       display: none;
@@ -52,43 +128,91 @@
     .spinner.active {
       display: inline-block;
     }
+    .fade-in {
+      animation: fadeIn 1.2s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0;}
+      to { opacity: 1;}
+    }
+    .glow-on-focus:focus {
+      box-shadow: 0 0 0 2px #fbc2eb, 0 0 8px #a18cd1;
+    }
+    .login-card .forgot-link {
+      color: #fff;
+      text-decoration: underline;
+      opacity: 0.85;
+      transition: opacity 0.2s;
+    }
+    .login-card .forgot-link:hover {
+      opacity: 1;
+      text-shadow: 0 2px 8px #fbc2eb;
+    }
   </style>
 </head>
 <body>
-  <div class="login-card fade-in">
+  <div class="bubble bubble1"></div>
+  <div class="bubble bubble2"></div>
+  <div class="bubble bubble3"></div>
+  <div class="bubble bubble4"></div>
+  <div class="login-card fade-in shadow-lg">
     <div class="text-center mb-4">
-      <img src="/admin/static/images/logo.png" alt="HIPC Logo" class="mb-3" style="max-width: 100px;" />
-      <h2 class="text-white">Đăng nhập Admin</h2>
+      <img src="/admin/static/images/logo.png" alt="HIPC Logo" class="mb-3 animate__animated animate__pulse animate__infinite" style="max-width: 100px; filter: drop-shadow(0 4px 16px #a18cd1);" />
+      <h2 class="fw-bold mb-2">Đăng nhập Admin</h2>
+      <p class="text-white-50 mb-0" style="font-size: 1rem;">Chào mừng bạn quay lại hệ thống HIPC</p>
     </div>
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="off">
       <div class="mb-3">
-        <label for="email" class="form-label text-white">Email</label>
+        <label for="email" class="form-label">Email</label>
         <div class="input-group">
           <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-          <input type="email" class="form-control" id="email" required />
+          <input type="email" class="form-control glow-on-focus" id="email" required placeholder="Nhập email..." />
         </div>
       </div>
       <div class="mb-3">
-        <label for="password" class="form-label text-white">Mật khẩu</label>
+        <label for="password" class="form-label">Mật khẩu</label>
         <div class="input-group">
           <span class="input-group-text"><i class="fas fa-lock"></i></span>
-          <input type="password" class="form-control" id="password" required />
+          <input type="password" class="form-control glow-on-focus" id="password" required placeholder="Nhập mật khẩu..." />
+          <span class="input-group-text" id="togglePassword" style="cursor:pointer;"><i class="fas fa-eye"></i></span>
         </div>
       </div>
       <div class="error-message" id="error"></div>
       <div class="mb-3 text-end">
-        <a href="/forgot-password" class="text-white text-decoration-underline">Quên mật khẩu?</a>
+        <a href="/forgot-password" class="forgot-link">Quên mật khẩu?</a>
       </div>
-      <button type="submit" class="btn btn-primary w-100">
+      <button type="submit" class="btn btn-primary w-100 py-2">
         <span class="spinner spinner-border spinner-border-sm me-2" id="loadingSpinner"></span>
         Đăng nhập
       </button>
     </form>
   </div>
 
+  <!-- Animate.css for logo animation -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <!-- JS Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/admin/static/js/login.js"></script>
-  <script src="/admin/static/js/banner-popup.js"></script>
+  <script>
+    // Hiệu ứng hiện/ẩn mật khẩu
+    document.getElementById('togglePassword').addEventListener('click', function () {
+      const pwd = document.getElementById('password');
+      const icon = this.querySelector('i');
+      if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        pwd.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    });
+
+    // Hiệu ứng nút loading khi submit
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      document.getElementById('loadingSpinner').classList.add('active');
+    });
+  </script>
 </body>
 </html>
