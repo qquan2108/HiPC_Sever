@@ -16,9 +16,8 @@ function showToast(message, type = 'success') {
 
 /* —— PRODUCTS —— */
 let currentPage = 1;
-let hasMore     = true;
+let totalPages  = 1;
 const limit      = 20;
-let observer; // IntersectionObserver reference
 let productQuery = '';
 
 /**
@@ -26,22 +25,16 @@ let productQuery = '';
  * @param {number} page - Page number to fetch
  */
 async function fetchProducts(page = 1, q = productQuery) {
-  if (!hasMore && page !== 1) return;
   try {
     const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const { products, hasMore: more } = await res.json();
+    const data = await res.json();
 
-    renderProducts(products, page > 1);
-    hasMore     = more;
-    currentPage = page;
-
-    // Re-attach observer if more pages remain
-    if (hasMore && observer) {
-      const sentinel = document.getElementById("scrollSentinel");
-      if (sentinel) observer.observe(sentinel);
-    }
+    renderProducts(data.products);
+    currentPage = data.page || page;
+    totalPages  = data.totalPages || 1;
+    renderProductPagination(totalPages);
   } catch (err) {
     console.error("Lỗi tải sản phẩm:", err);
   }
@@ -76,6 +69,23 @@ function renderProducts(products, append = false) {
   });
 }
 
+function renderProductPagination(total) {
+  const container = document.getElementById('pagination');
+  if (!container) return;
+  container.innerHTML = '';
+  if (total <= 1) return;
+  for (let i = 1; i <= total; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    btn.className = `px-3 py-1 rounded text-sm ${i === currentPage ? 'bg-purple-500 text-white' : 'bg-white text-purple-500 border border-purple-500'}`;
+    btn.onclick = () => {
+      if (i === currentPage) return;
+      fetchProducts(i, productQuery);
+    };
+    container.appendChild(btn);
+  }
+}
+
 /**
  * Delete a product by ID, then refresh list
  * @param {string} id - Product ID to delete
@@ -87,7 +97,6 @@ async function deleteProduct(id) {
     if (!res.ok) throw new Error(`Delete failed (${res.status})`);
     // Reset pagination and reload
     currentPage = 1;
-    hasMore     = true;
     fetchProducts(1);
   } catch (err) {
     console.error("Lỗi xóa sản phẩm:", err);
@@ -279,7 +288,6 @@ function initExcelUpload() {
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       await res.json();
       currentPage = 1;
-      hasMore = true;
       fetchProducts(1);
       showToast('Tải lên thành công', 'success');
     } catch (err) {
@@ -322,23 +330,6 @@ function initExcelExport() {
 /**
  * Initialize infinite scroll for products
  */
-function initProductScroll() {
-  const sentinel = document.getElementById("scrollSentinel");
-  if (!sentinel) return;
-  observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        observer.unobserve(sentinel);
-        fetchProducts(currentPage + 1, productQuery);
-      }
-    });
-  }, {
-    root      : null,
-    rootMargin: "200px",
-    threshold : 0
-  });
-  observer.observe(sentinel);
-}
 
 /* —— USERS, CATEGORIES, ... (không thay đổi) —— */
 
@@ -346,7 +337,6 @@ function initProductScroll() {
 document.addEventListener("DOMContentLoaded", () => {
   // Products
   if (document.getElementById("productTable")) {
-    initProductScroll();
     fetchProducts(1);
     initExcelUpload();
     initExcelExport();
@@ -355,7 +345,6 @@ document.addEventListener("DOMContentLoaded", () => {
       search.addEventListener('input', () => {
         productQuery = search.value.trim();
         currentPage = 1;
-        hasMore = true;
         fetchProducts(1, productQuery);
       });
     }
