@@ -106,7 +106,8 @@ exports.getProducts = async (req, res) => {
 
     res.json({
       products: productsWithImage,
-      hasMore: skip + productsWithImage.length < total
+      page,
+      totalPages: Math.ceil(total / limit)
     });
   } catch (err) {
     console.error('Error in getProducts:', err);
