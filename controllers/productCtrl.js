@@ -194,85 +194,90 @@ exports.filterProducts = async (req, res) => {
       limit = 20
     } = req.query;
 
-    console.log('Filter request params:', req.query);
-
     const filter = {};
     let sortOptions = {};
 
+    // ------------------------
     // Text search
-    if (q && q.trim()) {
+    // ------------------------
+    if (q?.trim()) {
       filter.name = { $regex: q.trim(), $options: 'i' };
     }
 
+    // ------------------------
     // Category filter
+    // ------------------------
     if (category && mongoose.Types.ObjectId.isValid(category)) {
-      filter.category_id = category;
+      filter.category_id = new mongoose.Types.ObjectId(category);
     }
 
-    // Brand filter - handle both single brand and comma-separated brands
+    // ------------------------
+    // Brand filter (multi-id)
+    // ------------------------
     if (brand) {
-      const brandIds = brand.split(',').map(id => id.trim()).filter(id => mongoose.Types.ObjectId.isValid(id));
+      const brandIds = brand.split(',')
+        .map(id => id.trim())
+        .filter(id => mongoose.Types.ObjectId.isValid(id))
+        .map(id => new mongoose.Types.ObjectId(id));
       if (brandIds.length > 0) {
         filter.brand_id = { $in: brandIds };
       }
     }
 
-    // Price range filter
-    if (priceMin || priceMax) {
-      filter.price = {};
-      if (priceMin && !isNaN(priceMin)) {
-        filter.price.$gte = parseInt(priceMin);
-      }
-      if (priceMax && !isNaN(priceMax)) {
-        filter.price.$lte = parseInt(priceMax);
-      }
-    }
+    // ------------------------
+    // Price filter (Min / Max)
+    // ------------------------
+const min = priceMin && !isNaN(priceMin) ? parseFloat(priceMin) : null;
+const max = priceMax && !isNaN(priceMax) ? parseFloat(priceMax) : null;
 
+if (min !== null || max !== null) {
+  filter.price = {};
+  if (min !== null) filter.price.$gte = min;
+  if (max !== null) filter.price.$lte = max;
+}
+
+
+    // DEBUG (bạn có thể tắt sau khi test)
+    console.log('Parsed Price:', { min, max });
+    console.log('Filter conditions:', filter);
+
+    // ------------------------
     // Specification filter
+    // ------------------------
     if (specKey && specValue) {
       const specValues = specValue.split(',').map(val => val.trim());
       filter.specifications = {
-        $elemMatch: { 
-          key: specKey, 
+        $elemMatch: {
+          key: specKey,
           value: { $in: specValues }
         }
       };
     }
 
-    // Sorting logic
+    // ------------------------
+    // Sorting options
+    // ------------------------
     switch (sort) {
-      case 'price_asc':
-        sortOptions = { price: 1 };
-        break;
-      case 'price_desc':
-        sortOptions = { price: -1 };
-        break;
-      case 'name_asc':
-        sortOptions = { name: 1 };
-        break;
-      case 'name_desc':
-        sortOptions = { name: -1 };
-        break;
+      case 'price_asc': sortOptions = { price: 1 }; break;
+      case 'price_desc': sortOptions = { price: -1 }; break;
+      case 'name_asc': sortOptions = { name: 1 }; break;
+      case 'name_desc': sortOptions = { name: -1 }; break;
       case 'newest':
-        sortOptions = { createdAt: -1 };
-        break;
       case 'popular':
-        sortOptions = { createdAt: -1 };
-        break;
       case 'promotion':
-        sortOptions = { createdAt: -1 };
-        break;
-      default:
-        sortOptions = { createdAt: -1 };
+      default: sortOptions = { createdAt: -1 }; break;
     }
 
+    // ------------------------
+    // Pagination
+    // ------------------------
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    console.log('Filter query:', filter);
-    console.log('Sort options:', sortOptions);
-
+    // ------------------------
+    // Query DB
+    // ------------------------
     const [products, total] = await Promise.all([
       Product.find(filter)
         .sort(sortOptions)
@@ -284,26 +289,29 @@ exports.filterProducts = async (req, res) => {
       Product.countDocuments(filter)
     ]);
 
-    // Get primary images for all products
+    // ------------------------
+    // Fetch Images
+    // ------------------------
     const productIds = products.map(p => p._id);
     const images = await Image.find({ product_id: { $in: productIds } }).lean();
-    
-    // Create image mapping for better performance
-    const imageMap = {};
-    images.forEach(img => {
-      if (!imageMap[img.product_id]) {
-        imageMap[img.product_id] = img.url;
-      }
-    });
 
-    // Add primary image to each product
-    const productsWithImages = products.map(p => ({
-      ...p,
-      image: imageMap[p._id] || null
-    }));
+const imageMap = {};
+images.forEach(img => {
+  if (img.url && !imageMap[img.product_id]) {
+    imageMap[img.product_id] = img.url;
+  }
+});
 
-    console.log(`Found ${productsWithImages.length} products out of ${total} total`);
 
+const productsWithImages = products.map(p => ({
+  ...p,
+  image: imageMap[p._id.toString()] || null
+}));
+
+
+    // ------------------------
+    // Response
+    // ------------------------
     res.json({
       products: productsWithImages,
       total,
@@ -312,11 +320,14 @@ exports.filterProducts = async (req, res) => {
       hasMore: skip + products.length < total,
       totalPages: Math.ceil(total / limitNum)
     });
+
   } catch (err) {
     console.error('Error in filterProducts:', err);
     res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
   }
 };
+
+
 
 // Upload products from Excel file
 exports.uploadProductsFromExcel = async (req, res) => {

@@ -194,11 +194,28 @@ router.delete('/videos/:id', async (req, res) => {
 });
 router.post('/api/cart', async (req, res) => {
   try {
-    const { comboId } = req.body;
-    // Thêm logic xử lý giỏ hàng ở đây
-    // Ví dụ: thêm combo vào giỏ hàng của user
-    
-    res.json({ success: true, message: 'Đã thêm vào giỏ hàng' });
+const { user_id, comboId } = req.body;
+
+    if (!user_id || !comboId) {
+      return res.status(400).json({ message: 'user_id and comboId are required' });
+    }
+
+    const combo = await Combo.findById(comboId).lean();
+    if (!combo) return res.status(404).json({ message: 'Combo not found' });
+
+    let order = await Order.findOne({ user_id, status: 'pending', address: { $in: [null, ''] } });
+    if (!order) {
+      order = new Order({ user_id, products: [], status: 'pending' });
+    }
+
+    for (const productId of combo.productIds) {
+      const prod = order.products.find(p => p.productId.toString() === productId.toString());
+      prod ? prod.quantity++ : order.products.push({ productId, quantity: 1 });
+    }
+
+    await order.save();
+    const populated = await Order.findById(order._id).populate('products.productId');
+    res.json(populated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
