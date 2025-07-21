@@ -9,7 +9,7 @@ const tsktSchema = new mongoose.Schema({
   category_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
 
   // nếu bạn vẫn cần lưu các key của thông số (ví dụ: ["BusMHz","DungLuongGB"])
-  specs:          { type: [String], required: true, default: [] },
+  value:          { type: [String], required: true, default: [] },
 
   // mảng các variant attributes
   variantOptions: { type: [variantOptionSchema], default: [] }

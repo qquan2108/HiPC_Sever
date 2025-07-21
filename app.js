@@ -3,8 +3,8 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan'); 
-var hbs     = require('hbs');
+var logger = require('morgan');
+var hbs = require('hbs');
 var fs = require('fs');
 var reportRoutes = require('./routes/reports');
 var notificationsRouter = require('./routes/notifications');
@@ -76,9 +76,9 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
 });
 
 // Đăng ký helper JSON stringify
-  hbs.registerHelper('json', function (context) {
-    return JSON.stringify(context);
-  });
+hbs.registerHelper('json', function (context) {
+  return JSON.stringify(context);
+});
 app.use('/stripe', stripeRouter);
 app.use('/', indexRouter);
 app.get('/admin', (req, res) => {
@@ -100,8 +100,8 @@ app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
-app.use('/combo',comboRoutes);
-app.use('/videocombo',videoRoutes);
+app.use('/combo', comboRoutes);
+app.use('/videocombo', videoRoutes);
 app.use('/vnpay', vnpayRouter);
 
 app.use('/reports', reportRoutes);

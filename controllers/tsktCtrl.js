@@ -1,13 +1,13 @@
 const TsktProduct = require('../models/TsktProduct');
 
-// Tạo template đơn lẻ
+// Tạo template đơn lẻ (value là array)
 exports.createTskt = async (req, res) => {
   try {
-    const { category_id, specs = [], variantOptions = [] } = req.body;
-    if (!Array.isArray(specs)) {
-      return res.status(400).json({ error: 'specs phải là mảng chuỗi' });
+    const { category_id, value } = req.body;
+    if (!Array.isArray(value)) {
+      return res.status(400).json({ error: 'value phải là mảng chuỗi' });
     }
-    const item = new TsktProduct({ category_id, specs, variantOptions });
+    const item = new TsktProduct({ category_id, value });
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -18,13 +18,13 @@ exports.createTskt = async (req, res) => {
 // Bulk tạo template nhiều mục
 exports.createTsktBulk = async (req, res) => {
   try {
-    const items = req.body; // mong đợi mảng [{ category_id, specs: [String] }, ...]
+    const items = req.body; // mong đợi mảng [{ category_id, value: [String] }, ...]
     if (!Array.isArray(items)) {
-      return res.status(400).json({ error: 'Body phải là mảng các đối tượng {category_id, specs: [String]}' });
+      return res.status(400).json({ error: 'Body phải là mảng các đối tượng {category_id, value: [String]}' });
     }
     items.forEach(it => {
-      if (!Array.isArray(it.specs)) {
-        throw new Error('Mỗi mục phải có specs là mảng chuỗi');
+      if (!Array.isArray(it.value)) {
+        throw new Error('Mỗi mục phải có value là mảng chuỗi');
       }
     });
     const docs = await TsktProduct.insertMany(items);
@@ -53,38 +53,16 @@ exports.deleteTskt = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
-// Cập nhật template theo ID
-exports.updateTskt = async (req, res) => {
-  try {
-    const { category_id, specs = [], variantOptions = [] } = req.body;
-    const updates = { category_id, specs, variantOptions };
-    const updated = await TsktProduct.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { new: true, runValidators: true }
-    );
-    if (!updated) {
-      return res.status(404).json({ error: 'Không tìm thấy template' });
-    }
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
 exports.getFilterFieldsByCategory = async (req, res) => {
   try {
     const { category_id } = req.params;
     const template = await TsktProduct.findOne({ category_id }).lean();
 
-    if (!template || !Array.isArray(template.specs)) {
-      return res.json({ specs: [], variantOptions: [] });
+    if (!template || !Array.isArray(template.value)) {
+      return res.json({ fields: [] });
     }
 
-    res.json({
-      specs: template.specs,
-      variantOptions: template.variantOptions
-    });
+    res.json({ fields: template.value }); // trả về mảng ["socket", "core", "thread", ...]
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

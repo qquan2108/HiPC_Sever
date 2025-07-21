@@ -16,8 +16,9 @@ function showToast(message, type = 'success') {
 
 /* —— PRODUCTS —— */
 let currentPage = 1;
-let totalPages  = 1;
+let hasMore     = true;
 const limit      = 20;
+let observer; // IntersectionObserver reference
 let productQuery = '';
 
 /**
@@ -25,16 +26,24 @@ let productQuery = '';
  * @param {number} page - Page number to fetch
  */
 async function fetchProducts(page = 1, q = productQuery) {
+  if (!hasMore && page !== 1) return;
   try {
-    const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const data = await res.json();
+  const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
 
-    renderProducts(data.products);
-    currentPage = data.page || page;
-    totalPages  = data.totalPages || 1;
-    renderProductPagination(totalPages);
+    const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+    const { products, hasMore: more } = await res.json();
+
+    renderProducts(products, page > 1);
+    hasMore     = more;
+    currentPage = page;
+
+    // Re-attach observer if more pages remain
+    if (hasMore && observer) {
+      const sentinel = document.getElementById("scrollSentinel");
+      if (sentinel) observer.observe(sentinel);
+    }
   } catch (err) {
     console.error("Lỗi tải sản phẩm:", err);
   }
@@ -69,23 +78,6 @@ function renderProducts(products, append = false) {
   });
 }
 
-function renderProductPagination(total) {
-  const container = document.getElementById('pagination');
-  if (!container) return;
-  container.innerHTML = '';
-  if (total <= 1) return;
-  for (let i = 1; i <= total; i++) {
-    const btn = document.createElement('button');
-    btn.textContent = i;
-    btn.className = `px-3 py-1 rounded text-sm ${i === currentPage ? 'bg-purple-500 text-white' : 'bg-white text-purple-500 border border-purple-500'}`;
-    btn.onclick = () => {
-      if (i === currentPage) return;
-      fetchProducts(i, productQuery);
-    };
-    container.appendChild(btn);
-  }
-}
-
 /**
  * Delete a product by ID, then refresh list
  * @param {string} id - Product ID to delete
@@ -93,10 +85,13 @@ function renderProductPagination(total) {
 async function deleteProduct(id) {
   if (!confirm("Xác nhận xóa sản phẩm này?")) return;
   try {
-    const res = await fetch(`${apiProduct}/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+  const res = await fetch(`${apiProduct}/${id}`, { method: "DELETE" });
+
+   if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+
     // Reset pagination and reload
     currentPage = 1;
+    hasMore     = true;
     fetchProducts(1);
   } catch (err) {
     console.error("Lỗi xóa sản phẩm:", err);
@@ -134,42 +129,50 @@ async function initProductForm() {
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  // Load specs when category changes (legacy support)
-  categorySelect.addEventListener("change", async () => {
-    const catId = categorySelect.value;
-    specContainer.innerHTML = "";
-    if (!catId) return;
-    try {
+  // Load specs when category changes
+ // Load specs khi chọn category
+categorySelect.addEventListener("change", async () => {
+  const catId = categorySelect.value;
+  specContainer.innerHTML = "";
+  if (!catId) return;
 
-      let res  = await fetch(`${apiTskt}/filters/${catId}`);
-      if (!res.ok) {
-        res = await fetch(`${apiTskt}/category/${catId}`);
-      }
-      const data = await res.json();
-      const specs = Array.isArray(data.specs)
-        ? data.specs
-        : Array.isArray(data[0]?.specs)
-        ? data[0].specs
-        : Array.isArray(data[0]?.value)
-        ? data[0].value
-        : [];
+  try {
+    // Dùng backticks để interpolate đúng apiTskt và catId
+    const res  = await fetch(`${apiTskt}/category/${catId}`);
+    const data = await res.json();
+    const specs = (data[0] && data[0].value) || [];
 
-      specs.forEach(fieldName => {
-        const div = document.createElement("div");
-        div.className = "spec-item";
-        div.innerHTML = `<label>${fieldName}</label><input type="text" name="specs[${fieldName}]" placeholder="Nhập ${fieldName}" />`;
-        specContainer.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Lỗi tải thông số kỹ thuật:", err);
-    }
-  });
+    specs.forEach(fieldName => {
+      const div = document.createElement("div");
+      div.className = "spec-item";
+      div.innerHTML = `
+        <div class="spec-item-inner">
+          <label>${fieldName}</label>
+          <input
+            type="text"
+            class="form-control"
+            name="specifications[${fieldName}]"
+            placeholder="Nhập ${fieldName}"
+            required
+          />
+        </div>
+      `;
+      specContainer.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error("Lỗi tải thông số kỹ thuật:", err);
+  }
+});  // <-- đóng callback và addEventListener
+
+
 
   // Preload form data in edit mode
   if (form.dataset.mode === "edit") {
     const id = form.dataset.id;
     try {
-      const res  = await fetch(`${apiProduct}/${id}`);
+  const res = await fetch(`${apiProduct}/${id}`);
+
       const prod = await res.json();
       // fill basic fields
       form.querySelector('input[name="name"]').value        = prod.name;
@@ -208,7 +211,7 @@ async function initProductForm() {
       const fdImg = new FormData();
       fdImg.append('image', imageFile.files[0]);
       try {
-        const upRes = await fetch(`${apiProduct}/upload`, {
+ const upRes = await fetch(`${apiProduct}/upload`, {
           method: 'POST',
           body: fdImg
         });
@@ -233,7 +236,10 @@ async function initProductForm() {
         inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })
       )
     };
-    const url    = fd.get("id") ? `${apiProduct}/${fd.get("id")}` : apiProduct;
+    const url = fd.get("id")
+  ? `${apiProduct}/${fd.get("id")}`
+  : apiProduct;
+
     const method = fd.get("id") ? "PUT" : "POST";
     try {
       const res = await fetch(url, {
@@ -241,7 +247,8 @@ async function initProductForm() {
         headers: { "Content-Type": "application/json" },
         body   : JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+     if (!res.ok) throw new Error(`Save failed (${res.status})`);
+
       window.location.href = "/admin/products";
     } catch (err) {
       console.error("Lỗi lưu sản phẩm:", err);
@@ -262,7 +269,10 @@ function initCategoryForm() {
       description: fd.get("description") || ""
     };
     const id     = fd.get("id");              // hidden input khi edit
-    const url    = id ? `${apiCategory}/${id}` : apiCategory;
+  const url = id
+  ? `${apiCategory}/${id}`
+  : apiCategory;
+
     const method = id ? "PUT" : "POST";
 
     try {
@@ -271,7 +281,8 @@ function initCategoryForm() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+  if (!res.ok) throw new Error(`Save failed (${res.status})`);
+
       // Sau khi lưu, quay về trang danh sách
       window.location.href = "/admin/categories";
     } catch (err) {
@@ -292,13 +303,15 @@ function initExcelUpload() {
     const fd = new FormData();
     fd.append('file', input.files[0]);
     try {
-      const res = await fetch(`${apiProduct}/upload-excel`, {
+ const res = await fetch(`${apiProduct}/upload-excel`, {
         method: 'POST',
         body: fd
       });
-      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+
       await res.json();
       currentPage = 1;
+      hasMore = true;
       fetchProducts(1);
       showToast('Tải lên thành công', 'success');
     } catch (err) {
@@ -319,8 +332,9 @@ function initExcelExport() {
   btn.addEventListener('click', async e => {
     e.preventDefault();
     try {
-      const res = await fetch(`${apiProduct}/export-excel`);
-      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+ const res = await fetch(`${apiProduct}/export-excel`);
+if (!res.ok) throw new Error(`Export failed (${res.status})`);
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -341,6 +355,23 @@ function initExcelExport() {
 /**
  * Initialize infinite scroll for products
  */
+function initProductScroll() {
+  const sentinel = document.getElementById("scrollSentinel");
+  if (!sentinel) return;
+  observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        observer.unobserve(sentinel);
+        fetchProducts(currentPage + 1, productQuery);
+      }
+    });
+  }, {
+    root      : null,
+    rootMargin: "200px",
+    threshold : 0
+  });
+  observer.observe(sentinel);
+}
 
 /* —— USERS, CATEGORIES, ... (không thay đổi) —— */
 
@@ -348,6 +379,7 @@ function initExcelExport() {
 document.addEventListener("DOMContentLoaded", () => {
   // Products
   if (document.getElementById("productTable")) {
+    initProductScroll();
     fetchProducts(1);
     initExcelUpload();
     initExcelExport();
@@ -356,6 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
       search.addEventListener('input', () => {
         productQuery = search.value.trim();
         currentPage = 1;
+        hasMore = true;
         fetchProducts(1, productQuery);
       });
     }
@@ -365,9 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Categories
   if (document.getElementById("categoryTable")) fetchCategories();
   // Forms
-  if (typeof loadSpecsAndVariants !== 'function') {
-    initProductForm();
-  }
+  initProductForm();
   initCategoryForm();
 
   // Responsive menu: Hiện/ẩn nav khi bấm nút 3 sọc
