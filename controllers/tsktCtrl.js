@@ -1,13 +1,13 @@
 const TsktProduct = require('../models/TsktProduct');
 
-// Tạo template đơn lẻ (value là array)
+// Tạo template đơn lẻ
 exports.createTskt = async (req, res) => {
   try {
-    const { category_id, value,variantOptions } = req.body;
-    if (!Array.isArray(value)) {
-      return res.status(400).json({ error: 'value phải là mảng chuỗi' });
+    const { category_id, specs = [], variantOptions = [] } = req.body;
+    if (!Array.isArray(specs)) {
+      return res.status(400).json({ error: 'specs phải là mảng chuỗi' });
     }
-    const item = new TsktProduct({ category_id, value,variantOptions });
+    const item = new TsktProduct({ category_id, specs, variantOptions });
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -18,13 +18,13 @@ exports.createTskt = async (req, res) => {
 // Bulk tạo template nhiều mục
 exports.createTsktBulk = async (req, res) => {
   try {
-    const items = req.body; // mong đợi mảng [{ category_id, value: [String] }, ...]
+    const items = req.body; // mong đợi mảng [{ category_id, specs: [String] }, ...]
     if (!Array.isArray(items)) {
-      return res.status(400).json({ error: 'Body phải là mảng các đối tượng {category_id, value: [String]}' });
+      return res.status(400).json({ error: 'Body phải là mảng các đối tượng {category_id, specs: [String]}' });
     }
     items.forEach(it => {
-      if (!Array.isArray(it.value)) {
-        throw new Error('Mỗi mục phải có value là mảng chuỗi');
+      if (!Array.isArray(it.specs)) {
+        throw new Error('Mỗi mục phải có specs là mảng chuỗi');
       }
     });
     const docs = await TsktProduct.insertMany(items);
@@ -77,14 +77,14 @@ exports.getFilterFieldsByCategory = async (req, res) => {
     const { category_id } = req.params;
     const template = await TsktProduct.findOne({ category_id }).lean();
 
-    if (!template || !Array.isArray(template.value)) {
-      return res.json({ fields: [] });
+    if (!template || !Array.isArray(template.specs)) {
+      return res.json({ specs: [], variantOptions: [] });
     }
 
     res.json({
-  specs: template.specs,
-  variantOptions: template.variantOptions
-}); // trả về mảng ["socket", "core", "thread", ...]
+      specs: template.specs,
+      variantOptions: template.variantOptions
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,5 +1,6 @@
 const apiProduct = '/product';
 const apiTskt    = '/tsktproducts';
+let variantsContainer;
 
 async function loadSpecsAndVariants(catId, specContainer, variantsContainer, existingVariants = {}) {
   specContainer.innerHTML = '';
@@ -24,6 +25,7 @@ async function loadSpecsAndVariants(catId, specContainer, variantsContainer, exi
 
 function renderVariantOptions(list, container, existing) {
   container.innerHTML = '';
+  const used = new Set();
   list.forEach(opt => {
     const div = document.createElement('div');
     div.className = 'spec-item';
@@ -45,7 +47,27 @@ function renderVariantOptions(list, container, existing) {
     div.appendChild(label);
     div.appendChild(select);
     container.appendChild(div);
+    used.add(opt.name);
   });
+
+  // render existing variants that are not in template as custom rows
+  if (existing) {
+    Object.keys(existing).forEach(k => {
+      if (!used.has(k)) {
+        addCustomVariantRow(k, existing[k].join(', '));
+      }
+    });
+  }
+}
+
+function addCustomVariantRow(name = '', values = '') {
+  const div = document.createElement('div');
+  div.className = 'spec-item variant-custom';
+  div.innerHTML = `<input type="text" class="form-control variant-name" placeholder="Tên biến thể" value="${name}">
+                    <input type="text" class="form-control variant-values" placeholder="Giá trị (cách nhau bằng dấu phẩy)" value="${values}">
+                    <button type="button" class="btn btn-sm btn-danger remove-variant"><i class="fas fa-times"></i></button>`;
+  div.querySelector('.remove-variant').addEventListener('click', () => div.remove());
+  variantsContainer.appendChild(div);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,8 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!form) return;
   const categorySelect = document.getElementById('categorySelect');
   const specContainer  = document.getElementById('specContainer');
-  const variantsContainer = document.getElementById('variantsContainer');
+  variantsContainer = document.getElementById('variantsContainer');
   const variantsInput     = document.getElementById('variantsInput');
+  const addVariantBtn = document.getElementById('addVariantBtn');
   const descInput      = document.getElementById('descriptionInput');
   const descEditorEl   = document.getElementById('descriptionEditor');
   const imageFile      = document.getElementById('imageFile');
@@ -62,6 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const imageUrlInput  = document.getElementById('imageUrl');
   let quill;
   quill = new Quill(descEditorEl, { theme: 'snow' });
+
+  if (addVariantBtn) {
+    addVariantBtn.addEventListener('click', () => addCustomVariantRow());
+  }
 
   if (imageFile) {
     imageFile.addEventListener('change', () => {
@@ -116,6 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = sel.dataset.name;
       const vals = Array.from(sel.selectedOptions).map(o => o.value);
       if (vals.length) variantData[name] = vals;
+    });
+    variantsContainer.querySelectorAll('.variant-custom').forEach(div => {
+      const name = div.querySelector('.variant-name').value.trim();
+      const vals = div.querySelector('.variant-values').value.split(',').map(v => v.trim()).filter(v => v);
+      if (name && vals.length) variantData[name] = vals;
     });
     variantsInput.value = JSON.stringify(variantData);
 
