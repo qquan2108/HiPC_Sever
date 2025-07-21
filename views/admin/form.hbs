@@ -243,7 +243,7 @@
     {{#ifEquals mode 'edit'}}<i class="fas fa-edit"></i> Chỉnh sửa sản phẩm{{else}}<i class="fas fa-plus"></i> Tạo sản
     phẩm{{/ifEquals}}
   </h2>
-  <form id="productForm" data-mode="{{mode}}">
+  <form id="productForm" data-mode="{{mode}}" {{#ifEquals mode 'edit'}}data-id="{{product._id}}"{{/ifEquals}}>
     {{#ifEquals mode 'edit'}}
     <input type="hidden" name="id" value="{{product._id}}">
     {{/ifEquals}}

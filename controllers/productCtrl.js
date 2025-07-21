@@ -163,8 +163,8 @@ exports.getProductById = async (req, res) => {
     let tskt = [];
     if (item.category_id?._id) {
       const tpl = await TsktProduct.findOne({ category_id: item.category_id._id }).lean();
-      if (tpl?.value && Array.isArray(tpl.value)) {
-        tskt = tpl.value.map(key => {
+      if (tpl?.specs && Array.isArray(tpl.specs)) {
+        tskt = tpl.specs.map(key => {
           const spec = Array.isArray(item.specifications)
             ? item.specifications.find(s => s.key === key)
             : null;
