@@ -134,19 +134,19 @@ async function initProductForm() {
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  // Load specs when category changes
+  // Load specs when category changes (legacy support)
   categorySelect.addEventListener("change", async () => {
     const catId = categorySelect.value;
     specContainer.innerHTML = "";
     if (!catId) return;
     try {
-      const res  = await fetch(`${apiTskt}/category/${catId}`);
+      const res  = await fetch(`${apiTskt}/filters/${catId}`);
       const data = await res.json();
-      const specs = (data[0] && data[0].value) || [];
+      const specs = Array.isArray(data.specs) ? data.specs : [];
       specs.forEach(fieldName => {
         const div = document.createElement("div");
-        div.className   = "spec-item";
-        div.innerHTML   = `<label>${fieldName}</label><input type="text" name="specs[${fieldName}]" placeholder="Nhập ${fieldName}" />`;
+        div.className = "spec-item";
+        div.innerHTML = `<label>${fieldName}</label><input type="text" name="specs[${fieldName}]" placeholder="Nhập ${fieldName}" />`;
         specContainer.appendChild(div);
       });
     } catch (err) {
@@ -354,7 +354,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Categories
   if (document.getElementById("categoryTable")) fetchCategories();
   // Forms
-  initProductForm();
+  if (typeof loadSpecsAndVariants !== 'function') {
+    initProductForm();
+  }
   initCategoryForm();
 
   // Responsive menu: Hiện/ẩn nav khi bấm nút 3 sọc
