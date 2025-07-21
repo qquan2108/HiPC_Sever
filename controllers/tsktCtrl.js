@@ -53,6 +53,25 @@ exports.deleteTskt = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Cập nhật template theo ID
+exports.updateTskt = async (req, res) => {
+  try {
+    const { category_id, specs = [], variantOptions = [] } = req.body;
+    const updates = { category_id, specs, variantOptions };
+    const updated = await TsktProduct.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'Không tìm thấy template' });
+    }
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
 exports.getFilterFieldsByCategory = async (req, res) => {
   try {
     const { category_id } = req.params;

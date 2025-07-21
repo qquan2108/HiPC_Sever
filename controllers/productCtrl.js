@@ -9,16 +9,27 @@ exports.createProduct = async (req, res) => {
     const {
       name, category_id, brand_id,
       price, description = '',
-      stock = 0, specifications = []
+      stock = 0, specifications = [],
+      variants = '{}'
     } = req.body;
 
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
+    let parsedVariants = {};
+    if (variants) {
+      try {
+        parsedVariants = JSON.parse(variants);
+      } catch (e) {
+        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+      }
+    }
+
     const newItem = new Product({
       name, category_id, brand_id,
-      price, description, stock, specifications
+      price, description, stock, specifications,
+      variants: parsedVariants
     });
     await newItem.save();
 
@@ -42,16 +53,27 @@ exports.updateProduct = async (req, res) => {
     const {
       name, category_id, brand_id,
       price, description = '',
-      stock = 0, specifications = []
+      stock = 0, specifications = [],
+      variants = '{}'
     } = req.body;
 
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
+    let parsedVariants = {};
+    if (variants) {
+      try {
+        parsedVariants = JSON.parse(variants);
+      } catch (e) {
+        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+      }
+    }
+
     const updates = {
       name, category_id, brand_id,
-      price, description, stock, specifications
+      price, description, stock, specifications,
+      variants: parsedVariants
     };
     const updated = await Product.findByIdAndUpdate(
       req.params.id,

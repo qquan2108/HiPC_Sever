@@ -15,7 +15,9 @@ const productSchema = new mongoose.Schema({
   description:    { type: String, default: '' },
   stock:          { type: Number, default: 0, min: 0 },
   image:          { type: Object, default: '' },
-  specifications: { type: [specSchema], default: [] }
+  specifications: { type: [specSchema], default: [] },
+  // Các biến thể của sản phẩm, lưu theo dạng { tenBienThe: [giaTri] }
+  variants:       { type: Map, of: [String], default: {} }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);
