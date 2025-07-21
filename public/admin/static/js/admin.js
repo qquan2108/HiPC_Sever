@@ -186,9 +186,10 @@ async function initProductForm() {
       await new Promise(r => setTimeout(r, 0));
       categorySelect.dispatchEvent(new Event("change"));
       // fill specs values
-      prod.specifications.forEach(spec => {
+      const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
+      specList.forEach(spec => {
         const input = Array.from(specContainer.querySelectorAll(".spec-item input")).find(
-          inp => inp.previousElementSibling.textContent === spec.key
+          inp => inp.previousElementSibling.textContent === spec.key || inp.previousElementSibling.textContent === spec.label
         );
         if (input) input.value = spec.value;
       });
@@ -229,7 +230,7 @@ async function initProductForm() {
       stock          : parseInt(fd.get("stock")),
       image          : imageUrl,
       description    : fd.get("description"),
-      specifications : Array.from(form.querySelectorAll(".spec-item input")).map(
+      tskt : Array.from(form.querySelectorAll(".spec-item input")).map(
         inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })
       )
     };

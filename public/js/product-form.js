@@ -139,8 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (imageUrlInput) imageUrlInput.value = prod.image || '';
       categorySelect.value = prod.category_id._id;
       await loadSpecsAndVariants(prod.category_id._id, specContainer, variantsContainer, prod.variants || {});
-      prod.specifications.forEach(spec => {
-        const input = Array.from(specContainer.querySelectorAll('.spec-item input')).find(inp => inp.previousElementSibling.textContent === spec.key);
+      const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
+      specList.forEach(spec => {
+        const input = Array.from(specContainer.querySelectorAll('.spec-item input')).find(inp => inp.previousElementSibling.textContent === spec.key || inp.previousElementSibling.textContent === spec.label);
         if (input) input.value = spec.value;
       });
     } catch (err) {
@@ -207,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
       stock       : parseInt(fd.get('stock')),
       image       : imageUrl,
       description : fd.get('description'),
-      specifications: Array.from(specContainer.querySelectorAll('.spec-item input')).map(inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })),
+      tskt: Array.from(specContainer.querySelectorAll('.spec-item input')).map(inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })),
       variants: variantsInput.value
     };
     const url = fd.get('id') ? `${apiProduct}/${fd.get('id')}` : apiProduct;

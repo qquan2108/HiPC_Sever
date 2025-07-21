@@ -267,12 +267,21 @@
       <label class="form-label">Thông số kỹ thuật</label>
       <div id="specContainer">
         {{#ifEquals mode 'edit'}}
-        {{#each product.specifications}}
-        <div class="spec-item">
-          <label>{{key}}</label>
-          <input type="text" name="specifications[{{key}}]" value="{{value}}">
-        </div>
-        {{/each}}
+        {{#if product.tskt}}
+          {{#each product.tskt}}
+          <div class="spec-item">
+            <label>{{#if key}}{{key}}{{else}}{{label}}{{/if}}</label>
+            <input type="text" name="specs[{{#if key}}{{key}}{{else}}{{label}}{{/if}}]" value="{{value}}">
+          </div>
+          {{/each}}
+        {{else}}
+          {{#each product.specifications}}
+          <div class="spec-item">
+            <label>{{key}}</label>
+            <input type="text" name="specs[{{key}}]" value="{{value}}">
+          </div>
+          {{/each}}
+        {{/if}}
         {{/ifEquals}}
       </div>
     </div>
