@@ -146,15 +146,13 @@ async function initProductForm() {
         res = await fetch(`${apiTskt}/category/${catId}`);
       }
       const data = await res.json();
-      const specs = Array.isArray(data.specs) ? data.specs : Array.isArray(data[0]?.specs)
+      const specs = Array.isArray(data.specs)
+        ? data.specs
+        : Array.isArray(data[0]?.specs)
         ? data[0].specs
         : Array.isArray(data[0]?.value)
         ? data[0].value
         : [];
-
-      const res  = await fetch(`${apiTskt}/filters/${catId}`);
-      const data = await res.json();
-      const specs = Array.isArray(data.specs) ? data.specs : [];
 
       specs.forEach(fieldName => {
         const div = document.createElement("div");
