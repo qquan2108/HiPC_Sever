@@ -105,6 +105,9 @@ async function initProductForm() {
   const form            = document.getElementById("productForm");
   const categorySelect  = document.getElementById("categorySelect");
   const specContainer   = document.getElementById("specContainer");
+  const variantsContainer = document.getElementById("variantsContainer");
+  const addVariantBtn     = document.getElementById("addVariantBtn");
+  const variantsInput     = document.getElementById("variantsInput");
   const descInput       = document.getElementById("descriptionInput");
   const descEditorEl    = document.getElementById("descriptionEditor");
   const imageFile       = document.getElementById("imageFile");
@@ -129,41 +132,95 @@ async function initProductForm() {
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  // Load specs when category changes
- // Load specs khi chọn category
-categorySelect.addEventListener("change", async () => {
-  const catId = categorySelect.value;
-  specContainer.innerHTML = "";
-  if (!catId) return;
-
-  try {
-    // Dùng backticks để interpolate đúng apiTskt và catId
-    const res  = await fetch(`${apiTskt}/category/${catId}`);
-    const data = await res.json();
-    const specs = (data[0] && data[0].value) || [];
-
-    specs.forEach(fieldName => {
-      const div = document.createElement("div");
-      div.className = "spec-item";
-      div.innerHTML = `
-        <div class="spec-item-inner">
-          <label>${fieldName}</label>
-          <input
-            type="text"
-            class="form-control"
-            name="specifications[${fieldName}]"
-            placeholder="Nhập ${fieldName}"
-            required
-          />
-        </div>
-      `;
-      specContainer.appendChild(div);
-    });
-
-  } catch (err) {
-    console.error("Lỗi tải thông số kỹ thuật:", err);
+  function addCustomVariantRow(name = '', values = '') {
+    const div = document.createElement('div');
+    div.className = 'spec-item variant-custom';
+    div.innerHTML = `
+      <input type="text" class="form-control variant-name" placeholder="Tên biến thể" value="${name}">
+      <input type="text" class="form-control variant-values" placeholder="Giá trị (cách nhau bằng dấu phẩy)" value="${values}">
+      <button type="button" class="btn btn-sm btn-danger remove-variant">&times;</button>`;
+    div.querySelector('.remove-variant').addEventListener('click', () => div.remove());
+    variantsContainer.appendChild(div);
   }
-});  // <-- đóng callback và addEventListener
+
+  function renderVariantOptions(list, existing = {}) {
+    variantsContainer.innerHTML = '';
+    const used = new Set();
+    list.forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'spec-item';
+      const label = document.createElement('label');
+      label.textContent = opt.name;
+      const select = document.createElement('select');
+      select.multiple = true;
+      select.className = 'form-select';
+      select.dataset.name = opt.name;
+      (opt.options || []).forEach(val => {
+        const o = document.createElement('option');
+        o.value = val;
+        o.textContent = val;
+        if (existing[opt.name] && existing[opt.name].includes(val)) {
+          o.selected = true;
+        }
+        select.appendChild(o);
+      });
+      div.appendChild(label);
+      div.appendChild(select);
+      variantsContainer.appendChild(div);
+      used.add(opt.name);
+    });
+    Object.keys(existing).forEach(k => {
+      if (!used.has(k)) {
+        addCustomVariantRow(k, existing[k].join(', '));
+      }
+    });
+  }
+
+  async function loadSpecsAndVariants(catId, existingVariants = {}) {
+    specContainer.innerHTML = '';
+    variantsContainer.innerHTML = '';
+    if (!catId) return;
+    try {
+      let res = await fetch(`${apiTskt}/filters/${catId}`);
+      if (!res.ok) {
+        res = await fetch(`${apiTskt}/category/${catId}`);
+      }
+      const data = await res.json();
+      let specs = [];
+      let variantOpts = [];
+      if (Array.isArray(data.specs)) {
+        specs = data.specs;
+        variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
+      } else if (Array.isArray(data)) {
+        const first = data[0] || {};
+        if (Array.isArray(first.specs)) {
+          specs = first.specs;
+        } else if (Array.isArray(first.value)) {
+          specs = first.value;
+        }
+        if (Array.isArray(first.variantOptions)) {
+          variantOpts = first.variantOptions;
+        }
+      }
+      specs.forEach(fieldName => {
+        const div = document.createElement('div');
+        div.className = 'spec-item';
+        div.innerHTML = `<label>${fieldName}</label><input type="text" name="specifications[${fieldName}]" placeholder="Nhập ${fieldName}" />`;
+        specContainer.appendChild(div);
+      });
+      renderVariantOptions(variantOpts, existingVariants);
+    } catch (err) {
+      console.error('Load specs/variants error:', err);
+    }
+  }
+
+  // Load specs & variants when category changes
+  categorySelect.addEventListener('change', () => {
+    loadSpecsAndVariants(categorySelect.value);
+  });
+  if (addVariantBtn) {
+    addVariantBtn.addEventListener('click', () => addCustomVariantRow());
+  }
 
 
 
@@ -185,9 +242,7 @@ categorySelect.addEventListener("change", async () => {
       }
       if (imageUrlInput) imageUrlInput.value = prod.image || '';
       categorySelect.value = prod.category_id._id;
-      // trigger specs load
-      await new Promise(r => setTimeout(r, 0));
-      categorySelect.dispatchEvent(new Event("change"));
+      await loadSpecsAndVariants(prod.category_id._id, prod.variants || {});
       // fill specs values
       const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
       specList.forEach(spec => {
@@ -199,6 +254,9 @@ categorySelect.addEventListener("change", async () => {
     } catch (err) {
       console.error("Lỗi preload sản phẩm:", err);
     }
+  }
+  else if (categorySelect.value) {
+    loadSpecsAndVariants(categorySelect.value);
   }
 
   // Submit handler
@@ -225,6 +283,19 @@ categorySelect.addEventListener("change", async () => {
       }
     }
 
+    const variantData = {};
+    variantsContainer.querySelectorAll('select').forEach(sel => {
+      const name = sel.dataset.name;
+      const vals = Array.from(sel.selectedOptions).map(o => o.value);
+      if (vals.length) variantData[name] = vals;
+    });
+    variantsContainer.querySelectorAll('.variant-custom').forEach(div => {
+      const name = div.querySelector('.variant-name').value.trim();
+      const vals = div.querySelector('.variant-values').value.split(',').map(v => v.trim()).filter(v => v);
+      if (name && vals.length) variantData[name] = vals;
+    });
+    variantsInput.value = JSON.stringify(variantData);
+
     const payload = {
       name           : fd.get("name"),
       category_id    : fd.get("category_id"),
@@ -235,7 +306,8 @@ categorySelect.addEventListener("change", async () => {
       description    : fd.get("description"),
       tskt : Array.from(form.querySelectorAll(".spec-item input")).map(
         inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })
-      )
+      ),
+      variants: variantsInput.value
     };
     const url = fd.get("id")
   ? `${apiProduct}/${fd.get("id")}`
