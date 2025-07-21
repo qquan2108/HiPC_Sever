@@ -140,6 +140,7 @@ async function initProductForm() {
     specContainer.innerHTML = "";
     if (!catId) return;
     try {
+
       let res  = await fetch(`${apiTskt}/filters/${catId}`);
       if (!res.ok) {
         res = await fetch(`${apiTskt}/category/${catId}`);
@@ -150,6 +151,11 @@ async function initProductForm() {
         : Array.isArray(data[0]?.value)
         ? data[0].value
         : [];
+
+      const res  = await fetch(`${apiTskt}/filters/${catId}`);
+      const data = await res.json();
+      const specs = Array.isArray(data.specs) ? data.specs : [];
+
       specs.forEach(fieldName => {
         const div = document.createElement("div");
         div.className = "spec-item";
