@@ -2,15 +2,38 @@ const apiProduct = '/product';
 const apiTskt    = '/tsktproducts';
 let variantsContainer;
 
-async function loadSpecsAndVariants(catId, specContainer, variantsContainer, existingVariants = {}) {
+async function loadSpecsAndVariants(
+  catId,
+  specContainer,
+  variantsContainer,
+  existingVariants = {}
+) {
   specContainer.innerHTML = '';
   variantsContainer.innerHTML = '';
   if (!catId) return;
   try {
-    const res = await fetch(`${apiTskt}/filters/${catId}`);
+    let res = await fetch(`${apiTskt}/filters/${catId}`);
+    if (!res.ok) {
+      // fallback to legacy endpoint
+      res = await fetch(`${apiTskt}/category/${catId}`);
+    }
     const data = await res.json();
-    const specs = Array.isArray(data.specs) ? data.specs : [];
-    const variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
+    let specs = [];
+    let variantOpts = [];
+    if (Array.isArray(data.specs)) {
+      specs = data.specs;
+      variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
+    } else if (Array.isArray(data)) {
+      const first = data[0] || {};
+      if (Array.isArray(first.specs)) {
+        specs = first.specs;
+      } else if (Array.isArray(first.value)) {
+        specs = first.value;
+      }
+      if (Array.isArray(first.variantOptions)) {
+        variantOpts = first.variantOptions;
+      }
+    }
     specs.forEach(name => {
       const div = document.createElement('div');
       div.className = 'spec-item';
@@ -77,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const specContainer  = document.getElementById('specContainer');
   variantsContainer = document.getElementById('variantsContainer');
   const variantsInput     = document.getElementById('variantsInput');
+  const brandSelect    = document.getElementById('brandSpinner');
   const addVariantBtn = document.getElementById('addVariantBtn');
   const descInput      = document.getElementById('descriptionInput');
   const descEditorEl   = document.getElementById('descriptionEditor');
@@ -127,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
   categorySelect.addEventListener('change', () => {
     loadSpecsAndVariants(categorySelect.value, specContainer, variantsContainer);
   });
+  if (brandSelect) {
+    brandSelect.addEventListener('change', () => {
+      loadSpecsAndVariants(categorySelect.value, specContainer, variantsContainer);
+    });
+  }
 
   if (form.dataset.mode === 'edit') {
     preload(form.dataset.id);
