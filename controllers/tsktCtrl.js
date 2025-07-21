@@ -3,11 +3,11 @@ const TsktProduct = require('../models/TsktProduct');
 // Tạo template đơn lẻ (value là array)
 exports.createTskt = async (req, res) => {
   try {
-    const { category_id, value } = req.body;
+    const { category_id, value,variantOptions } = req.body;
     if (!Array.isArray(value)) {
       return res.status(400).json({ error: 'value phải là mảng chuỗi' });
     }
-    const item = new TsktProduct({ category_id, value });
+    const item = new TsktProduct({ category_id, value,variantOptions });
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -62,7 +62,10 @@ exports.getFilterFieldsByCategory = async (req, res) => {
       return res.json({ fields: [] });
     }
 
-    res.json({ fields: template.value }); // trả về mảng ["socket", "core", "thread", ...]
+    res.json({
+  specs: template.specs,
+  variantOptions: template.variantOptions
+}); // trả về mảng ["socket", "core", "thread", ...]
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
