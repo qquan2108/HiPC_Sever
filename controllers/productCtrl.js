@@ -9,12 +9,16 @@ exports.createProduct = async (req, res) => {
     const {
       name, category_id, brand_id,
       price, description = '',
-      stock = 0, specifications = [],
+      stock = 0,
+      specifications = [],
+      tskt = [],
       variants = '{}'
     } = req.body;
 
-    if (!Array.isArray(specifications)) {
-      return res.status(400).json({ error: 'specifications phải là mảng' });
+    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
+
+    if (!Array.isArray(specArr)) {
+      return res.status(400).json({ error: 'tskt phải là mảng' });
     }
 
     let parsedVariants = {};
@@ -28,7 +32,8 @@ exports.createProduct = async (req, res) => {
 
     const newItem = new Product({
       name, category_id, brand_id,
-      price, description, stock, specifications,
+      price, description, stock,
+      specifications: specArr,
       variants: parsedVariants
     });
     await newItem.save();
@@ -53,12 +58,16 @@ exports.updateProduct = async (req, res) => {
     const {
       name, category_id, brand_id,
       price, description = '',
-      stock = 0, specifications = [],
+      stock = 0,
+      specifications = [],
+      tskt = [],
       variants = '{}'
     } = req.body;
 
-    if (!Array.isArray(specifications)) {
-      return res.status(400).json({ error: 'specifications phải là mảng' });
+    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
+
+    if (!Array.isArray(specArr)) {
+      return res.status(400).json({ error: 'tskt phải là mảng' });
     }
 
     let parsedVariants = {};
@@ -72,7 +81,8 @@ exports.updateProduct = async (req, res) => {
 
     const updates = {
       name, category_id, brand_id,
-      price, description, stock, specifications,
+      price, description, stock,
+      specifications: specArr,
       variants: parsedVariants
     };
     const updated = await Product.findByIdAndUpdate(
@@ -377,9 +387,10 @@ exports.uploadProductsFromExcel = async (req, res) => {
         }
 
         let specs = [];
-        if (row.specifications) {
+        const rawSpecs = row.tskt || row.specifications;
+        if (rawSpecs) {
           try {
-            const parsed = JSON.parse(row.specifications);
+            const parsed = typeof rawSpecs === 'string' ? JSON.parse(rawSpecs) : rawSpecs;
             if (Array.isArray(parsed)) specs = parsed;
           } catch (e) {
             errors.push(`Row ${row.name}: Invalid specifications format`);
