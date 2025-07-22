@@ -1,17 +1,20 @@
 {{#*inline "title"}}
   {{#ifEquals mode 'edit'}}Chỉnh sửa sản phẩm{{else}}Tạo sản phẩm{{/ifEquals}}
 {{/inline}}
-
 <link rel="stylesheet" href="/admin/static/css/form.css">
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+<!-- Toast notification -->
+<div id="toast" class="toast"></div>
+
 <div class="form-scroll-container">
-  <form id="productForm" data-mode="{{mode}}">
+  <form id="productForm" data-mode="{{mode}}" {{#ifEquals mode 'edit'}}data-id="{{product._id}}"{{/ifEquals}}>
     {{#ifEquals mode 'edit'}}
       <input type="hidden" name="id" value="{{product._id}}">
     {{/ifEquals}}
 
     <div class="form-group">
-      <label>Danh mục</label>
+      <label>Danh mục *</label>
       <select name="category_id" id="categorySelect" required>
         <option value="">-- Chọn danh mục --</option>
         {{#each categories}}
@@ -25,26 +28,21 @@
     <div class="form-group">
       <label>Thông số kỹ thuật</label>
       <div id="specContainer">
-        {{#ifEquals mode 'edit'}}
-          {{#each product.specifications}}
-            <div class="spec-item">
-              <label>{{key}}</label>
-              <input type="text" name="specifications[{{key}}]" value="{{value}}">
-            </div>
-          {{/each}}
-        {{/ifEquals}}
+        <!-- Specs will be loaded dynamically based on category -->
       </div>
     </div>
 
     <div class="form-group">
       <label>Biến thể</label>
-      <div id="variantsContainer"></div>
-      <button type="button" class="btn btn-sm btn-secondary" id="addVariantBtn">Thêm biến thể</button>
+      <div id="variantsContainer">
+        <!-- Variants will be loaded dynamically based on category -->
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" id="addVariantBtn">Thêm biến thể tùy chỉnh</button>
       <input type="hidden" id="variantsInput" name="variants">
     </div>
 
     <div class="form-group">
-      <label>Brand</label>
+      <label>Brand *</label>
       <select name="brand_id" id="brandSpinner" required>
         <option value="">-- Chọn brand --</option>
         {{#each brands}}
@@ -56,42 +54,43 @@
     </div>
 
     <div class="form-group">
-      <label>Tên sản phẩm</label>
-      <input type="text" name="name" value="{{product.name}}" required>
+      <label>Tên sản phẩm *</label>
+      <input type="text" name="name" value="{{product.name}}" placeholder="Nhập tên sản phẩm" required>
     </div>
 
     <div class="form-group">
-      <label>Giá (VNĐ)</label>
-      <input type="number" name="price" value="{{product.price}}" min="0" required>
+      <label>Giá (VNĐ) *</label>
+      <input type="number" name="price" value="{{product.price}}" min="0" step="1000" placeholder="Nhập giá sản phẩm" required>
     </div>
 
     <div class="form-group">
-      <label>Stock</label>
-      <input type="number" name="stock" value="{{product.stock}}" min="0" required>
+      <label>Số lượng *</label>
+      <input type="number" name="stock" value="{{product.stock}}" min="0" placeholder="Nhập số lượng" required>
     </div>
 
     <div class="form-group">
       <label>Ảnh sản phẩm</label>
       <input type="file" id="imageFile" accept="image/*">
-      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2" {{#unless product.image}}style="display:none"{{/unless}}>
+      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2 max-w-full" {{#unless product.image}}style="display:none"{{/unless}} alt="Product preview">
       <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
 
     <div class="form-group">
       <label>Mô tả</label>
-      <div id="descriptionEditor" style="height:150px"></div>
+      <div id="descriptionEditor" style="height:150px; background: white;"></div>
       <input type="hidden" name="description" id="descriptionInput">
     </div>
 
     <div class="modal-footer">
-      <button type="submit" class="btn btn-primary">Lưu</button>
+      <button type="submit" class="btn btn-primary">
+        {{#ifEquals mode 'edit'}}Cập nhật{{else}}Tạo mới{{/ifEquals}}
+      </button>
       <a href="/admin/products" class="btn btn-secondary">Hủy</a>
     </div>
   </form>
 </div>
 
+<!-- Load scripts in correct order -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
- <script src="/admin/static/js/admin.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', initProductForm);
-</script>
+<script src="/admin/static/js/admin.js"></script>
+

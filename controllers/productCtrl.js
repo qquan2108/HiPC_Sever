@@ -7,35 +7,32 @@ const mongoose    = require('mongoose');
 exports.createProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
-      stock = 0,
-      specifications = [],
-      tskt = [],
-      variants = '{}'
-    } = req.body;
+  name, category_id, brand_id,
+  price, description = '',
+  stock = 0,
+  specifications = [],
+  variants = '{}'
+} = req.body;
 
-    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
+// Không cần tskt, chỉ dùng specifications
+if (!Array.isArray(specifications)) {
+  return res.status(400).json({ error: 'specifications phải là mảng' });
+}
 
-    if (!Array.isArray(specArr)) {
-      return res.status(400).json({ error: 'tskt phải là mảng' });
-    }
+let parsedVariants = {};
+try {
+  if (variants) parsedVariants = JSON.parse(variants);
+} catch (e) {
+  return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+}
 
-    let parsedVariants = {};
-    if (variants) {
-      try {
-        parsedVariants = JSON.parse(variants);
-      } catch (e) {
-        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
-      }
-    }
+const newItem = new Product({
+  name, category_id, brand_id,
+  price, description, stock,
+  specifications,
+  variants: parsedVariants
+});
 
-    const newItem = new Product({
-      name, category_id, brand_id,
-      price, description, stock,
-      specifications: specArr,
-      variants: parsedVariants
-    });
     await newItem.save();
 
     if (req.body.image) {
@@ -56,35 +53,31 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
-      stock = 0,
-      specifications = [],
-      tskt = [],
-      variants = '{}'
-    } = req.body;
+  name, category_id, brand_id,
+  price, description = '',
+  stock = 0,
+  specifications = [],
+  variants = '{}'
+} = req.body;
 
-    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
+if (!Array.isArray(specifications)) {
+  return res.status(400).json({ error: 'specifications phải là mảng' });
+}
 
-    if (!Array.isArray(specArr)) {
-      return res.status(400).json({ error: 'tskt phải là mảng' });
-    }
+let parsedVariants = {};
+try {
+  if (variants) parsedVariants = JSON.parse(variants);
+} catch (e) {
+  return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+}
 
-    let parsedVariants = {};
-    if (variants) {
-      try {
-        parsedVariants = JSON.parse(variants);
-      } catch (e) {
-        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
-      }
-    }
+const updates = {
+  name, category_id, brand_id,
+  price, description, stock,
+  specifications,
+  variants: parsedVariants
+};
 
-    const updates = {
-      name, category_id, brand_id,
-      price, description, stock,
-      specifications: specArr,
-      variants: parsedVariants
-    };
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       updates,
