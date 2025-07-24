@@ -12,6 +12,7 @@ var bannerRoutes = require('./routes/banners');
 var vnpayRouter = require('./routes/vnpay');
 var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
+var payosRouter = require('./routes/payos');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -80,6 +81,7 @@ hbs.registerHelper('json', function (context) {
   return JSON.stringify(context);
 });
 app.use('/stripe', stripeRouter);
+app.use('/payos', payosRouter);
 app.use('/', indexRouter);
 app.get('/admin', (req, res) => {
   return res.redirect('/login');
