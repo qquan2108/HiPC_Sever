@@ -12,7 +12,7 @@ var bannerRoutes = require('./routes/banners');
 var vnpayRouter = require('./routes/vnpay');
 var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
-var payosRouter = require('./routes/payos');
+var sepayRouter = require('./routes/sepay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -33,11 +33,17 @@ var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 const { default: mongoose } = require('mongoose');
+const { Server }    = require('socket.io');
 var cors = require('cors');
 
 var app = express();
 app.use(cors());
 
+const http          = require('http');
+const server = http.createServer(app);
+const io    = new Server(server, {
+  cors: { origin: '*' }  // điều chỉnh origin theo domain mobile/web của bạn
+});
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -54,7 +60,7 @@ const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(logger('dev'));
-
+app.set('io', io);
 
 
 app.use(express.json({ limit: '10mb' }));
@@ -80,12 +86,14 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
 hbs.registerHelper('json', function (context) {
   return JSON.stringify(context);
 });
-app.use('/stripe', stripeRouter);
-app.use('/payos', payosRouter);
-app.use('/', indexRouter);
+
 app.get('/admin', (req, res) => {
   return res.redirect('/login');
 });
+
+app.use('/stripe', stripeRouter);
+app.use('/sepay', sepayRouter);
+app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
@@ -98,18 +106,16 @@ app.use('/comparisonproducts', comparisonproductsRouter);
 app.use('/comparisons', comparisonsRouter);
 app.use('/images', imagesRouter);
 app.use('/productreviews', productreviewsRouter);
-app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
+app.use('/tsktproducts', tsktproductsRouter);
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
 app.use('/combo', comboRoutes);
 app.use('/videocombo', videoRoutes);
 app.use('/vnpay', vnpayRouter);
-
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
-app.use('/vnpay', vnpayRouter);
 
 
 
