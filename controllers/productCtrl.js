@@ -2,43 +2,57 @@ const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
 const mongoose    = require('mongoose');
+// controllers/productCtrl.js
 
 // Create product
 exports.createProduct = async (req, res) => {
   try {
     const {
-  name, category_id, brand_id,
-  price, description = '',
-  stock = 0,
-  specifications = [],
-  variants = '{}'
-} = req.body;
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
+      stock = 0,
+      specifications = [],
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
+    } = req.body;
 
-// Không cần tskt, chỉ dùng specifications
-if (!Array.isArray(specifications)) {
-  return res.status(400).json({ error: 'specifications phải là mảng' });
-}
+    // Validate specifications
+    if (!Array.isArray(specifications)) {
+      return res.status(400).json({ error: 'specifications phải là mảng' });
+    }
 
-let parsedVariants = {};
-try {
-  if (variants) parsedVariants = JSON.parse(variants);
-} catch (e) {
-  return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
-}
+    // Parse và validate variants
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+    }
 
-const newItem = new Product({
-  name, category_id, brand_id,
-  price, description, stock,
-  specifications,
-  variants: parsedVariants
-});
+    // Tạo product mới
+    const newItem = new Product({
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
+      variants: parsedVariants    // Gán mảng nhóm biến thể
+    });
 
     await newItem.save();
 
+    // Nếu có image, lưu vào collection Image
     if (req.body.image) {
       await new Image({
         product_id: newItem._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 
@@ -53,30 +67,41 @@ const newItem = new Product({
 exports.updateProduct = async (req, res) => {
   try {
     const {
-  name, category_id, brand_id,
-  price, description = '',
-  stock = 0,
-  specifications = [],
-  variants = '{}'
-} = req.body;
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
+      stock = 0,
+      specifications = [],
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
+    } = req.body;
 
-if (!Array.isArray(specifications)) {
-  return res.status(400).json({ error: 'specifications phải là mảng' });
-}
+    if (!Array.isArray(specifications)) {
+      return res.status(400).json({ error: 'specifications phải là mảng' });
+    }
 
-let parsedVariants = {};
-try {
-  if (variants) parsedVariants = JSON.parse(variants);
-} catch (e) {
-  return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
-}
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+    }
 
-const updates = {
-  name, category_id, brand_id,
-  price, description, stock,
-  specifications,
-  variants: parsedVariants
-};
+    // Chuẩn bị object updates
+    const updates = {
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
+      variants: parsedVariants
+    };
 
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
@@ -87,11 +112,12 @@ const updates = {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
+    // Xử lý image nếu có
     if (req.body.image) {
       await Image.deleteMany({ product_id: updated._id });
       await new Image({
         product_id: updated._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 

@@ -21,47 +21,103 @@ router.get('/status-tabs', (req, res) => {
 });
 // 1) Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
 router.post('/add-to-cart', async (req, res) => {
-  const { user_id, productId, quantity } = req.body;
-  // Chỉ lấy đơn pending chưa có address (giỏ hàng thực sự)
-  let order = await Order.findOne({ user_id, status: 'pending', address: { $in: [null, ''] } });
-  if (!order) {
-    order = new Order({ user_id, products: [{ productId, quantity }], status: 'pending' });
-  } else {
-    const prod = order.products.find(p => p.productId.toString() === productId);
-    prod ? prod.quantity += quantity : order.products.push({ productId, quantity });
+  try {
+    const { user_id, productId, quantity, variant } = req.body;
+    // variant: { key, label, priceDiff }
+    if (!user_id || !productId || !quantity || !variant?.key) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    let order = await Order.findOne({ user_id, status: 'pending' });
+    if (!order) {
+      order = new Order({ user_id, products: [] });
+    }
+
+    const existing = order.products.find(p =>
+      p.productId.toString() === productId &&
+      p.variant.key === variant.key &&
+      p.variant.label === variant.label
+    );
+
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      order.products.push({
+        productId,
+        quantity,
+        variant: {
+          key:       variant.key,
+          label:     variant.label,
+          priceDiff: variant.priceDiff
+        }
+      });
+    }
+
+    await order.save();
+    const populated = await Order.findById(order._id).populate('products.productId');
+    res.json(populated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Có lỗi server, vui lòng thử lại.' });
   }
-  await order.save();
-  const populated = await Order.findById(order._id).populate('products.productId');
-  res.json(populated);
 });
+
+
+module.exports = router;
 
 // 2) Cập nhật số lượng trong giỏ hàng
 router.put('/update-quantity', async (req, res) => {
-  const { user_id, productId, quantity } = req.body;
-  const order = await Order.findOne({ user_id, status: 'pending', 'products.productId': productId });
-  if (!order) return res.status(404).json({ error: 'Order not found' });
+  try {
+    const { user_id, productId, variant = {}, quantity } = req.body;
+    // variant phải có key và label
+    const order = await Order.findOne({ user_id, status: 'pending' });
+    if (!order) return res.status(404).json({ error: 'Giỏ hàng trống.' });
 
-  const prod = order.products.find(p => p.productId.toString() === productId);
-  prod.quantity = quantity;
-  await order.save();
+const item = order.products.find(p => {
+      if (p.productId.toString() !== productId) return false;
+      // nếu variant gửi lên có key, match thêm key & label
+      if (variant.key) {
+        return p.variant.key === variant.key && p.variant.label === variant.label;
+      }
+      return true; // hoặc chỉ match productId nếu variant không được cung cấp
+    });
 
-  const populated = await Order.findById(order._id).populate('products.productId');
-  res.json(populated);
+    item.quantity = quantity;
+    await order.save();
+    const populated = await Order.findById(order._id).populate('products.productId');
+    res.json(populated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
+
 // 3) Xóa sản phẩm khỏi giỏ hàng
-router.delete('/remove-product/:userId/:productId', async (req, res) => {
-  const { userId, productId } = req.params;
-  // Xóa sản phẩm khỏi mảng products bằng $pull
-  const updatedOrder = await Order.findOneAndUpdate(
-    { user_id: userId, status: 'pending' },
-    { $pull: { products: { productId: productId } } },
-    { new: true }
-  ).populate('products.productId');
+router.delete('/remove-product', async (req, res) => {
+  try {
+    const { user_id, productId, variant = {} } = req.body;
+    // build filter cho $pull
+    const pullFilter = { productId };
+    if (variant.key) {
+      pullFilter['variant.key']   = variant.key;
+      pullFilter['variant.label'] = variant.label;
+    }
 
-  if (!updatedOrder) return res.status(404).json({ error: 'Order not found' });
+    const updated = await Order.findOneAndUpdate(
+      { user_id, status: 'pending' },
+      { $pull: { products: pullFilter } },
+      { new: true }
+    ).populate('products.productId');
 
-  res.json(updatedOrder);
+    if (!updated) {
+      return res.status(404).json({ error: 'Giỏ hàng trống hoặc không tìm thấy.' });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 4) Lấy danh sách đơn hàng của user
@@ -87,41 +143,45 @@ router.get('/user/:userId', async (req, res) => {
 // 5) Checkout: duyệt đơn và trừ stock
 router.post('/checkout', async (req, res) => {
   try {
-    const { user_id, address, paymentMethod, shippingMethod, voucher, total } = req.body;
-    const order = await Order.findOne({ user_id, status: 'pending' });
+    const { user_id, address, paymentMethod, shippingMethod, voucher } = req.body;
+    const order = await Order.findOne({ user_id, status: 'pending' }).populate('products.productId');
     if (!order || !order.products.length) {
       return res.status(400).json({ error: 'Giỏ hàng trống' });
     }
 
-    // Kiểm tra và trừ stock atomic
+    // Tính tổng
+    let totalPrice = 0;
     for (const item of order.products) {
-      const prod = await Product.findById(item.productId).select('stock name');
-      if (!prod) {
-        return res.status(400).json({ error: `Không tìm thấy sản phẩm ${item.productId}` });
-      }
+      const prod = item.productId;
+      const itemPrice = prod.price + (item.variant.priceDiff || 0);
       if (prod.stock < item.quantity) {
         return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
       }
+      totalPrice += itemPrice * item.quantity;
+      // Giảm stock
       await Product.updateOne(
-        { _id: item.productId },
+        { _id: prod._id },
         { $inc: { stock: -item.quantity } }
       );
     }
 
-    // Cập nhật đơn thành confirmed
+    // Cập nhật đơn
     order.address        = address;
     order.paymentMethod  = paymentMethod;
     order.shippingMethod = shippingMethod;
     order.voucher        = voucher;
-    order.total          = total;
-    order.createdAt      = new Date();
+    order.total_price    = totalPrice;
+    order.total          = totalPrice;
+    order.status         = 'confirmed';
     await order.save();
+
     res.status(200).json({ message: 'Đặt hàng thành công', orderId: order._id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // GET by id
 router.get('/:id', async (req, res) => {
