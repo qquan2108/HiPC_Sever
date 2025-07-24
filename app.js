@@ -33,17 +33,10 @@ var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 const { default: mongoose } = require('mongoose');
-const { Server }    = require('socket.io');
 var cors = require('cors');
 
 var app = express();
 app.use(cors());
-
-const http          = require('http');
-const server = http.createServer(app);
-const io    = new Server(server, {
-  cors: { origin: '*' }  // điều chỉnh origin theo domain mobile/web của bạn
-});
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -60,8 +53,6 @@ const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(logger('dev'));
-app.set('io', io);
-
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
