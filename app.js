@@ -19,6 +19,7 @@ var usersRouter = require('./routes/users');
 var productsRouter = require('./routes/products');
 var categorysRouter = require('./routes/categorys');
 var ordersRouter = require('./routes/orders');
+var cartRouter = require('./routes/cart');
 var buildproductsRouter = require('./routes/buildproducts');
 var chatmessagesRouter = require('./routes/chatmessages');
 var chatsessionsRouter = require('./routes/chatsessions');
@@ -78,6 +79,10 @@ hbs.registerHelper('json', function (context) {
   return JSON.stringify(context);
 });
 
+hbs.registerHelper('eq', function(a, b) {
+  return a === b;
+});
+
 app.get('/admin', (req, res) => {
   return res.redirect('/login');
 });
@@ -90,6 +95,7 @@ app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
 app.use('/orders', ordersRouter);
+app.use('/cartt', cartRouter);
 app.use('/buildproducts', buildproductsRouter);
 app.use('/chatmessages', chatmessagesRouter);
 app.use('/chatsessions', chatsessionsRouter);

@@ -2,18 +2,12 @@
 
 // Định nghĩa các trạng thái chuyển tiếp hợp lệ
 const transitions = {
-  pending:           ['confirmed', 'cancelled', 'failed'],
-  confirmed:         ['packed', 'cancelled', 'failed'],
-  packed:            ['picked', 'cancelled', 'failed'],
-  picked:            ['shipping', 'cancelled', 'failed'],
-  shipping:          ['delivered', 'return_requested', 'failed'],
-  delivered:         ['return_requested'],
-  return_requested:  ['return_approved', 'refunding', 'failed'],
-  return_approved:   ['refunding', 'failed'],
-  refunding:         ['refunded', 'failed'],
-  refunded:          [],
-  cancelled:         [],
-  failed:            []
+  pending:           ['packed', 'cancelled'],         // Chờ xác nhận → Chờ lấy hàng, Hủy
+  packed:            ['shipping', 'cancelled'],       // Chờ lấy hàng → Chờ giao hàng, Hủy
+  shipping:          ['delivered', 'return_requested'], // Chờ giao hàng → Đã giao, Trả hàng
+  delivered:         ['return_requested'],            // Đã giao → Trả hàng
+  return_requested:  [],                              // Trả hàng (kết thúc)
+  cancelled:         []                               // Đã hủy (kết thúc)
 };
 
 // Hàm kiểm tra chuyển trạng thái

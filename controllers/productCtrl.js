@@ -1,6 +1,7 @@
 const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
+const Order = require('../models/Order'); // Thêm dòng này ở đầu file nếu chưa có
 const mongoose    = require('mongoose');
 // controllers/productCtrl.js
 
@@ -380,6 +381,74 @@ const productsWithImages = products.map(p => ({
 };
 
 
+// Lấy sản phẩm bán chạy nhất trong 7 ngày gần đây theo category
+exports.getBestSellers = async (req, res) => {
+  try {
+    const { category, limit = 5 } = req.query;
+    if (!category || !mongoose.Types.ObjectId.isValid(category)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai category' });
+    }
+
+    // Lấy ngày 7 ngày trước
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+
+    const orders = await Order.aggregate([
+      {
+        $match: {
+          status: 'delivered',
+          order_date: { $gte: startDate }
+        }
+      },
+      { $unwind: '$products' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'products.productId',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: '$productInfo' },
+      {
+        $match: {
+          'productInfo.category_id': new mongoose.Types.ObjectId(category)
+        }
+      },
+      {
+        $group: {
+          _id: '$products.productId',
+          totalSold: { $sum: '$products.quantity' },
+          product: { $first: '$productInfo' }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Lấy ảnh đại diện cho từng sản phẩm
+    const productIds = orders.map(o => o._id);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const result = orders.map(o => ({
+      ...o.product,
+      totalSold: o.totalSold,
+      image: imageMap[o._id.toString()] || null
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error in getBestSellers:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+};
 
 // Upload products from Excel file
 exports.uploadProductsFromExcel = async (req, res) => {

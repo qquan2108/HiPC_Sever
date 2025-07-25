@@ -4,7 +4,7 @@
 if (typeof window.adminConfig === 'undefined') {
   window.adminConfig = {
     apiProduct: "/product",
-    apiUsers: "/users/all", 
+    apiUsers: "/users/all",
     apiCategory: "/category",
     apiTskt: "/tsktproducts",
     initialized: false
@@ -110,7 +110,7 @@ async function deleteProduct(id) {
  */
 async function initProductForm() {
   console.log('Initializing product form...');
-  
+
   const form = document.getElementById("productForm");
   const categorySelect = document.getElementById("categorySelect");
   const specContainer = document.getElementById("specContainer");
@@ -122,7 +122,7 @@ async function initProductForm() {
   const imageFile = document.getElementById("imageFile");
   const imagePreview = document.getElementById("imagePreview");
   const imageUrlInput = document.getElementById("imageUrl");
-  
+
   let quill;
 
   if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) {
@@ -132,13 +132,13 @@ async function initProductForm() {
 
   // Initialize Quill editor
   try {
-    quill = new Quill(descEditorEl, { 
+    quill = new Quill(descEditorEl, {
       theme: "snow",
       modules: {
         toolbar: [
           ['bold', 'italic', 'underline'],
           ['link', 'blockquote'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }]
         ]
       }
     });
@@ -171,7 +171,7 @@ async function initProductForm() {
       <input type="text" class="form-control variant-name" placeholder="Tên biến thể" value="${name}">
       <input type="text" class="form-control variant-values" placeholder="Giá trị (cách nhau bằng dấu phẩy)" value="${values}">
       <button type="button" class="btn btn-sm btn-danger remove-variant">&times;</button>`;
-    
+
     div.querySelector('.remove-variant').addEventListener('click', () => div.remove());
     variantsContainer.appendChild(div);
   }
@@ -180,7 +180,7 @@ async function initProductForm() {
     console.log('Rendering variant options:', list, existing);
     variantsContainer.innerHTML = '';
     const used = new Set();
-    
+
     list.forEach(opt => {
       const div = document.createElement('div');
       div.className = 'spec-item';
@@ -190,7 +190,7 @@ async function initProductForm() {
       select.multiple = true;
       select.className = 'form-select';
       select.dataset.name = opt.name;
-      
+
       (opt.options || []).forEach(val => {
         const o = document.createElement('option');
         o.value = val;
@@ -200,7 +200,7 @@ async function initProductForm() {
         }
         select.appendChild(o);
       });
-      
+
       div.appendChild(label);
       div.appendChild(select);
       variantsContainer.appendChild(div);
@@ -217,10 +217,10 @@ async function initProductForm() {
 
   async function loadSpecsAndVariants(catId, existingVariants = {}) {
     console.log('Loading specs and variants for category:', catId);
-    
+
     specContainer.innerHTML = '';
     variantsContainer.innerHTML = '';
-    
+
     if (!catId) {
       console.log('No category selected');
       return;
@@ -233,34 +233,34 @@ async function initProductForm() {
         console.log('Filters endpoint failed, trying category endpoint');
         res = await fetch(`${apiTskt}/category/${catId}`);
       }
-      
+
       if (!res.ok) {
         throw new Error(`API call failed: ${res.status}`);
       }
 
       const data = await res.json();
       console.log('Received data:', data);
-      
+
       let specs = [];
       let variantOpts = [];
 
       // Parse response data
- if (Array.isArray(data.specs)) {
-  specs = data.specs;
-  variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
-} else if (Array.isArray(data.fields)) {
-  specs = data.fields; // ← Thêm dòng này để hỗ trợ `fields` thay vì `specs`
-} else if (Array.isArray(data)) {
-  const first = data[0] || {};
-  if (Array.isArray(first.specs)) {
-    specs = first.specs;
-  } else if (Array.isArray(first.value)) {
-    specs = first.value;
-  }
-  if (Array.isArray(first.variantOptions)) {
-    variantOpts = first.variantOptions;
-  }
-}
+      if (Array.isArray(data.specs)) {
+        specs = data.specs;
+        variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
+      } else if (Array.isArray(data.fields)) {
+        specs = data.fields; // ← Thêm dòng này để hỗ trợ `fields` thay vì `specs`
+      } else if (Array.isArray(data)) {
+        const first = data[0] || {};
+        if (Array.isArray(first.specs)) {
+          specs = first.specs;
+        } else if (Array.isArray(first.value)) {
+          specs = first.value;
+        }
+        if (Array.isArray(first.variantOptions)) {
+          variantOpts = first.variantOptions;
+        }
+      }
       console.log('Parsed specs:', specs);
       console.log('Parsed variants:', variantOpts);
 
@@ -303,26 +303,26 @@ async function initProductForm() {
         console.log('Loading product data for edit mode:', id);
         const res = await fetch(`${apiProduct}/${id}`);
         if (!res.ok) throw new Error(`Failed to load product: ${res.status}`);
-        
+
         const prod = await res.json();
         console.log('Loaded product:', prod);
-        
+
         // Fill basic fields
         form.querySelector('input[name="name"]').value = prod.name || '';
         form.querySelector('input[name="price"]').value = prod.price || '';
         form.querySelector('input[name="stock"]').value = prod.stock || '';
         quill.root.innerHTML = prod.description || "";
-        
+
         if (imagePreview) {
           imagePreview.src = prod.image || '';
           imagePreview.style.display = prod.image ? 'block' : 'none';
         }
         if (imageUrlInput) imageUrlInput.value = prod.image || '';
-        
+
         if (prod.category_id && prod.category_id._id) {
           categorySelect.value = prod.category_id._id;
           await loadSpecsAndVariants(prod.category_id._id, prod.variants || {});
-          
+
           // Fill spec values
           const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
           specList.forEach(spec => {
@@ -332,7 +332,7 @@ async function initProductForm() {
             if (input) input.value = spec.value;
           });
         }
-        
+
       } catch (err) {
         console.error("Lỗi preload sản phẩm:", err);
         showToast('Lỗi tải dữ liệu sản phẩm', 'error');
@@ -347,11 +347,11 @@ async function initProductForm() {
   // Form submit handler
   form.addEventListener("submit", async e => {
     e.preventDefault();
-    
+
     try {
       // Update description from Quill
       descInput.value = quill.root.innerHTML;
-      
+
       const fd = new FormData(form);
       let imageUrl = imageUrlInput ? imageUrlInput.value : '';
 
@@ -359,7 +359,7 @@ async function initProductForm() {
       if (imageFile && imageFile.files[0]) {
         const fdImg = new FormData();
         fdImg.append('image', imageFile.files[0]);
-        
+
         try {
           const upRes = await fetch(`${apiProduct}/upload`, {
             method: 'POST',
@@ -376,41 +376,46 @@ async function initProductForm() {
       }
 
       // Collect variant data
-      const variantData = {};
+      const variantsArray = [];
       variantsContainer.querySelectorAll('select').forEach(sel => {
         const name = sel.dataset.name;
         const vals = Array.from(sel.selectedOptions).map(o => o.value);
-        if (vals.length) variantData[name] = vals;
+        if (vals.length) variantsArray.push({ name, values: vals });
       });
-      
+
+      // Các row custom
       variantsContainer.querySelectorAll('.variant-custom').forEach(div => {
         const name = div.querySelector('.variant-name').value.trim();
-        const vals = div.querySelector('.variant-values').value.split(',').map(v => v.trim()).filter(v => v);
-        if (name && vals.length) variantData[name] = vals;
+        const vals = div.querySelector('.variant-values')
+          .value
+          .split(',')
+          .map(v => v.trim())
+          .filter(v => v);
+        if (name && vals.length) variantsArray.push({ name, values: vals });
       });
+
+      variantsInput.value = JSON.stringify(variantsArray);
+
       
-      if (variantsInput) {
-        variantsInput.value = JSON.stringify(variantData);
-      }
 
       // Prepare payload
-const payload = {
-  name: fd.get("name"),
-  category_id: fd.get("category_id"),
-  brand_id: fd.get("brand_id"),
-  price: parseFloat(fd.get("price")),
-  stock: parseInt(fd.get("stock")),
-  image: imageUrl,
-  description: fd.get("description"),
-  specifications: Array.from(form.querySelectorAll(".spec-item input")).map(inp => {
-    const label = inp.previousElementSibling;
-    return {
-      key: label ? label.textContent : '',
-      value: inp.value
-    };
-  }).filter(item => item.key && item.value.trim()),
-  variants: variantsInput ? variantsInput.value : '{}'
-};
+      const payload = {
+        name: fd.get("name"),
+        category_id: fd.get("category_id"),
+        brand_id: fd.get("brand_id"),
+        price: parseFloat(fd.get("price")),
+        stock: parseInt(fd.get("stock")),
+        image: imageUrl,
+        description: fd.get("description"),
+        specifications: Array.from(form.querySelectorAll(".spec-item input"))
+          .map(inp => ({
+            key: inp.previousElementSibling.textContent,
+            value: inp.value
+          }))
+          .filter(item => item.key && item.value.trim()),
+        // Mặc định gửi '[]' nếu không có variants
+        variants: variantsInput.value
+      };
 
       const url = fd.get("id") ? `${apiProduct}/${fd.get("id")}` : apiProduct;
       const method = fd.get("id") ? "PUT" : "POST";
@@ -464,9 +469,9 @@ function initCategoryForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      
+
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
-      
+
       showToast('Lưu danh mục thành công', 'success');
       setTimeout(() => {
         window.location.href = "/admin/categories";
@@ -484,21 +489,21 @@ function initCategoryForm() {
 function initExcelUpload() {
   const input = document.getElementById('excelFile');
   if (!input) return;
-  
+
   input.addEventListener('change', async () => {
     if (!input.files[0]) return;
-    
+
     const fd = new FormData();
     fd.append('file', input.files[0]);
-    
+
     try {
       const res = await fetch(`${apiProduct}/upload-excel`, {
         method: 'POST',
         body: fd
       });
-      
+
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-      
+
       await res.json();
       currentPage = 1;
       hasMore = true;
@@ -519,7 +524,7 @@ function initExcelUpload() {
 function initExcelExport() {
   const btn = document.getElementById('excelExportBtn');
   if (!btn) return;
-  
+
   btn.addEventListener('click', async e => {
     e.preventDefault();
     try {
@@ -549,7 +554,7 @@ function initExcelExport() {
 function initProductScroll() {
   const sentinel = document.getElementById("scrollSentinel");
   if (!sentinel) return;
-  
+
   observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -562,7 +567,7 @@ function initProductScroll() {
     rootMargin: "200px",
     threshold: 0
   });
-  
+
   observer.observe(sentinel);
 }
 
@@ -581,7 +586,7 @@ async function fetchCategories() {
 // DOM ready: init modules
 document.addEventListener("DOMContentLoaded", () => {
   console.log('Admin JS DOM loaded');
-  
+
   // Prevent multiple initialization
   if (window.adminConfig.initialized) {
     console.log('Admin already initialized, skipping...');
@@ -595,7 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchProducts(1);
     initExcelUpload();
     initExcelExport();
-    
+
     const search = document.getElementById('searchInput');
     if (search) {
       search.addEventListener('input', () => {
@@ -606,13 +611,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   }
-  
+
   // Users
   if (document.getElementById("userTable")) fetchUsers();
-  
+
   // Categories
   if (document.getElementById("categoryTable")) fetchCategories();
-  
+
   // Forms
   initProductForm();
   initCategoryForm();
@@ -625,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
       mainNav.classList.toggle('active');
     });
-    
+
     document.addEventListener('click', function (e) {
       if (
         window.innerWidth < 900 &&

@@ -23,9 +23,12 @@ const orderSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'pending','confirmed','packed','picked','shipping','delivered',
-      'return_requested','return_approved','refunding','refunded',
-      'cancelled','failed'
+      'pending',          // chờ xác nhận
+      'packed',           // chờ lấy hàng
+      'shipping',         // chờ giao hàng
+      'delivered',        // đã giao
+      'return_requested', // trả hàng
+      'cancelled'         // đã hủy
     ],
     default: 'pending',
     required: true
