@@ -3,10 +3,10 @@
 // Kiểm tra xem các biến đã được khai báo chưa
 if (typeof window.adminConfig === 'undefined') {
   window.adminConfig = {
-    apiProduct: "/product",
-    apiUsers: "/users/all",
-    apiCategory: "/category",
-    apiTskt: "/tsktproducts",
+    apiProduct: "/api/products",
+    apiUsers: "/api/users/all",
+    apiCategory: "/api/categories",
+    apiTskt: "/api/tsktproducts",
     initialized: false
   };
 }
@@ -40,7 +40,10 @@ async function fetchProducts(page = 1, q = productQuery) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-    const { products, hasMore: more } = await res.json();
+    const data = await res.json();
+    const products = data.products || data.items || [];
+    const more = 'hasMore' in data ? data.hasMore
+      : (data.page && data.totalPages ? data.page < data.totalPages : false);
     renderProducts(products, page > 1);
     hasMore = more;
     currentPage = page;
@@ -122,28 +125,24 @@ async function initProductForm() {
   const imageFile = document.getElementById("imageFile");
   const imagePreview = document.getElementById("imagePreview");
   const imageUrlInput = document.getElementById("imageUrl");
+  const imageSourceSelect = document.getElementById("imageSourceSelect");
+  const imageLink = document.getElementById("imageLink");
+  const imageFileGroup = document.getElementById("imageFileGroup");
+  const imageLinkGroup = document.getElementById("imageLinkGroup");
 
-  let quill;
+  let editor;
 
   if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) {
     console.error('Required form elements not found');
     return;
   }
 
-  // Initialize Quill editor
+  // Initialize CKEditor
   try {
-    quill = new Quill(descEditorEl, {
-      theme: "snow",
-      modules: {
-        toolbar: [
-          ['bold', 'italic', 'underline'],
-          ['link', 'blockquote'],
-          [{ 'list': 'ordered' }, { 'list': 'bullet' }]
-        ]
-      }
-    });
+    editor = await ClassicEditor.create(descEditorEl);
+    if (descInput.value) editor.setData(descInput.value);
   } catch (error) {
-    console.error('Error initializing Quill:', error);
+    console.error('Error initializing CKEditor:', error);
     return;
   }
 
@@ -154,6 +153,28 @@ async function initProductForm() {
       if (file) {
         imagePreview.src = URL.createObjectURL(file);
         imagePreview.style.display = 'block';
+      }
+    });
+  }
+
+  if (imageLink) {
+    imageLink.addEventListener('input', () => {
+      if (imageLink.value) {
+        imagePreview.src = imageLink.value;
+        imagePreview.style.display = 'block';
+      }
+    });
+  }
+
+  if (imageSourceSelect && imageFileGroup && imageLinkGroup) {
+    imageSourceSelect.addEventListener('change', () => {
+      const mode = imageSourceSelect.value;
+      if (mode === 'link') {
+        imageFileGroup.style.display = 'none';
+        imageLinkGroup.style.display = 'block';
+      } else {
+        imageFileGroup.style.display = 'block';
+        imageLinkGroup.style.display = 'none';
       }
     });
   }
@@ -311,13 +332,19 @@ async function initProductForm() {
         form.querySelector('input[name="name"]').value = prod.name || '';
         form.querySelector('input[name="price"]').value = prod.price || '';
         form.querySelector('input[name="stock"]').value = prod.stock || '';
-        quill.root.innerHTML = prod.description || "";
+        if (editor) editor.setData(prod.description || "");
 
         if (imagePreview) {
           imagePreview.src = prod.image || '';
           imagePreview.style.display = prod.image ? 'block' : 'none';
         }
         if (imageUrlInput) imageUrlInput.value = prod.image || '';
+        if (imageLink) imageLink.value = prod.image || '';
+        if (imageSourceSelect && prod.image) {
+          imageSourceSelect.value = 'link';
+          if (imageFileGroup) imageFileGroup.style.display = 'none';
+          if (imageLinkGroup) imageLinkGroup.style.display = 'block';
+        }
 
         if (prod.category_id && prod.category_id._id) {
           categorySelect.value = prod.category_id._id;
@@ -349,14 +376,15 @@ async function initProductForm() {
     e.preventDefault();
 
     try {
-      // Update description from Quill
-      descInput.value = quill.root.innerHTML;
+      // Update description from CKEditor
+      descInput.value = editor.getData();
 
       const fd = new FormData(form);
       let imageUrl = imageUrlInput ? imageUrlInput.value : '';
 
-      // Upload image if file selected
-      if (imageFile && imageFile.files[0]) {
+      if (imageSourceSelect && imageSourceSelect.value === 'link') {
+        imageUrl = imageLink ? imageLink.value.trim() : '';
+      } else if (imageFile && imageFile.files[0]) {
         const fdImg = new FormData();
         fdImg.append('image', imageFile.files[0]);
 
