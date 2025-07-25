@@ -31,6 +31,12 @@ io.on("connection", socket => {
   console.log("⚡️ Socket connected:", socket.id);
 });
 
+server.on('request', (req, res) => {
+  if (req.url.startsWith('/socket.io')) {
+    console.log(`[HTTP → socket.io] ${req.method} ${req.url}`);
+  }
+});
+
 /**
  * Listen on provided port, on all network interfaces.
  */

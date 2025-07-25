@@ -172,7 +172,7 @@ router.post('/checkout', async (req, res) => {
     order.voucher        = voucher;
     order.total_price    = totalPrice;
     order.total          = totalPrice;
-    order.status         = 'confirmed';
+    // order.status         = 'confirmed';
     await order.save();
 
     res.status(200).json({ message: 'Đặt hàng thành công', orderId: order._id });
