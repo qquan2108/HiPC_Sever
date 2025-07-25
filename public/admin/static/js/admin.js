@@ -3,10 +3,10 @@
 // Kiểm tra xem các biến đã được khai báo chưa
 if (typeof window.adminConfig === 'undefined') {
   window.adminConfig = {
-    apiProduct: "/api/products",
-    apiUsers: "/api/users/all",
-    apiCategory: "/api/categories",
-    apiTskt: "/api/tsktproducts",
+    apiProduct: "/product",
+    apiUsers: "/users/all",
+    apiCategory: "/category",
+    apiTskt: "/tsktproducts",
     initialized: false
   };
 }
