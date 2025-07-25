@@ -20,6 +20,14 @@ const orderSchema = new mongoose.Schema({
       }
     }
   ],
+  // Danh sách combo trong đơn (nếu có)
+  combos: [
+    {
+      comboId: { type: mongoose.Schema.Types.ObjectId, ref: 'Combo', required: true },
+      quantity: { type: Number, default: 1 },
+      price:    { type: Number, required: true }
+    }
+  ],
   status: {
     type: String,
     enum: [
