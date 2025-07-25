@@ -2,7 +2,7 @@
   {{#ifEquals mode 'edit'}}Chỉnh sửa sản phẩm{{else}}Tạo sản phẩm{{/ifEquals}}
 {{/inline}}
 <link rel="stylesheet" href="/admin/static/css/form.css">
-<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.0/classic/ckeditor.js"></script>
 
 <!-- Toast notification -->
 <div id="toast" class="toast"></div>
@@ -70,7 +70,16 @@
 
     <div class="form-group">
       <label>Ảnh sản phẩm</label>
-      <input type="file" id="imageFile" accept="image/*">
+      <select id="imageSourceSelect">
+        <option value="file">Tải lên file</option>
+        <option value="link">Dùng URL</option>
+      </select>
+      <div id="imageFileGroup">
+        <input type="file" id="imageFile" accept="image/*">
+      </div>
+      <div id="imageLinkGroup" style="display:none;">
+        <input type="text" id="imageLink" placeholder="Dán URL ảnh">
+      </div>
       <img id="imagePreview" src="{{product.image}}" class="h-24 my-2 max-w-full" {{#unless product.image}}style="display:none"{{/unless}} alt="Product preview">
       <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
@@ -91,6 +100,5 @@
 </div>
 
 <!-- Load scripts in correct order -->
-<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script src="/admin/static/js/admin.js"></script>
 
