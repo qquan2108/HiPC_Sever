@@ -124,10 +124,11 @@
     transition: background 0.2s, color 0.2s;
   }
   .status-pending { background: #fff3cd; color: #856404; }
-  .status-confirmed { background: #d1e7dd; color: #0f5132; }
-  .status-shipped { background: #cfe2ff; color: #084298; }
+  .status-packed { background: #e3f2fd; color: #1976d2; }
+  .status-shipping { background: #e0f2f1; color: #00796b; }
   .status-delivered { background: #e2f7e1; color: #1e4620; }
-  .status-canceled { background: #f8d7da; color: #842029; }
+  .status-return_requested { background: #fffde7; color: #fbc02d; }
+  .status-cancelled { background: #f8d7da; color: #842029; }
   .status-icon {
     font-size: 1.1em;
   }
@@ -189,19 +190,15 @@
     </div>
     {{#ifEquals mode 'edit'}}
     <div class="mb-4">
-      <label class="form-label block">Trạng thái hiện tại</label>
-      <span class="status-badge status-{{order.status}}">
-        <i class="status-icon {{#if (eq order.status 'pending')}}fas fa-clock{{/if}}
-          {{#if (eq order.status 'confirmed')}}fas fa-check-circle{{/if}}
-          {{#if (eq order.status 'shipped')}}fas fa-truck{{/if}}
-          {{#if (eq order.status 'delivered')}}fas fa-check-double{{/if}}
-          {{#if (eq order.status 'canceled')}}fas fa-times-circle{{/if}}"></i>
-        {{#if (eq order.status 'pending')}}Chờ xử lý{{/if}}
-        {{#if (eq order.status 'confirmed')}}Đã xác nhận{{/if}}
-        {{#if (eq order.status 'shipped')}}Đang giao{{/if}}
-        {{#if (eq order.status 'delivered')}}Đã giao{{/if}}
-        {{#if (eq order.status 'canceled')}}Đã hủy{{/if}}
-      </span>
+      <label class="form-label block">Trạng thái đơn hàng</label>
+      <select name="status" class="input">
+        <option value="pending" {{#if (eq order.status 'pending')}}selected{{/if}}>Chờ xác nhận</option>
+        <option value="packed" {{#if (eq order.status 'packed')}}selected{{/if}}>Chờ lấy hàng</option>
+        <option value="shipping" {{#if (eq order.status 'shipping')}}selected{{/if}}>Chờ giao hàng</option>
+        <option value="delivered" {{#if (eq order.status 'delivered')}}selected{{/if}}>Đã giao</option>
+        <option value="return_requested" {{#if (eq order.status 'return_requested')}}selected{{/if}}>Trả hàng</option>
+        <option value="cancelled" {{#if (eq order.status 'cancelled')}}selected{{/if}}>Đã huỷ</option>
+      </select>
     </div>
     <div id="statusButtons" class="flex space-x-2 mb-4"></div>
     {{/ifEquals}}
@@ -217,5 +214,29 @@
 
 <script>
   window.orderTransitions = {{{json transitions}}};
+
+  function getStatusIcon(status) {
+      const icons = {
+          pending: 'fas fa-clock',
+          packed: 'fas fa-box',
+          shipping: 'fas fa-truck',
+          delivered: 'fas fa-check-double',
+          return_requested: 'fas fa-undo-alt',
+          cancelled: 'fas fa-times-circle'
+      };
+      return icons[status] || 'fas fa-question-circle';
+  }
+
+  function getStatusText(status) {
+      const texts = {
+          pending: 'Chờ xác nhận',
+          packed: 'Chờ lấy hàng',
+          shipping: 'Chờ giao hàng',
+          delivered: 'Đã giao',
+          return_requested: 'Trả hàng',
+          cancelled: 'Đã huỷ'
+      };
+      return texts[status] || status;
+  }
 </script>
 <script src="/admin/static/js/order.js"></script>

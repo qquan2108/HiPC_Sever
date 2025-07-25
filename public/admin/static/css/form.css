@@ -52,6 +52,20 @@
   flex: 1;
 }
 
+/* Variant styles */
+#variantsContainer .spec-item select {
+  flex: 1;
+}
+.variant-custom input {
+  flex: 1;
+}
+.variant-custom .variant-name {
+  max-width: 140px;
+}
+#addVariantBtn {
+  margin-top: 8px;
+}
+
 /* Footer Buttons */
 .modal-footer {
   display: flex;

@@ -100,6 +100,10 @@ router.get('/orders/:id/edit', async (req, res) => {
     .populate('user_id', 'full_name email')
     .populate('products.productId', 'name price')
     .lean();
+  if (req.query.ajax === '1') {
+    // Render partial form không layout
+    return res.render('admin/order-form', { order, mode: 'edit', transitions, layout: false });
+  }
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 

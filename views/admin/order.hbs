@@ -95,10 +95,11 @@
             100% { transform: rotate(360deg);}
         }
         .status-pending { background: #fff3cd; color: #856404; }
-        .status-confirmed { background: #d1e7dd; color: #0f5132; }
-        .status-shipped { background: #cfe2ff; color: #084298; }
+        .status-packed { background: #e3f2fd; color: #1976d2; }
+        .status-shipping { background: #e0f2f1; color: #00796b; }
         .status-delivered { background: #e2f7e1; color: #1e4620; }
-        .status-canceled { background: #f8d7da; color: #842029; }
+        .status-return_requested { background: #fffde7; color: #fbc02d; }
+        .status-cancelled { background: #f8d7da; color: #842029; }
         .order-products-list {
             font-size: 0.95rem;
             color: #555;
@@ -242,6 +243,19 @@
         </div>
         <div id="pagination" class="mt-4 flex justify-center space-x-2"></div>
     </div>
+
+    <!-- Modal chỉnh sửa đơn hàng -->
+<div id="editOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-xl relative">
+    <button id="closeEditModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="editOrderFormContainer">
+      <!-- Nội dung form sẽ được load ở đây -->
+      <div class="text-center text-gray-400 py-8">Đang tải...</div>
+    </div>
+  </div>
+</div>
 
     <script>
         let currentStatus = '';
@@ -422,45 +436,50 @@
         }
 
         function editOrder(id) {
-            window.location.href = `/admin/orders/${id}/edit`;
+            // Hiện modal
+            document.getElementById('editOrderModal').classList.remove('hidden');
+            // Hiện loading
+            document.getElementById('editOrderFormContainer').innerHTML = '<div class="text-center text-gray-400 py-8">Đang tải...</div>';
+            // Lấy form từ server (render partial)
+            fetch(`/admin/orders/${id}/edit?ajax=1`)
+              .then(res => res.text())
+              .then(html => {
+                document.getElementById('editOrderFormContainer').innerHTML = html;
+                attachEditOrderFormHandler();
+              });
         }
 
-        async function deleteOrder(id) {
-            if (!confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) return;
-            setLoading(true);
-            await fetch(`/orders/${id}`, { method: 'DELETE' });
-            currentOrders = currentOrders.filter(order => order._id !== id);
-            renderOrders(currentOrders);
-            setLoading(false);
-            showNotification('Đơn hàng đã được xóa thành công!', 'success');
-        }
+        // Đóng modal khi bấm nút đóng
+        document.getElementById('closeEditModal').onclick = function() {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        };
 
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-lg transition-all duration-300 transform translate-x-full`;
-            if (type === 'success') {
-                notification.className += ' bg-green-500 text-white';
-            } else if (type === 'error') {
-                notification.className += ' bg-red-500 text-white';
-            } else {
-                notification.className += ' bg-blue-500 text-white';
-            }
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            document.body.appendChild(notification);
-            setTimeout(() => {
-                notification.classList.remove('translate-x-full');
-            }, 100);
-            setTimeout(() => {
-                notification.classList.add('translate-x-full');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
+        // Đóng modal khi click ra ngoài
+        document.getElementById('editOrderModal').onclick = function(e) {
+            if (e.target === this) this.classList.add('hidden');
+        };
+
+        // Xử lý submit form chỉnh sửa (AJAX)
+        function attachEditOrderFormHandler() {
+            const form = document.getElementById('orderForm');
+            if (!form) return;
+            form.onsubmit = async function(e) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const id = form.getAttribute('data-id');
+                const res = await fetch(`/orders/${id}`, {
+                    method: 'PUT',
+                    body: new URLSearchParams([...formData])
+                });
+                if (res.ok) {
+                    showNotification('Cập nhật đơn hàng thành công!', 'success');
+                    document.getElementById('editOrderModal').classList.add('hidden');
+                    await fetchOrders(currentStatus, document.getElementById('searchInput').value.trim(), currentPage);
+                    renderOrders(currentOrders);
+                } else {
+                    showNotification('Có lỗi khi cập nhật đơn hàng!', 'error');
+                }
+            };
         }
 
         document.addEventListener('DOMContentLoaded', async () => {

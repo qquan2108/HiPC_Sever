@@ -1,47 +1,59 @@
 const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
+const Order = require('../models/Order'); // Thêm dòng này ở đầu file nếu chưa có
 const mongoose    = require('mongoose');
+// controllers/productCtrl.js
 
 // Create product
 exports.createProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
       stock = 0,
       specifications = [],
-      tskt = [],
-      variants = '{}'
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
-    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
-
-    if (!Array.isArray(specArr)) {
-      return res.status(400).json({ error: 'tskt phải là mảng' });
+    // Validate specifications
+    if (!Array.isArray(specifications)) {
+      return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
-    let parsedVariants = {};
-    if (variants) {
-      try {
-        parsedVariants = JSON.parse(variants);
-      } catch (e) {
-        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+    // Parse và validate variants
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
       }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
 
+    // Tạo product mới
     const newItem = new Product({
-      name, category_id, brand_id,
-      price, description, stock,
-      specifications: specArr,
-      variants: parsedVariants
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
+      variants: parsedVariants    // Gán mảng nhóm biến thể
     });
+
     await newItem.save();
 
+    // Nếu có image, lưu vào collection Image
     if (req.body.image) {
       await new Image({
         product_id: newItem._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 
@@ -56,35 +68,42 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
       stock = 0,
       specifications = [],
-      tskt = [],
-      variants = '{}'
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
-    const specArr = Array.isArray(tskt) && tskt.length ? tskt : specifications;
-
-    if (!Array.isArray(specArr)) {
-      return res.status(400).json({ error: 'tskt phải là mảng' });
+    if (!Array.isArray(specifications)) {
+      return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
-    let parsedVariants = {};
-    if (variants) {
-      try {
-        parsedVariants = JSON.parse(variants);
-      } catch (e) {
-        return res.status(400).json({ error: 'variants phải là JSON hợp lệ' });
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
       }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
 
+    // Chuẩn bị object updates
     const updates = {
-      name, category_id, brand_id,
-      price, description, stock,
-      specifications: specArr,
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
       variants: parsedVariants
     };
+
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       updates,
@@ -94,11 +113,12 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
+    // Xử lý image nếu có
     if (req.body.image) {
       await Image.deleteMany({ product_id: updated._id });
       await new Image({
         product_id: updated._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 
@@ -361,6 +381,74 @@ const productsWithImages = products.map(p => ({
 };
 
 
+// Lấy sản phẩm bán chạy nhất trong 7 ngày gần đây theo category
+exports.getBestSellers = async (req, res) => {
+  try {
+    const { category, limit = 5 } = req.query;
+    if (!category || !mongoose.Types.ObjectId.isValid(category)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai category' });
+    }
+
+    // Lấy ngày 7 ngày trước
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+
+    const orders = await Order.aggregate([
+      {
+        $match: {
+          status: 'delivered',
+          order_date: { $gte: startDate }
+        }
+      },
+      { $unwind: '$products' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'products.productId',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: '$productInfo' },
+      {
+        $match: {
+          'productInfo.category_id': new mongoose.Types.ObjectId(category)
+        }
+      },
+      {
+        $group: {
+          _id: '$products.productId',
+          totalSold: { $sum: '$products.quantity' },
+          product: { $first: '$productInfo' }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Lấy ảnh đại diện cho từng sản phẩm
+    const productIds = orders.map(o => o._id);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const result = orders.map(o => ({
+      ...o.product,
+      totalSold: o.totalSold,
+      image: imageMap[o._id.toString()] || null
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error in getBestSellers:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+};
 
 // Upload products from Excel file
 exports.uploadProductsFromExcel = async (req, res) => {

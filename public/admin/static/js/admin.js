@@ -1,9 +1,17 @@
 /* Admin JS for Products, Users, Categories */
 
-const apiProduct  = "/product";
-const apiUsers    = "/users/all";
-const apiCategory = "/category";
-const apiTskt     = "/tsktproducts";
+// Kiểm tra xem các biến đã được khai báo chưa
+if (typeof window.adminConfig === 'undefined') {
+  window.adminConfig = {
+    apiProduct: "/product",
+    apiUsers: "/users/all",
+    apiCategory: "/category",
+    apiTskt: "/tsktproducts",
+    initialized: false
+  };
+}
+
+const { apiProduct, apiUsers, apiCategory, apiTskt } = window.adminConfig;
 
 function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
@@ -16,8 +24,8 @@ function showToast(message, type = 'success') {
 
 /* —— PRODUCTS —— */
 let currentPage = 1;
-let hasMore     = true;
-const limit      = 20;
+let hasMore = true;
+const limit = 20;
 let observer; // IntersectionObserver reference
 let productQuery = '';
 
@@ -28,15 +36,16 @@ let productQuery = '';
 async function fetchProducts(page = 1, q = productQuery) {
   if (!hasMore && page !== 1) return;
   try {
-  const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
-
+    const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
     const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-    const { products, hasMore: more } = await res.json();
-
+    const data = await res.json();
+    const products = data.products || data.items || [];
+    const more = 'hasMore' in data ? data.hasMore
+      : (data.page && data.totalPages ? data.page < data.totalPages : false);
     renderProducts(products, page > 1);
-    hasMore     = more;
+    hasMore = more;
     currentPage = page;
 
     // Re-attach observer if more pages remain
@@ -85,16 +94,17 @@ function renderProducts(products, append = false) {
 async function deleteProduct(id) {
   if (!confirm("Xác nhận xóa sản phẩm này?")) return;
   try {
-  const res = await fetch(`${apiProduct}/${id}`, { method: "DELETE" });
-
-   if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+    const res = await fetch(`${apiProduct}/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(`Delete failed (${res.status})`);
 
     // Reset pagination and reload
     currentPage = 1;
-    hasMore     = true;
+    hasMore = true;
     fetchProducts(1);
+    showToast('Xóa sản phẩm thành công', 'success');
   } catch (err) {
     console.error("Lỗi xóa sản phẩm:", err);
+    showToast('Lỗi xóa sản phẩm', 'error');
   }
 }
 
@@ -102,159 +112,367 @@ async function deleteProduct(id) {
  * Initialize Add/Edit Product form: load specs and preload
  */
 async function initProductForm() {
-  const form            = document.getElementById("productForm");
-  const categorySelect  = document.getElementById("categorySelect");
-  const specContainer   = document.getElementById("specContainer");
-  const descInput       = document.getElementById("descriptionInput");
-  const descEditorEl    = document.getElementById("descriptionEditor");
-  const imageFile       = document.getElementById("imageFile");
-  const imagePreview    = document.getElementById("imagePreview");
-  const imageUrlInput   = document.getElementById("imageUrl");
-  let   quill;
-  if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) return;
-  quill = new Quill(descEditorEl, { theme: "snow" });
+  console.log('Initializing product form...');
 
-  if (imageFile) {
+  const form = document.getElementById("productForm");
+  const categorySelect = document.getElementById("categorySelect");
+  const specContainer = document.getElementById("specContainer");
+  const variantsContainer = document.getElementById("variantsContainer");
+  const addVariantBtn = document.getElementById("addVariantBtn");
+  const variantsInput = document.getElementById("variantsInput");
+  const descInput = document.getElementById("descriptionInput");
+  const descEditorEl = document.getElementById("descriptionEditor");
+  const imageFile = document.getElementById("imageFile");
+  const imagePreview = document.getElementById("imagePreview");
+  const imageUrlInput = document.getElementById("imageUrl");
+  const imageSourceSelect = document.getElementById("imageSourceSelect");
+  const imageLink = document.getElementById("imageLink");
+  const imageFileGroup = document.getElementById("imageFileGroup");
+  const imageLinkGroup = document.getElementById("imageLinkGroup");
+
+  let editor;
+
+  if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) {
+    console.error('Required form elements not found');
+    return;
+  }
+
+  // Initialize CKEditor
+  try {
+    editor = await ClassicEditor.create(descEditorEl);
+    if (descInput.value) editor.setData(descInput.value);
+  } catch (error) {
+    console.error('Error initializing CKEditor:', error);
+    return;
+  }
+
+  // Image upload handler
+  if (imageFile && imagePreview) {
     imageFile.addEventListener('change', () => {
       const file = imageFile.files[0];
       if (file) {
         imagePreview.src = URL.createObjectURL(file);
-        imagePreview.style.display = '';
+        imagePreview.style.display = 'block';
       }
     });
   }
 
+  if (imageLink) {
+    imageLink.addEventListener('input', () => {
+      if (imageLink.value) {
+        imagePreview.src = imageLink.value;
+        imagePreview.style.display = 'block';
+      }
+    });
+  }
+
+  if (imageSourceSelect && imageFileGroup && imageLinkGroup) {
+    imageSourceSelect.addEventListener('change', () => {
+      const mode = imageSourceSelect.value;
+      if (mode === 'link') {
+        imageFileGroup.style.display = 'none';
+        imageLinkGroup.style.display = 'block';
+      } else {
+        imageFileGroup.style.display = 'block';
+        imageLinkGroup.style.display = 'none';
+      }
+    });
+  }
+
+  // Set form dataset id if not exists
   if (!form.dataset.id) {
     const hiddenId = form.querySelector("input[name='id']");
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  // Load specs when category changes
- // Load specs khi chọn category
-categorySelect.addEventListener("change", async () => {
-  const catId = categorySelect.value;
-  specContainer.innerHTML = "";
-  if (!catId) return;
+  function addCustomVariantRow(name = '', values = '') {
+    const div = document.createElement('div');
+    div.className = 'spec-item variant-custom';
+    div.innerHTML = `
+      <input type="text" class="form-control variant-name" placeholder="Tên biến thể" value="${name}">
+      <input type="text" class="form-control variant-values" placeholder="Giá trị (cách nhau bằng dấu phẩy)" value="${values}">
+      <button type="button" class="btn btn-sm btn-danger remove-variant">&times;</button>`;
 
-  try {
-    // Dùng backticks để interpolate đúng apiTskt và catId
-    const res  = await fetch(`${apiTskt}/category/${catId}`);
-    const data = await res.json();
-    const specs = (data[0] && data[0].value) || [];
+    div.querySelector('.remove-variant').addEventListener('click', () => div.remove());
+    variantsContainer.appendChild(div);
+  }
 
-    specs.forEach(fieldName => {
-      const div = document.createElement("div");
-      div.className = "spec-item";
-      div.innerHTML = `
-        <div class="spec-item-inner">
-          <label>${fieldName}</label>
-          <input
-            type="text"
-            class="form-control"
-            name="specifications[${fieldName}]"
-            placeholder="Nhập ${fieldName}"
-            required
-          />
-        </div>
-      `;
-      specContainer.appendChild(div);
+  function renderVariantOptions(list, existing = {}) {
+    console.log('Rendering variant options:', list, existing);
+    variantsContainer.innerHTML = '';
+    const used = new Set();
+
+    list.forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'spec-item';
+      const label = document.createElement('label');
+      label.textContent = opt.name;
+      const select = document.createElement('select');
+      select.multiple = true;
+      select.className = 'form-select';
+      select.dataset.name = opt.name;
+
+      (opt.options || []).forEach(val => {
+        const o = document.createElement('option');
+        o.value = val;
+        o.textContent = val;
+        if (existing[opt.name] && existing[opt.name].includes(val)) {
+          o.selected = true;
+        }
+        select.appendChild(o);
+      });
+
+      div.appendChild(label);
+      div.appendChild(select);
+      variantsContainer.appendChild(div);
+      used.add(opt.name);
     });
 
-  } catch (err) {
-    console.error("Lỗi tải thông số kỹ thuật:", err);
+    // Add custom variants that aren't in the predefined list
+    Object.keys(existing).forEach(k => {
+      if (!used.has(k)) {
+        addCustomVariantRow(k, existing[k].join(', '));
+      }
+    });
   }
-});  // <-- đóng callback và addEventListener
 
+  async function loadSpecsAndVariants(catId, existingVariants = {}) {
+    console.log('Loading specs and variants for category:', catId);
 
+    specContainer.innerHTML = '';
+    variantsContainer.innerHTML = '';
+
+    if (!catId) {
+      console.log('No category selected');
+      return;
+    }
+
+    try {
+      // Try filters endpoint first, then fallback to category endpoint
+      let res = await fetch(`${apiTskt}/filters/${catId}`);
+      if (!res.ok) {
+        console.log('Filters endpoint failed, trying category endpoint');
+        res = await fetch(`${apiTskt}/category/${catId}`);
+      }
+
+      if (!res.ok) {
+        throw new Error(`API call failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log('Received data:', data);
+
+      let specs = [];
+      let variantOpts = [];
+
+      // Parse response data
+      if (Array.isArray(data.specs)) {
+        specs = data.specs;
+        variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
+      } else if (Array.isArray(data.fields)) {
+        specs = data.fields; // ← Thêm dòng này để hỗ trợ `fields` thay vì `specs`
+      } else if (Array.isArray(data)) {
+        const first = data[0] || {};
+        if (Array.isArray(first.specs)) {
+          specs = first.specs;
+        } else if (Array.isArray(first.value)) {
+          specs = first.value;
+        }
+        if (Array.isArray(first.variantOptions)) {
+          variantOpts = first.variantOptions;
+        }
+      }
+      console.log('Parsed specs:', specs);
+      console.log('Parsed variants:', variantOpts);
+
+      // Render specification fields
+      specs.forEach(fieldName => {
+        const div = document.createElement('div');
+        div.className = 'spec-item';
+        div.innerHTML = `
+          <label>${fieldName}</label>
+          <input type="text" name="specifications[${fieldName}]" placeholder="Nhập ${fieldName}" />
+        `;
+        specContainer.appendChild(div);
+      });
+
+      // Render variant options
+      renderVariantOptions(variantOpts, existingVariants);
+
+    } catch (err) {
+      console.error('Load specs/variants error:', err);
+      showToast('Lỗi tải thông số kỹ thuật', 'error');
+    }
+  }
+
+  // Category change event handler
+  categorySelect.addEventListener('change', async (e) => {
+    console.log('Category changed to:', e.target.value);
+    await loadSpecsAndVariants(e.target.value);
+  });
+
+  // Add variant button
+  if (addVariantBtn) {
+    addVariantBtn.addEventListener('click', () => addCustomVariantRow());
+  }
 
   // Preload form data in edit mode
   if (form.dataset.mode === "edit") {
     const id = form.dataset.id;
-    try {
-  const res = await fetch(`${apiProduct}/${id}`);
+    if (id) {
+      try {
+        console.log('Loading product data for edit mode:', id);
+        const res = await fetch(`${apiProduct}/${id}`);
+        if (!res.ok) throw new Error(`Failed to load product: ${res.status}`);
 
-      const prod = await res.json();
-      // fill basic fields
-      form.querySelector('input[name="name"]').value        = prod.name;
-      form.querySelector('input[name="price"]').value       = prod.price;
-      form.querySelector('input[name="stock"]').value       = prod.stock;
-      quill.root.innerHTML = prod.description || "";
-      if (imagePreview) {
-        imagePreview.src = prod.image || '';
-        imagePreview.style.display = prod.image ? '' : 'none';
+        const prod = await res.json();
+        console.log('Loaded product:', prod);
+
+        // Fill basic fields
+        form.querySelector('input[name="name"]').value = prod.name || '';
+        form.querySelector('input[name="price"]').value = prod.price || '';
+        form.querySelector('input[name="stock"]').value = prod.stock || '';
+        if (editor) editor.setData(prod.description || "");
+
+        if (imagePreview) {
+          imagePreview.src = prod.image || '';
+          imagePreview.style.display = prod.image ? 'block' : 'none';
+        }
+        if (imageUrlInput) imageUrlInput.value = prod.image || '';
+        if (imageLink) imageLink.value = prod.image || '';
+        if (imageSourceSelect && prod.image) {
+          imageSourceSelect.value = 'link';
+          if (imageFileGroup) imageFileGroup.style.display = 'none';
+          if (imageLinkGroup) imageLinkGroup.style.display = 'block';
+        }
+
+        if (prod.category_id && prod.category_id._id) {
+          categorySelect.value = prod.category_id._id;
+          await loadSpecsAndVariants(prod.category_id._id, prod.variants || {});
+
+          // Fill spec values
+          const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
+          specList.forEach(spec => {
+            const input = Array.from(specContainer.querySelectorAll(".spec-item input")).find(
+              inp => inp.previousElementSibling.textContent === spec.key || inp.previousElementSibling.textContent === spec.label
+            );
+            if (input) input.value = spec.value;
+          });
+        }
+
+      } catch (err) {
+        console.error("Lỗi preload sản phẩm:", err);
+        showToast('Lỗi tải dữ liệu sản phẩm', 'error');
       }
-      if (imageUrlInput) imageUrlInput.value = prod.image || '';
-      categorySelect.value = prod.category_id._id;
-      // trigger specs load
-      await new Promise(r => setTimeout(r, 0));
-      categorySelect.dispatchEvent(new Event("change"));
-      // fill specs values
-      const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
-      specList.forEach(spec => {
-        const input = Array.from(specContainer.querySelectorAll(".spec-item input")).find(
-          inp => inp.previousElementSibling.textContent === spec.key || inp.previousElementSibling.textContent === spec.label
-        );
-        if (input) input.value = spec.value;
-      });
-    } catch (err) {
-      console.error("Lỗi preload sản phẩm:", err);
     }
+  } else if (categorySelect.value) {
+    // Load specs for initially selected category in create mode
+    console.log('Loading specs for initial category:', categorySelect.value);
+    await loadSpecsAndVariants(categorySelect.value);
   }
 
-  // Submit handler
+  // Form submit handler
   form.addEventListener("submit", async e => {
     e.preventDefault();
-    descInput.value = quill.root.innerHTML;
-    const fd = new FormData(form);
 
-    let imageUrl = imageUrlInput ? imageUrlInput.value : '';
-    if (imageFile && imageFile.files[0]) {
-      const fdImg = new FormData();
-      fdImg.append('image', imageFile.files[0]);
-      try {
- const upRes = await fetch(`${apiProduct}/upload`, {
-          method: 'POST',
-          body: fdImg
-        });
-        if (upRes.ok) {
-          const data = await upRes.json();
-          imageUrl = data.url;
-        }
-      } catch (err) {
-        console.error('Upload image error:', err);
-      }
-    }
-
-    const payload = {
-      name           : fd.get("name"),
-      category_id    : fd.get("category_id"),
-      brand_id       : fd.get("brand_id"),
-      price          : parseFloat(fd.get("price")),
-      stock          : parseInt(fd.get("stock")),
-      image          : imageUrl,
-      description    : fd.get("description"),
-      tskt : Array.from(form.querySelectorAll(".spec-item input")).map(
-        inp => ({ key: inp.previousElementSibling.textContent, value: inp.value })
-      )
-    };
-    const url = fd.get("id")
-  ? `${apiProduct}/${fd.get("id")}`
-  : apiProduct;
-
-    const method = fd.get("id") ? "PUT" : "POST";
     try {
+      // Update description from CKEditor
+      descInput.value = editor.getData();
+
+      const fd = new FormData(form);
+      let imageUrl = imageUrlInput ? imageUrlInput.value : '';
+
+      if (imageSourceSelect && imageSourceSelect.value === 'link') {
+        imageUrl = imageLink ? imageLink.value.trim() : '';
+      } else if (imageFile && imageFile.files[0]) {
+        const fdImg = new FormData();
+        fdImg.append('image', imageFile.files[0]);
+
+        try {
+          const upRes = await fetch(`${apiProduct}/upload`, {
+            method: 'POST',
+            body: fdImg
+          });
+          if (upRes.ok) {
+            const data = await upRes.json();
+            imageUrl = data.url;
+          }
+        } catch (err) {
+          console.error('Upload image error:', err);
+          showToast('Lỗi upload ảnh', 'error');
+        }
+      }
+
+      // Collect variant data
+      const variantsArray = [];
+      variantsContainer.querySelectorAll('select').forEach(sel => {
+        const name = sel.dataset.name;
+        const vals = Array.from(sel.selectedOptions).map(o => o.value);
+        if (vals.length) variantsArray.push({ name, values: vals });
+      });
+
+      // Các row custom
+      variantsContainer.querySelectorAll('.variant-custom').forEach(div => {
+        const name = div.querySelector('.variant-name').value.trim();
+        const vals = div.querySelector('.variant-values')
+          .value
+          .split(',')
+          .map(v => v.trim())
+          .filter(v => v);
+        if (name && vals.length) variantsArray.push({ name, values: vals });
+      });
+
+      variantsInput.value = JSON.stringify(variantsArray);
+
+      
+
+      // Prepare payload
+      const payload = {
+        name: fd.get("name"),
+        category_id: fd.get("category_id"),
+        brand_id: fd.get("brand_id"),
+        price: parseFloat(fd.get("price")),
+        stock: parseInt(fd.get("stock")),
+        image: imageUrl,
+        description: fd.get("description"),
+        specifications: Array.from(form.querySelectorAll(".spec-item input"))
+          .map(inp => ({
+            key: inp.previousElementSibling.textContent,
+            value: inp.value
+          }))
+          .filter(item => item.key && item.value.trim()),
+        // Mặc định gửi '[]' nếu không có variants
+        variants: variantsInput.value
+      };
+
+      const url = fd.get("id") ? `${apiProduct}/${fd.get("id")}` : apiProduct;
+      const method = fd.get("id") ? "PUT" : "POST";
+
+      console.log('Submitting product:', payload);
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify(payload)
+        body: JSON.stringify(payload)
       });
-     if (!res.ok) throw new Error(`Save failed (${res.status})`);
 
-      window.location.href = "/admin/products";
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Save failed (${res.status}): ${errorText}`);
+      }
+
+      showToast('Lưu sản phẩm thành công', 'success');
+      setTimeout(() => {
+        window.location.href = "/admin/products";
+      }, 1000);
+
     } catch (err) {
       console.error("Lỗi lưu sản phẩm:", err);
+      showToast('Lỗi lưu sản phẩm: ' + err.message, 'error');
     }
   });
+
+  console.log('Product form initialized successfully');
 }
 
 function initCategoryForm() {
@@ -266,29 +484,29 @@ function initCategoryForm() {
 
     const fd = new FormData(form);
     const payload = {
-      name:        fd.get("name"),
+      name: fd.get("name"),
       description: fd.get("description") || ""
     };
-    const id     = fd.get("id");              // hidden input khi edit
-  const url = id
-  ? `${apiCategory}/${id}`
-  : apiCategory;
-
+    const id = fd.get("id");
+    const url = id ? `${apiCategory}/${id}` : apiCategory;
     const method = id ? "PUT" : "POST";
 
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload)
+        body: JSON.stringify(payload)
       });
-  if (!res.ok) throw new Error(`Save failed (${res.status})`);
 
-      // Sau khi lưu, quay về trang danh sách
-      window.location.href = "/admin/categories";
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+
+      showToast('Lưu danh mục thành công', 'success');
+      setTimeout(() => {
+        window.location.href = "/admin/categories";
+      }, 1000);
     } catch (err) {
       console.error("Lỗi lưu danh mục:", err);
-      // TODO: show toast lỗi nếu cần
+      showToast('Lỗi lưu danh mục', 'error');
     }
   });
 }
@@ -299,16 +517,20 @@ function initCategoryForm() {
 function initExcelUpload() {
   const input = document.getElementById('excelFile');
   if (!input) return;
+
   input.addEventListener('change', async () => {
     if (!input.files[0]) return;
+
     const fd = new FormData();
     fd.append('file', input.files[0]);
+
     try {
- const res = await fetch(`${apiProduct}/upload-excel`, {
+      const res = await fetch(`${apiProduct}/upload-excel`, {
         method: 'POST',
         body: fd
       });
-  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
 
       await res.json();
       currentPage = 1;
@@ -330,11 +552,12 @@ function initExcelUpload() {
 function initExcelExport() {
   const btn = document.getElementById('excelExportBtn');
   if (!btn) return;
+
   btn.addEventListener('click', async e => {
     e.preventDefault();
     try {
- const res = await fetch(`${apiProduct}/export-excel`);
-if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const res = await fetch(`${apiProduct}/export-excel`);
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -359,6 +582,7 @@ if (!res.ok) throw new Error(`Export failed (${res.status})`);
 function initProductScroll() {
   const sentinel = document.getElementById("scrollSentinel");
   if (!sentinel) return;
+
   observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -367,23 +591,44 @@ function initProductScroll() {
       }
     });
   }, {
-    root      : null,
+    root: null,
     rootMargin: "200px",
-    threshold : 0
+    threshold: 0
   });
+
   observer.observe(sentinel);
 }
 
-/* —— USERS, CATEGORIES, ... (không thay đổi) —— */
+// Fetch users function (placeholder)
+async function fetchUsers() {
+  console.log('Fetching users...');
+  // Implementation for fetching users
+}
+
+// Fetch categories function (placeholder) 
+async function fetchCategories() {
+  console.log('Fetching categories...');
+  // Implementation for fetching categories
+}
 
 // DOM ready: init modules
 document.addEventListener("DOMContentLoaded", () => {
+  console.log('Admin JS DOM loaded');
+
+  // Prevent multiple initialization
+  if (window.adminConfig.initialized) {
+    console.log('Admin already initialized, skipping...');
+    return;
+  }
+  window.adminConfig.initialized = true;
+
   // Products
   if (document.getElementById("productTable")) {
     initProductScroll();
     fetchProducts(1);
     initExcelUpload();
     initExcelExport();
+
     const search = document.getElementById('searchInput');
     if (search) {
       search.addEventListener('input', () => {
@@ -394,15 +639,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   }
+
   // Users
   if (document.getElementById("userTable")) fetchUsers();
+
   // Categories
   if (document.getElementById("categoryTable")) fetchCategories();
+
   // Forms
   initProductForm();
   initCategoryForm();
 
-  // Responsive menu: Hiện/ẩn nav khi bấm nút 3 sọc
+  // Responsive menu
   const menuBtn = document.getElementById('menuBtn');
   const mainNav = document.getElementById('mainNav');
   if (menuBtn && mainNav) {
@@ -410,7 +658,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
       mainNav.classList.toggle('active');
     });
-    // Đóng menu khi click ra ngoài (mobile)
+
     document.addEventListener('click', function (e) {
       if (
         window.innerWidth < 900 &&
