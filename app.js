@@ -33,6 +33,7 @@ var vouchersRouter = require('./routes/vouchers');
 var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
+var pcbuilderRouter = require('./routes/pcbuilder');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -113,6 +114,7 @@ app.use('/vnpay', vnpayRouter);
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
+app.use('/pcbuild', pcbuilderRouter);
 
 
 

@@ -443,4 +443,27 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+// Xóa toàn bộ sản phẩm trong giỏ hàng của user
+router.delete('/clear', async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id || !mongoose.Types.ObjectId.isValid(user_id)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai user_id.' });
+    }
+
+    const cart = await Cart.findOne({ user_id });
+    if (!cart) {
+      return res.status(404).json({ error: 'Giỏ hàng không tồn tại.' });
+    }
+
+    cart.products = [];
+    await cart.save();
+
+    res.status(200).json({ message: 'Đã xóa toàn bộ sản phẩm trong giỏ hàng.' });
+  } catch (err) {
+    console.error('Error in clear cart:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
