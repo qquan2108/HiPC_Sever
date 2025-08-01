@@ -2,24 +2,35 @@
 const express = require('express');
 const router  = express.Router();
 
-router.post('/webhook', (req, res) => {
-  const data = req.body;
-  console.log('Webhook SePay:', data);
+router.post('/webhook', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('Webhook SePay:', data);
 
-  // TODO: nếu cần lưu DB → lưu orderId, trạng thái “paid”
+    // Tìm đơn theo description hoặc id truyền kèm (tuỳ bạn gửi gì vào "des")
+    const orderId = data.description || data.orderId || data.id;
+    const order = await Order.findById(orderId);
 
-  // Emit sự kiện qua Socket.IO
-  const io = req.app.get('io');
-  io.emit('payment_success', {
-    id: data.id,
-    gateway: data.gateway,
-    amount: data.transferAmount,
-    account: data.accountNumber,
-    transactionDate: data.transactionDate
-  });
+    if (order && order.status === 'pending') {
+      order.status = 'packed';       // đã thanh toán → chờ lấy hàng
+      order.paymentMethod = 'VietQR';
+      await order.save();
 
-  // Trả về SePay
-  res.status(200).json({ status: 'success' });
+      // Emit sự kiện qua Socket.IO
+      const io = req.app.get('io');
+      io.emit('payment_success', {
+        orderId: order._id,
+        amount: data.transferAmount,
+        account: data.accountNumber,
+        transactionDate: data.transactionDate
+      });
+    }
+
+    res.status(200).json({ status: 'success' });
+  } catch (err) {
+    console.error('Webhook error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

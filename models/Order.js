@@ -14,16 +14,15 @@ const orderSchema = new mongoose.Schema({
       productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
       quantity:  { type: Number, default: 1 },
       variant: {
-        key:       { type: String, required: true },  // nhóm biến thể, ví dụ "RAM"
-        label:     { type: String, required: true },  // tên option, ví dụ "32GB"
-        priceDiff: { type: Number, required: true }   // chênh lệch giá lúc chọn
+        key:       { type: String, required: true },
+        label:     { type: String, required: true },
+        priceDiff: { type: Number, required: true }
       }
     }
   ],
-  // Danh sách combo trong đơn (nếu có)
   combos: [
     {
-      comboId: { type: mongoose.Schema.Types.ObjectId, ref: 'Combo', required: true },
+      comboId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Combo', required: true },
       quantity: { type: Number, default: 1 },
       price:    { type: Number, required: true }
     }
@@ -31,16 +30,19 @@ const orderSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'pending',          // chờ xác nhận
-      'packed',           // chờ lấy hàng
-      'shipping',         // chờ giao hàng
-      'delivered',        // đã giao
-      'return_requested', // trả hàng
-      'cancelled'         // đã hủy
+      'pending', 'packed', 'shipping',
+      'delivered', 'return_requested', 'cancelled'
     ],
     default: 'pending',
     required: true
   },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'paid', 'failed', 'refunded'],
+    default: 'unpaid'
+  },
+  qrCodeUrl: { type: String, default: null },
+
   statusHistory:    [statusHistorySchema],
   total_price:      Number,
   order_date:       { type: Date, default: Date.now },
@@ -51,6 +53,7 @@ const orderSchema = new mongoose.Schema({
   total:            { type: Number, default: 0 },
   cancelledAt:      Date
 }, { timestamps: true });
+
 
 // Tự động ghi lịch sử status mỗi khi thay đổi
 orderSchema.pre('save', function(next) {
