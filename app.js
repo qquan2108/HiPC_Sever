@@ -34,7 +34,8 @@ var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 var pcbuilderRouter = require('./routes/pcbuilder');
-const { default: mongoose } = require('mongoose');
+var resetPasswordRoutes = require("./routes/resetPassword.route");
+var { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
 var app = express();
@@ -88,9 +89,9 @@ app.get('/admin', (req, res) => {
   return res.redirect('/login');
 });
 
+app.use("/", resetPasswordRoutes);
 app.use('/stripe', stripeRouter);
 app.use('/sepay', sepayRouter);
-app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);

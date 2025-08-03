@@ -77,8 +77,9 @@ const userSchema = new mongoose.Schema({
 });
 
 // Middleware to automatically update updated_at on save
-userSchema.pre('save', function (next) {
-  this.updated_at = Date.now();
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
