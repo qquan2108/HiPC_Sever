@@ -35,6 +35,7 @@ var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 var pcbuilderRouter = require('./routes/pcbuilder');
 var resetPasswordRoutes = require("./routes/resetPassword.route");
+var authRoutes = require("./routes/auth.route");
 var { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -90,6 +91,7 @@ app.get('/admin', (req, res) => {
 });
 
 app.use("/", resetPasswordRoutes);
+app.use("/", authRoutes);
 app.use('/stripe', stripeRouter);
 app.use('/sepay', sepayRouter);
 app.use('/admin', adminRouter);

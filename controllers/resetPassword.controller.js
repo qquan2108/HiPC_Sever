@@ -1,6 +1,6 @@
 const crypto = require("crypto");
-const ResetToken = require("../models/resetToken.model");
-const User = require("../models/user.model");
+const ResetToken = require("../models/ResetToken");
+const User = require("../models/userModel");
 
 exports.renderForm = (req, res) => {
   const { token, id: userId } = req.query;
