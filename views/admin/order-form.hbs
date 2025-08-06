@@ -159,19 +159,19 @@
     </div>
     <div class="mb-4">
       <label class="form-label block">Địa chỉ</label>
-      <textarea name="address" class="input">{{order.address}}</textarea>
+      <textarea name="address" class="input" {{#ifEquals mode 'edit'}}readonly{{/ifEquals}}>{{order.address}}</textarea>
     </div>
     <div class="mb-4">
       <label class="form-label block">Phương thức thanh toán</label>
-      <input type="text" name="paymentMethod" value="{{order.paymentMethod}}" class="input">
+      <input type="text" name="paymentMethod" value="{{order.paymentMethod}}" class="input" {{#ifEquals mode 'edit'}}readonly{{/ifEquals}}>
     </div>
     <div class="mb-4">
       <label class="form-label block">Phương thức vận chuyển</label>
-      <input type="text" name="shippingMethod" value="{{order.shippingMethod}}" class="input">
+      <input type="text" name="shippingMethod" value="{{order.shippingMethod}}" class="input" {{#ifEquals mode 'edit'}}readonly{{/ifEquals}}>
     </div>
     <div class="mb-4">
       <label class="form-label block">Tổng tiền</label>
-      <input type="number" name="total" value="{{order.total}}" class="input">
+      <input type="number" name="total" value="{{order.total}}" class="input" {{#ifEquals mode 'edit'}}readonly{{/ifEquals}}>
     </div>
     <div class="mb-4">
       <label class="form-label block">Sản phẩm đã mua</label>
@@ -205,9 +205,6 @@
     <div class="flex space-x-2 mt-2">
       <button type="submit" class="btn order-btn"><i class="fas fa-save"></i> Lưu</button>
       <a href="/admin/orders" class="btn btn-secondary">Hủy</a>
-      {{#ifEquals mode 'edit'}}
-      <button type="button" id="deleteBtn" class="btn btn-danger"><i class="fas fa-trash"></i> Xóa</button>
-      {{/ifEquals}}
     </div>
   </form>
 </div>

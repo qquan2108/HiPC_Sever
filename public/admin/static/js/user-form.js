@@ -28,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
         address: fd.get('address') || ''
       };
     }
+    if (!payload.full_name || (!id && !payload.email) || (!id && !payload.password)) {
+      alert('Vui lòng nhập đầy đủ họ tên, email và mật khẩu');
+      return;
+    }
     try {
       const res = await fetch(url, {
         method,

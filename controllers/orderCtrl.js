@@ -175,12 +175,7 @@ exports.cancelOrder = async (req, res) => {
 };
 
 exports.deleteOrder = async (req, res) => {
-  try {
-    await Order.findByIdAndDelete(req.params.orderId);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.status(403).json({ error: 'Không được phép xóa đơn hàng' });
 };
 
 exports.returnStockForCancelledOrder = async (req, res) => {

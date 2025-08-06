@@ -599,18 +599,6 @@ function initProductScroll() {
   observer.observe(sentinel);
 }
 
-// Fetch users function (placeholder)
-async function fetchUsers() {
-  console.log('Fetching users...');
-  // Implementation for fetching users
-}
-
-// Fetch categories function (placeholder) 
-async function fetchCategories() {
-  console.log('Fetching categories...');
-  // Implementation for fetching categories
-}
-
 // DOM ready: init modules
 document.addEventListener("DOMContentLoaded", () => {
   console.log('Admin JS DOM loaded');
@@ -641,14 +629,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Users
-  if (document.getElementById("userTable")) fetchUsers();
+  // (page-specific scripts handle fetching users)
 
   // Categories
-  if (document.getElementById("categoryTable")) fetchCategories();
+  // (page-specific scripts handle fetching categories)
 
   // Forms
-  initProductForm();
-  initCategoryForm();
+  if (document.getElementById("productForm")) initProductForm();
+  if (document.getElementById("categoryForm")) initCategoryForm();
 
   // Responsive menu
   const menuBtn = document.getElementById('menuBtn');
