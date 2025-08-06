@@ -467,9 +467,11 @@
                 e.preventDefault();
                 const formData = new FormData(form);
                 const id = form.getAttribute('data-id');
-                const res = await fetch(`/orders/${id}`, {
+                const status = formData.get('status');
+                const res = await fetch(`/orders/${id}/status`, {
                     method: 'PUT',
-                    body: new URLSearchParams([...formData])
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
                 });
                 if (res.ok) {
                     showNotification('Cập nhật đơn hàng thành công!', 'success');

@@ -1,37 +1,32 @@
 const API = '/orders';
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('orderForm');
-  if (!form) return;
-  const mode = form.dataset.mode;
-  const id = form.dataset.id;
-  const currentStatus = form.dataset.status;
+    const form = document.getElementById('orderForm');
+    if (!form) return;
+    const mode = form.dataset.mode;
+    const id = form.dataset.id;
+    const currentStatus = form.dataset.status;
 
-  // Submit create hoặc update
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(form));
-    const url = mode === 'edit' ? `${API}/${id}` : API;
-    const method = mode === 'edit' ? 'PUT' : 'POST';
+    // Submit create hoặc update
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      let url = API;
+      let method = 'POST';
+      let payload = data;
+      if (mode === 'edit') {
+        url = `${API}/${id}/status`;
+        method = 'PUT';
+        payload = { status: data.status };
+      }
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.ok) window.location.href = '/admin/orders';
-    else alert('Lỗi: ' + (await res.json()).error);
-  });
-
-  // Delete (chỉ edit mode)
-  const delBtn = document.getElementById('deleteBtn');
-  if (delBtn) {
-    delBtn.addEventListener('click', async () => {
-      if (!confirm('Bạn có chắc muốn xóa đơn này không?')) return;
-      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       if (res.ok) window.location.href = '/admin/orders';
-      else alert('Xóa thất bại');
+      else alert('Lỗi: ' + (await res.json()).error);
     });
-  }
 
   // Hiển thị nút chuyển trạng thái nếu có cấu hình
   const transitions = window.orderTransitions || {};
