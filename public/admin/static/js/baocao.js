@@ -7,6 +7,9 @@ const fmtCur = (v) =>
 // Khởi tạo AOS và tải dữ liệu ban đầu
 document.addEventListener('DOMContentLoaded', async () => {
   AOS.init({ duration: 800, easing: 'ease-out-cubic', once: true });
+  // Move detail table modal to body so it overlays correctly
+  const tableModal = document.getElementById('tableModal');
+  if (tableModal) document.body.appendChild(tableModal);
 
   const spinner = document.getElementById('loadingSpinner');
   if (spinner) spinner.style.display = 'flex';
