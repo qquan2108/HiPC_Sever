@@ -150,11 +150,16 @@ exports.getProducts = async (req, res) => {
     ]);
 
     const productsWithImage = await Promise.all(
-      products.map(async p => {
-        const img = await Image.findOne({ product_id: p._id }).lean();
-        return { ...p, image: img ? img.url : null };
-      })
-    );
+     products.map(async p => {
+    const img = await Image.findOne({ product_id: p._id }).lean();
+    return {
+      ...p,
+      image: img ? img.url : null,
+      category: p.category_id?.name || '', // Thêm dòng này
+      brand: p.brand_id?.name || '',       // Có thể thêm brand nếu cần
+    };
+  })
+);
 
     res.json({
       products: productsWithImage,
