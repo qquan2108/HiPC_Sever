@@ -3,7 +3,7 @@ const router  = express.Router();
 const path    = require('path');
 const fs      = require('fs');
 const multer  = require('multer');
-const ctrl    = require('../controllers/productCtrl');
+const productCtrl = require('../controllers/productCtrl');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads/products');
@@ -19,10 +19,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // IMPORTANT: Specific routes must come BEFORE parameterized routes
-router.get('/',    ctrl.getProducts);
+router.get('/',    productCtrl.getProducts);
 
 // Filter route - MUST come before /:id route
-router.get('/filter', ctrl.filterProducts);
+router.get('/filter', productCtrl.filterProducts); // filter nâng cao
+router.get('/filter-keyword', productCtrl.filterProductsByKeyword); // filter đơn giản cho chatbox
 
 // Upload product image (needs to come before "/:id" route)
 router.post('/upload', upload.single('image'), (req, res) => {
@@ -34,17 +35,18 @@ router.post('/upload', upload.single('image'), (req, res) => {
 });
 
 // Upload products via Excel file
-router.post('/upload-excel', upload.single('file'), ctrl.uploadProductsFromExcel);
+router.post('/upload-excel', upload.single('file'), productCtrl.uploadProductsFromExcel);
 
 // Export products to Excel file
-router.get('/export-excel', ctrl.exportProductsToExcel);
+router.get('/export-excel', productCtrl.exportProductsToExcel);
 
 // Parameterized route - MUST come after all specific routes
-router.get('/:id', ctrl.getProductById);
-router.post('/',   ctrl.createProduct);
-router.put('/:id', ctrl.updateProduct);
-router.delete('/:id', ctrl.deleteProduct);
-router.get('/best-sellers', ctrl.getBestSellers);
+router.get('/:id', productCtrl.getProductById);
+router.post('/',   productCtrl.createProduct);
+router.put('/:id', productCtrl.updateProduct);
+router.delete('/:id', productCtrl.deleteProduct);
+router.get('/best-sellers', productCtrl.getBestSellers);
 // Route to retrieve all products without pagination
-router.get('/all', ctrl.getAllProducts);
+router.get('/all', productCtrl.getAllProducts);
+
 module.exports = router;

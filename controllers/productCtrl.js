@@ -150,11 +150,16 @@ exports.getProducts = async (req, res) => {
     ]);
 
     const productsWithImage = await Promise.all(
-      products.map(async p => {
-        const img = await Image.findOne({ product_id: p._id }).lean();
-        return { ...p, image: img ? img.url : null };
-      })
-    );
+     products.map(async p => {
+    const img = await Image.findOne({ product_id: p._id }).lean();
+    return {
+      ...p,
+      image: img ? img.url : null,
+      category: p.category_id?.name || '', // Thêm dòng này
+      brand: p.brand_id?.name || '',       // Có thể thêm brand nếu cần
+    };
+  })
+);
 
     res.json({
       products: productsWithImage,
@@ -581,5 +586,62 @@ exports.getAllProducts = async (req, res) => {
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// API filter sản phẩm theo keyword đơn giản cho chatbox AI
+exports.filterProductsByKeyword = async (req, res) => {
+  try {
+    const { keyword = '', page = 1, limit = 12 } = req.query;
+    const filter = {};
+
+    if (keyword && keyword.trim()) {
+      filter.$or = [
+        { name: { $regex: keyword, $options: 'i' } },
+        { 'specifications.key': { $regex: keyword, $options: 'i' } }
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .skip(skip)
+        .limit(limitNum)
+        .populate('category_id', 'name')
+        .populate('brand_id', 'name')
+        .lean(),
+      Product.countDocuments(filter)
+    ]);
+
+    // Lọc sản phẩm có _id hợp lệ
+    const validProducts = products.filter(p => p._id && mongoose.Types.ObjectId.isValid(p._id));
+    const productIds = validProducts.map(p => p._id);
+
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const productsWithImages = validProducts.map(p => ({
+      ...p,
+      image: imageMap[p._id.toString()] || null
+    }));
+
+    res.json({
+      products: productsWithImages,
+      total: productsWithImages.length,
+      page: pageNum,
+      limit: limitNum,
+      hasMore: skip + productsWithImages.length < total,
+      totalPages: Math.ceil(total / limitNum)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

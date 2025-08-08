@@ -285,7 +285,7 @@
             border-radius: 8px;
             margin-bottom: 10px;
         }
-
+        
         .product-card:hover {
             border-color: #3498db;
             transform: translateY(-2px);
@@ -806,6 +806,11 @@ let selectedProducts = [];
 let uploadedFile = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Move preview modal outside transformed container
+    const previewModalEl = document.getElementById('previewModal');
+    if (previewModalEl && previewModalEl.parentNode !== document.body) {
+        document.body.appendChild(previewModalEl);
+    }
     setupFileUpload();
     setupFormValidation();
     await loadCombos();

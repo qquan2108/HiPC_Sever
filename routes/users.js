@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const Banner = require('../models/Banner');
 require('dotenv').config();
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const fs = require('fs');
 const path = require('path');
@@ -42,7 +44,17 @@ router.post('/upload', upload.single('file'), (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { full_name, email, password, phone, address } = req.body;
+    const {
+      full_name,
+      email,
+      password,
+      phone,
+      address,
+      label,
+      provinceId,
+      districtId,
+      wardCode
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -54,12 +66,22 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const newUser = new User({
-      full_name,
-      email,
-      password: hashedPassword,
-      phone,
-      address
-    });
+  full_name,
+  email,
+  password: hashedPassword,
+  phone,
+  address, // vẫn giữ cho user cũ nếu muốn
+  addresses: [
+    {
+      label,
+      address,
+      provinceId,
+      districtId,
+      wardCode,
+      isDefault: true
+    }
+  ]
+});
 
     await newUser.save();
 
@@ -108,6 +130,63 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000;
+    await user.save();
+    const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    await transporter.sendMail({
+      to: user.email,
+      from: process.env.EMAIL_USER,
+      subject: 'Đặt lại mật khẩu',
+      text: `Bạn nhận được email này vì đã yêu cầu đặt lại mật khẩu.\n\nVui lòng click vào link sau để đặt lại mật khẩu:\n${resetLink}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
+    });
+    res.json({ message: 'Email đặt lại mật khẩu đã được gửi' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Reset password
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+    const hashed = await bcrypt.hash(req.body.password, 10);
+    user.password = hashed;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+    res.json({ message: 'Đặt lại mật khẩu thành công' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

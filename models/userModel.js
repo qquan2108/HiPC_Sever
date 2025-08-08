@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'admin', 'staff'],
     default: 'customer'
   },
+  active: {
+    type: Boolean,
+    default: true
+  },
   created_at: {
     type: Date,
     default: Date.now
@@ -60,6 +64,8 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   addresses: [
     {
       _id: false,
