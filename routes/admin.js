@@ -8,6 +8,7 @@ const TsktProduct = require('../models/TsktProduct');
 const User = require('../models/userModel');
 const Video = require('../models/Video');
 const Combo = require('../models/Combo');
+const Image = require('../models/Image');
 
 // Dashboard
 router.get('/dashboard', (req, res) => {
@@ -99,6 +100,10 @@ router.get('/orders/:id/edit', async (req, res) => {
     .populate('user_id', 'full_name email')
     .populate('products.productId', 'name price')
     .lean();
+  if (req.query.ajax === '1') {
+    // Render partial form không layout
+    return res.render('admin/order-form', { order, mode: 'edit', transitions, layout: false });
+  }
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
 
@@ -138,7 +143,17 @@ router.get('/api/combos', async (req, res) => {
 router.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find().populate('brand_id').lean();
-    res.json(products);
+    const ids = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: ids } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) imageMap[img.product_id] = img.url;
+    });
+    const productsWithImage = products.map(p => ({
+      ...p,
+      image: imageMap[p._id] || null
+    }));
+    res.json(productsWithImage);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -188,6 +203,34 @@ router.delete('/videos/:id', async (req, res) => {
   try {
     await Video.findByIdAndDelete(req.params.id);
     res.json({ message: 'Video đã được xóa thành công' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+router.post('/api/cart', async (req, res) => {
+  try {
+const { user_id, comboId } = req.body;
+
+    if (!user_id || !comboId) {
+      return res.status(400).json({ message: 'user_id and comboId are required' });
+    }
+
+    const combo = await Combo.findById(comboId).lean();
+    if (!combo) return res.status(404).json({ message: 'Combo not found' });
+
+    let order = await Order.findOne({ user_id, status: 'pending', address: { $in: [null, ''] } });
+    if (!order) {
+      order = new Order({ user_id, products: [], status: 'pending' });
+    }
+
+    for (const productId of combo.productIds) {
+      const prod = order.products.find(p => p.productId.toString() === productId.toString());
+      prod ? prod.quantity++ : order.products.push({ productId, quantity: 1 });
+    }
+
+    await order.save();
+    const populated = await Order.findById(order._id).populate('products.productId');
+    res.json(populated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

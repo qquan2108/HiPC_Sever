@@ -1,31 +1,59 @@
 const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
+const Order = require('../models/Order'); // Thêm dòng này ở đầu file nếu chưa có
 const mongoose    = require('mongoose');
+// controllers/productCtrl.js
 
 // Create product
 exports.createProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
-      stock = 0, specifications = []
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
+      stock = 0,
+      specifications = [],
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
+    // Validate specifications
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
+    // Parse và validate variants
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+    }
+
+    // Tạo product mới
     const newItem = new Product({
-      name, category_id, brand_id,
-      price, description, stock, specifications
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
+      variants: parsedVariants    // Gán mảng nhóm biến thể
     });
+
     await newItem.save();
 
+    // Nếu có image, lưu vào collection Image
     if (req.body.image) {
       await new Image({
         product_id: newItem._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 
@@ -40,19 +68,42 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const {
-      name, category_id, brand_id,
-      price, description = '',
-      stock = 0, specifications = []
+      name,
+      category_id,
+      brand_id,
+      price,
+      description = '',
+      stock = 0,
+      specifications = [],
+      variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
     }
 
+    let parsedVariants = [];
+    try {
+      parsedVariants = JSON.parse(variants);
+      if (!Array.isArray(parsedVariants)) {
+        throw new Error();
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+    }
+
+    // Chuẩn bị object updates
     const updates = {
-      name, category_id, brand_id,
-      price, description, stock, specifications
+      name,
+      category_id,
+      brand_id,
+      price,
+      description,
+      stock,
+      specifications,
+      variants: parsedVariants
     };
+
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       updates,
@@ -62,11 +113,12 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
+    // Xử lý image nếu có
     if (req.body.image) {
       await Image.deleteMany({ product_id: updated._id });
       await new Image({
         product_id: updated._id,
-        url: req.body.image
+        url:        req.body.image
       }).save();
     }
 
@@ -106,7 +158,8 @@ exports.getProducts = async (req, res) => {
 
     res.json({
       products: productsWithImage,
-      hasMore: skip + productsWithImage.length < total
+      page,
+      totalPages: Math.ceil(total / limit)
     });
   } catch (err) {
     console.error('Error in getProducts:', err);
@@ -140,8 +193,8 @@ exports.getProductById = async (req, res) => {
     let tskt = [];
     if (item.category_id?._id) {
       const tpl = await TsktProduct.findOne({ category_id: item.category_id._id }).lean();
-      if (tpl?.value && Array.isArray(tpl.value)) {
-        tskt = tpl.value.map(key => {
+      if (tpl?.specs && Array.isArray(tpl.specs)) {
+        tskt = tpl.specs.map(key => {
           const spec = Array.isArray(item.specifications)
             ? item.specifications.find(s => s.key === key)
             : null;
@@ -194,85 +247,90 @@ exports.filterProducts = async (req, res) => {
       limit = 20
     } = req.query;
 
-    console.log('Filter request params:', req.query);
-
     const filter = {};
     let sortOptions = {};
 
+    // ------------------------
     // Text search
-    if (q && q.trim()) {
+    // ------------------------
+    if (q?.trim()) {
       filter.name = { $regex: q.trim(), $options: 'i' };
     }
 
+    // ------------------------
     // Category filter
+    // ------------------------
     if (category && mongoose.Types.ObjectId.isValid(category)) {
-      filter.category_id = category;
+      filter.category_id = new mongoose.Types.ObjectId(category);
     }
 
-    // Brand filter - handle both single brand and comma-separated brands
+    // ------------------------
+    // Brand filter (multi-id)
+    // ------------------------
     if (brand) {
-      const brandIds = brand.split(',').map(id => id.trim()).filter(id => mongoose.Types.ObjectId.isValid(id));
+      const brandIds = brand.split(',')
+        .map(id => id.trim())
+        .filter(id => mongoose.Types.ObjectId.isValid(id))
+        .map(id => new mongoose.Types.ObjectId(id));
       if (brandIds.length > 0) {
         filter.brand_id = { $in: brandIds };
       }
     }
 
-    // Price range filter
-    if (priceMin || priceMax) {
-      filter.price = {};
-      if (priceMin && !isNaN(priceMin)) {
-        filter.price.$gte = parseInt(priceMin);
-      }
-      if (priceMax && !isNaN(priceMax)) {
-        filter.price.$lte = parseInt(priceMax);
-      }
-    }
+    // ------------------------
+    // Price filter (Min / Max)
+    // ------------------------
+const min = priceMin && !isNaN(priceMin) ? parseFloat(priceMin) : null;
+const max = priceMax && !isNaN(priceMax) ? parseFloat(priceMax) : null;
 
+if (min !== null || max !== null) {
+  filter.price = {};
+  if (min !== null) filter.price.$gte = min;
+  if (max !== null) filter.price.$lte = max;
+}
+
+
+    // DEBUG (bạn có thể tắt sau khi test)
+    console.log('Parsed Price:', { min, max });
+    console.log('Filter conditions:', filter);
+
+    // ------------------------
     // Specification filter
+    // ------------------------
     if (specKey && specValue) {
       const specValues = specValue.split(',').map(val => val.trim());
       filter.specifications = {
-        $elemMatch: { 
-          key: specKey, 
+        $elemMatch: {
+          key: specKey,
           value: { $in: specValues }
         }
       };
     }
 
-    // Sorting logic
+    // ------------------------
+    // Sorting options
+    // ------------------------
     switch (sort) {
-      case 'price_asc':
-        sortOptions = { price: 1 };
-        break;
-      case 'price_desc':
-        sortOptions = { price: -1 };
-        break;
-      case 'name_asc':
-        sortOptions = { name: 1 };
-        break;
-      case 'name_desc':
-        sortOptions = { name: -1 };
-        break;
+      case 'price_asc': sortOptions = { price: 1 }; break;
+      case 'price_desc': sortOptions = { price: -1 }; break;
+      case 'name_asc': sortOptions = { name: 1 }; break;
+      case 'name_desc': sortOptions = { name: -1 }; break;
       case 'newest':
-        sortOptions = { createdAt: -1 };
-        break;
       case 'popular':
-        sortOptions = { createdAt: -1 };
-        break;
       case 'promotion':
-        sortOptions = { createdAt: -1 };
-        break;
-      default:
-        sortOptions = { createdAt: -1 };
+      default: sortOptions = { createdAt: -1 }; break;
     }
 
+    // ------------------------
+    // Pagination
+    // ------------------------
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    console.log('Filter query:', filter);
-    console.log('Sort options:', sortOptions);
-
+    // ------------------------
+    // Query DB
+    // ------------------------
     const [products, total] = await Promise.all([
       Product.find(filter)
         .sort(sortOptions)
@@ -284,26 +342,29 @@ exports.filterProducts = async (req, res) => {
       Product.countDocuments(filter)
     ]);
 
-    // Get primary images for all products
+    // ------------------------
+    // Fetch Images
+    // ------------------------
     const productIds = products.map(p => p._id);
     const images = await Image.find({ product_id: { $in: productIds } }).lean();
-    
-    // Create image mapping for better performance
-    const imageMap = {};
-    images.forEach(img => {
-      if (!imageMap[img.product_id]) {
-        imageMap[img.product_id] = img.url;
-      }
-    });
 
-    // Add primary image to each product
-    const productsWithImages = products.map(p => ({
-      ...p,
-      image: imageMap[p._id] || null
-    }));
+const imageMap = {};
+images.forEach(img => {
+  if (img.url && !imageMap[img.product_id]) {
+    imageMap[img.product_id] = img.url;
+  }
+});
 
-    console.log(`Found ${productsWithImages.length} products out of ${total} total`);
 
+const productsWithImages = products.map(p => ({
+  ...p,
+  image: imageMap[p._id.toString()] || null
+}));
+
+
+    // ------------------------
+    // Response
+    // ------------------------
     res.json({
       products: productsWithImages,
       total,
@@ -312,9 +373,80 @@ exports.filterProducts = async (req, res) => {
       hasMore: skip + products.length < total,
       totalPages: Math.ceil(total / limitNum)
     });
+
   } catch (err) {
     console.error('Error in filterProducts:', err);
     res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
+  }
+};
+
+
+// Lấy sản phẩm bán chạy nhất trong 7 ngày gần đây theo category
+exports.getBestSellers = async (req, res) => {
+  try {
+    const { category, limit = 5 } = req.query;
+    if (!category || !mongoose.Types.ObjectId.isValid(category)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai category' });
+    }
+
+    // Lấy ngày 7 ngày trước
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+
+    const orders = await Order.aggregate([
+      {
+        $match: {
+          status: 'delivered',
+          order_date: { $gte: startDate }
+        }
+      },
+      { $unwind: '$products' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'products.productId',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: '$productInfo' },
+      {
+        $match: {
+          'productInfo.category_id': new mongoose.Types.ObjectId(category)
+        }
+      },
+      {
+        $group: {
+          _id: '$products.productId',
+          totalSold: { $sum: '$products.quantity' },
+          product: { $first: '$productInfo' }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Lấy ảnh đại diện cho từng sản phẩm
+    const productIds = orders.map(o => o._id);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const result = orders.map(o => ({
+      ...o.product,
+      totalSold: o.totalSold,
+      image: imageMap[o._id.toString()] || null
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error in getBestSellers:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 };
 
@@ -343,9 +475,10 @@ exports.uploadProductsFromExcel = async (req, res) => {
         }
 
         let specs = [];
-        if (row.specifications) {
+        const rawSpecs = row.tskt || row.specifications;
+        if (rawSpecs) {
           try {
-            const parsed = JSON.parse(row.specifications);
+            const parsed = typeof rawSpecs === 'string' ? JSON.parse(rawSpecs) : rawSpecs;
             if (Array.isArray(parsed)) specs = parsed;
           } catch (e) {
             errors.push(`Row ${row.name}: Invalid specifications format`);

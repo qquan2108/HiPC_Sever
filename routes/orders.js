@@ -5,70 +5,212 @@ const orderCtrl = require('../controllers/orderCtrl');
 const Order = require('../models/Order');
 const Image = require('../models/Image');
 const Product = require('../models/Product');
+const Cart = require('../models/Cart');
+const Combo = require('../models/Combo');
 
+// ===== SPECIFIC ROUTES FIRST (before parameterized routes) =====
 
+// 1) Get unpaid orders - MUST be before /:id route
+router.get('/unpaid', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "Thiếu user_id" });
+
+    const orders = await Order.find({ user_id, status: 'pending' })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(orders);
+  } catch (err) {
+    console.error('Get unpaid orders error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2) Get status tabs
 router.get('/status-tabs', (req, res) => {
   res.json([
     { key: 'pending', label: 'Chờ xác nhận', icon: 'clock-outline' },
-    { key: 'confirmed', label: 'Chờ lấy hàng', icon: 'truck-outline' },
-    { key: 'packed', label: 'Đã đóng gói', icon: 'package-variant-closed' },
-    { key: 'picked', label: 'Đã lấy hàng', icon: 'cube-send' },
-    { key: 'shipping', label: 'Đang giao', icon: 'truck-fast-outline' },
+    { key: 'packed', label: 'Chờ lấy hàng', icon: 'package-variant-closed' },
+    { key: 'shipping', label: 'Chờ giao hàng', icon: 'truck-fast-outline' },
     { key: 'delivered', label: 'Đã giao', icon: 'check-circle-outline' },
+    { key: 'return_requested', label: 'Trả hàng', icon: 'backup-restore' },
     { key: 'cancelled', label: 'Đã huỷ', icon: 'close-circle-outline' },
-    // Thêm các trạng thái khác nếu cần
   ]);
 });
-// 1) Thêm sản phẩm vào giỏ hàng (cộng dồn nếu đã có)
-router.post('/add-to-cart', async (req, res) => {
-  const { user_id, productId, quantity } = req.body;
-  // Chỉ lấy đơn pending chưa có address (giỏ hàng thực sự)
-  let order = await Order.findOne({ user_id, status: 'pending', address: { $in: [null, ''] } });
-  if (!order) {
-    order = new Order({ user_id, products: [{ productId, quantity }], status: 'pending' });
-  } else {
-    const prod = order.products.find(p => p.productId.toString() === productId);
-    prod ? prod.quantity += quantity : order.products.push({ productId, quantity });
+
+// 3) Get all orders with pagination - MUST be before /:id route
+router.get('/', async (req, res) => {
+  try {
+    const { status, q, page = 1, limit = 10 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Order.countDocuments(filter);
+
+    let orders = await Order.find(filter)
+      .populate('products.productId')
+      .populate('combos.comboId')
+      .populate('user_id', 'full_name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    if (q) {
+      const keyword = q.toLowerCase();
+      orders = orders.filter(o =>
+        o._id.toString().toLowerCase().includes(keyword) ||
+        (o.user_id?.full_name && o.user_id.full_name.toLowerCase().includes(keyword))
+      );
+    }
+
+    res.json({
+      data: orders,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  await order.save();
-  const populated = await Order.findById(order._id).populate('products.productId');
-  res.json(populated);
 });
 
-// 2) Cập nhật số lượng trong giỏ hàng
-router.put('/update-quantity', async (req, res) => {
-  const { user_id, productId, quantity } = req.body;
-  const order = await Order.findOne({ user_id, status: 'pending', 'products.productId': productId });
-  if (!order) return res.status(404).json({ error: 'Order not found' });
+// 4) Checkout endpoint
+router.post('/checkout', async (req, res) => {
+  try {
+    const { user_id, address, paymentMethod, shippingMethod, voucher } = req.body;
 
-  const prod = order.products.find(p => p.productId.toString() === productId);
-  prod.quantity = quantity;
-  await order.save();
+    const cart = await Cart.findOne({ user_id })
+      .populate('products.productId')
+      .populate('products.comboId');
 
-  const populated = await Order.findById(order._id).populate('products.productId');
-  res.json(populated);
+    if (!cart || !cart.products.length) {
+      return res.status(400).json({ error: 'Giỏ hàng trống' });
+    }
+
+    // Tính tổng tiền + kiểm tra tồn kho (giữ nguyên code cũ của bạn)
+    let totalPrice = 0;
+    const orderProducts = [];
+    const orderCombos = [];
+
+    for (const item of cart.products) {
+      if (item.productId) {
+        const prod = item.productId;
+        const itemPrice = prod.price + (item.variant?.priceDiff || 0);
+        if (prod.stock < item.quantity) {
+          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+        }
+        totalPrice += itemPrice * item.quantity;
+
+        await Product.updateOne(
+          { _id: prod._id },
+          { $inc: { stock: -item.quantity } }
+        );
+
+        orderProducts.push({
+          productId: prod._id,
+          quantity: item.quantity,
+          variant: item.variant
+        });
+      } else if (item.comboId) {
+        const combo = item.comboId;
+        const comboProducts = await Product.find({ _id: { $in: combo.productIds } });
+        for (const prod of comboProducts) {
+          if (prod.stock < item.quantity) {
+            return res.status(400).json({ error: `Sản phẩm ${prod.name} trong combo chỉ còn ${prod.stock}` });
+          }
+        }
+        for (const prod of comboProducts) {
+          await Product.updateOne(
+            { _id: prod._id },
+            { $inc: { stock: -item.quantity } }
+          );
+        }
+
+        totalPrice += combo.price * item.quantity;
+        orderCombos.push({
+          comboId: combo._id,
+          quantity: item.quantity,
+          price: combo.price
+        });
+      }
+    }
+
+    // Tạo đơn hàng
+    const order = new Order({
+      user_id,
+      products: orderProducts,
+      combos: orderCombos,
+      address,
+      paymentMethod,
+      shippingMethod,
+      voucher,
+      total_price: totalPrice,
+      total: totalPrice,
+      status: 'pending'
+    });
+    await order.save();
+
+    // Xóa giỏ hàng
+    cart.products = [];
+    await cart.save();
+
+    // Tự động hủy sau 20 phút nếu chưa thanh toán (giữ nguyên code cũ)
+    setTimeout(async () => {
+      try {
+        const check = await Order.findById(order._id);
+        if (check && check.status === 'pending') {
+          for (const p of check.products) {
+            await Product.updateOne(
+              { _id: p.productId },
+              { $inc: { stock: p.quantity } }
+            );
+          }
+          for (const c of check.combos) {
+            const combo = await Combo.findById(c.comboId);
+            if (combo) {
+              for (const pid of combo.productIds) {
+                await Product.updateOne(
+                  { _id: pid },
+                  { $inc: { stock: c.quantity } }
+                );
+              }
+            }
+          }
+          check.status = 'cancelled';
+          check.cancelledAt = new Date();
+          await check.save();
+        }
+      } catch (e) {
+        console.error('Auto cancel order error:', e);
+      }
+    }, 20 * 60 * 1000);
+
+    // ✅ Thông tin QR để frontend gọi VietQRScreen
+    res.status(200).json({
+      message: 'Đặt hàng thành công',
+      orderId: order._id,
+      acc: '123456789',         // số tài khoản nhận
+      bank: 'VCB',              // mã ngân hàng
+      amount: totalPrice,
+      des: order._id.toString(),// để mapping khi nhận webhook
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 3) Xóa sản phẩm khỏi giỏ hàng
-router.delete('/remove-product/:userId/:productId', async (req, res) => {
-  const { userId, productId } = req.params;
-  // Xóa sản phẩm khỏi mảng products bằng $pull
-  const updatedOrder = await Order.findOneAndUpdate(
-    { user_id: userId, status: 'pending' },
-    { $pull: { products: { productId: productId } } },
-    { new: true }
-  ).populate('products.productId');
+// ===== PARAMETERIZED ROUTES (must come after specific routes) =====
 
-  if (!updatedOrder) return res.status(404).json({ error: 'Order not found' });
-
-  res.json(updatedOrder);
-});
-
-// 4) Lấy danh sách đơn hàng của user
+// 5) Get orders by user ID
 router.get('/user/:userId', async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.params.userId })
-                              .populate('products.productId');
+                              .populate('products.productId')
+                              .populate('combos.comboId');
     // Gắn URL ảnh cho từng sản phẩm
     for (const order of orders) {
       for (const item of order.products) {
@@ -84,70 +226,45 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// 5) Checkout: duyệt đơn và trừ stock
-router.post('/checkout', async (req, res) => {
+// 6) Get payment info for specific order
+router.get('/:id/pay-info', async (req, res) => {
   try {
-    const { user_id, address, paymentMethod, shippingMethod, voucher, total } = req.body;
-    const order = await Order.findOne({ user_id, status: 'pending' });
-    if (!order || !order.products.length) {
-      return res.status(400).json({ error: 'Giỏ hàng trống' });
+    const order = await Order.findById(req.params.id);
+    if (!order || order.status !== 'pending') {
+      return res.status(404).json({ error: 'Đơn hàng không tồn tại hoặc đã thanh toán' });
     }
 
-    // Kiểm tra và trừ stock atomic
-    for (const item of order.products) {
-      const prod = await Product.findById(item.productId).select('stock name');
-      if (!prod) {
-        return res.status(400).json({ error: `Không tìm thấy sản phẩm ${item.productId}` });
-      }
-      if (prod.stock < item.quantity) {
-        return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
-      }
-      await Product.updateOne(
-        { _id: item.productId },
-        { $inc: { stock: -item.quantity } }
-      );
-    }
-
-    // Cập nhật đơn thành confirmed
-    order.address        = address;
-    order.paymentMethod  = paymentMethod;
-    order.shippingMethod = shippingMethod;
-    order.voucher        = voucher;
-    order.total          = total;
-    order.createdAt      = new Date();
-    await order.save();
-    res.status(200).json({ message: 'Đặt hàng thành công', orderId: order._id });
+    res.json({
+      orderId: order._id,
+      acc: '123456789',          // số tài khoản nhận
+      bank: 'VCB',               // mã ngân hàng
+      amount: order.total,
+      des: order._id.toString(), // để webhook mapping
+    });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET by id
-router.get('/:id', async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id)
-      .populate('user_id', 'full_name')           
-      .populate('products.productId', 'name price image')
-      .lean();
-    return res.json(order);
+// 7) Update order status
+router.put('/:orderId/status', orderCtrl.updateStatus);
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// 8) Cancel order
+router.put('/:orderId/cancel', orderCtrl.cancelOrder);
 
+// 9) Return stock for cancelled order
+router.post('/:orderId/return-stock', orderCtrl.returnStockForCancelledOrder);
 
-
-// 7) Cập nhật chung - PHẢI ĐẶT SAU route cancel
+// 10) Update order (general update)
 router.put('/:id', async (req, res) => {
   try {
     const updated = await Order.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
-    ).populate('products.productId');
+    )
+      .populate('products.productId')
+      .populate('combos.comboId');
     
     if (!updated) {
       return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
@@ -160,52 +277,24 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 8) Cập nhật trạng thái đơn hàng theo workflow
-router.put('/:orderId/status', orderCtrl.updateStatus);
-
-// 9) Hủy đơn (giữ logic hoàn stock)
-router.put('/:orderId/cancel', orderCtrl.cancelOrder);
-
-// 10) Lấy tất cả đơn (GET /orders)
-router.get('/', async (req, res) => {
-  try {
-    const { status, q } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-
-    const orders = await Order.find(filter)
-      .populate('products.productId')
-      .populate('user_id', 'full_name')
-      .sort({ createdAt: -1 })
-      .lean();
-
-    let result = orders;
-    if (q) {
-      const keyword = q.toLowerCase();
-      result = orders.filter(o =>
-        o._id.toString().toLowerCase().includes(keyword) ||
-        (o.user_id?.full_name && o.user_id.full_name.toLowerCase().includes(keyword))
-      );
-    }
-
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
+// 11) Get order by ID - MUST be last among GET routes
 router.get('/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('products.productId')
-      .populate('user_id', 'full_name email');
-    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+      .populate('user_id', 'full_name email')
+      .populate('products.productId', 'name price image')
+      .populate('combos.comboId')
+      .lean();
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+    }
+    
     res.json(order);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
-
-router.post('/:orderId/return-stock', orderCtrl.returnStockForCancelledOrder);
 
 module.exports = router;

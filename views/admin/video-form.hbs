@@ -278,6 +278,14 @@
             position: relative;
         }
 
+        .product-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
         .product-card:hover {
             border-color: #3498db;
             transform: translateY(-2px);
@@ -848,16 +856,17 @@ async function loadProducts() {
       const productCard = document.createElement('div');
       productCard.className = 'product-card';
       productCard.onclick = () => toggleProduct(productCard, product._id);
-      
+
       productCard.innerHTML = `
         <input type="checkbox" name="productIds" value="${product._id}" class="product-checkbox">
+        <img src="${product.image || '/admin/static/images/logo.png'}" alt="${product.name}">
         <div class="product-info">
           <h4>${product.name}</h4>
           <div class="product-brand">${product.brand_id?.name || 'Không có thương hiệu'}</div>
           <div class="product-price">${formatPrice(product.price)}</div>
         </div>
       `;
-      
+
       productsGrid.appendChild(productCard);
     });
   } catch (error) {

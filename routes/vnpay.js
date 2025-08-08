@@ -7,9 +7,9 @@
 // - FRONTEND_URL: deep-link/universal link for mobile app
 
 const express = require('express');
-const crypto  = require('crypto');
-const router  = express.Router();
-const Order   = require('../models/Order');
+const crypto = require('crypto');
+const router = express.Router();
+const Order = require('../models/Order');
 
 // Normalize IP address
 function normalizeIp(rawIp) {
@@ -18,21 +18,24 @@ function normalizeIp(rawIp) {
   return ip === '::1' ? '127.0.0.1' : ip;
 }
 
-// Build VNPAY payment URL (checksum via HMAC-SHA512 per docs)
+// Build VNPAY payment URL using URL and URLSearchParams (per VNPAY demo)
 function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const tmnCode   = process.env.VNPAY_TMNCODE;
   const secret    = process.env.VNPAY_HASHSECRET;
-  const apiUrl    = process.env.VNPAY_APIURL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+  const baseUrl   = process.env.VNPAY_APIURL;
   const returnUrl = process.env.VNPAY_RETURNURL;
   const ipAddr    = normalizeIp(rawIp);
 
-  // CreateDate in GMT+7, format yyyyMMddHHmmss
+  // Compute createDate in GMT+7, format yyyyMMddHHmmss
   const now    = new Date();
   const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
-  const createDate = vnTime.toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  const createDate = vnTime
+    .toISOString()
+    .replace(/[-:T]/g, '')
+    .slice(0, 14);
 
-  // Prepare parameters
-  const params = {
+  // Prepare sorted parameters
+  const vnp_Params = {
     vnp_Version:   '2.1.0',
     vnp_Command:   'pay',
     vnp_TmnCode:   tmnCode,
@@ -47,108 +50,123 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
     vnp_CreateDate:createDate
   };
 
-  // Sort keys
-  const sortedKeys = Object.keys(params).sort();
-  // Build hash data string: urlencode(key)=urlencode(value)&...
-  const hashData = sortedKeys
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-    .join('&');
+  // Build URLSearchParams in sorted order
+  const urlObj = new URL(baseUrl);
+  Object.entries(vnp_Params)
+    .sort(([k1], [k2]) => k1.localeCompare(k2))
+    .forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        urlObj.searchParams.append(key, val.toString());
+      }
+    });
 
-  // Compute HMAC-SHA512
-  const secureHash = crypto
-    .createHmac('sha512', secret)
-    .update(hashData, 'utf8')
-    .digest('hex');
+  // Compute HMAC SHA512 on query string (without '?')
+  const rawData = urlObj.search.slice(1); // drop '?'
+  const hmac = crypto.createHmac('sha512', secret);
+  const secureHash = hmac.update(Buffer.from(rawData, 'utf-8')).digest('hex');
 
-  // Append hash to params
-  params.vnp_SecureHashType = 'HMACSHA512';
-  params.vnp_SecureHash     = secureHash;
+  // Append signature params
+  urlObj.searchParams.append('vnp_SecureHashType', 'HMACSHA512');
+  urlObj.searchParams.append('vnp_SecureHash', secureHash);
 
-  // Build query string (include hash fields last)
-  const query = sortedKeys
-    .concat(['vnp_SecureHashType', 'vnp_SecureHash'])
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-    .join('&');
-
-  return `${apiUrl}?${query}`;
+  return urlObj.toString();
 }
 
 // POST /vnpay/create_payment
 router.post('/create_payment', async (req, res) => {
   const { orderId, amount, orderInfo } = req.body;
-  if (!orderId || !amount || !orderInfo) {
-    return res.status(400).json({ code: 1, message: 'Thiếu orderId, amount hoặc orderInfo' });
-  }
   try {
-    const ip         = req.headers['x-forwarded-for'] || req.ip;
-    const paymentUrl = buildVnpayUrl(orderId, parseFloat(amount), orderInfo, ip);
-    return res.json({ code: 0, data: { paymentUrl } });
+    const ip = req.headers['x-forwarded-for'] || req.ip;
+    const paymentUrl = buildVnpayUrl(
+      orderId,
+      parseFloat(amount),
+      orderInfo,
+      ip
+    );
+
+    console.log(
+      '[VNPAY][CREATE] orderId=%s, amount=%s, orderInfo=%s, ip=%s',
+      orderId,
+      amount,
+      orderInfo,
+      ip
+    );
+    console.log('[VNPAY][CREATE] paymentUrl=', paymentUrl);
+
+    res.json({ code: 0, data: { paymentUrl } });
   } catch (err) {
-    console.error('Lỗi tạo URL VNPAY:', err);
-    return res.status(500).json({ code: 1, message: 'Lỗi tạo URL thanh toán' });
+    console.error('[VNPAY][CREATE] Error:', err);
+    res.status(500).json({ code: 1, message: 'Lỗi tạo URL thanh toán' });
   }
 });
+
+// Helper: verify VNPAY HMAC signature
+function verifyVnpaySignature(query) {
+  const data = { ...query };
+  const secureHash = data.vnp_SecureHash;
+  delete data.vnp_SecureHash;
+  delete data.vnp_SecureHashType;
+
+  const rawData = Object.keys(data)
+    .sort()
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+    .join('&');
+
+  const calcHash = crypto
+    .createHmac('sha512', process.env.VNPAY_HASHSECRET)
+    .update(rawData, 'utf8')
+    .digest('hex');
+
+  return { valid: calcHash === secureHash, calcHash, secureHash, rawData, data };
+}
 
 // GET /vnpay/ipn – Instant Payment Notification
 router.get('/ipn', async (req, res) => {
-  const vnpData    = { ...req.query };
-  const secureHash = vnpData.vnp_SecureHash;
-  delete vnpData.vnp_SecureHash;
-  delete vnpData.vnp_SecureHashType;
-
-  const sortedKeys = Object.keys(vnpData).sort();
-  const hashData   = sortedKeys
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(vnpData[key])}`)
-    .join('&');
-  const calcHash   = crypto
-    .createHmac('sha512', process.env.VNPAY_HASHSECRET)
-    .update(hashData, 'utf8')
-    .digest('hex');
-
-  if (calcHash !== secureHash) {
-    console.warn('IPN signature mismatch');
+  console.log('[VNPAY][IPN] incoming params:', req.query);
+  const { valid, calcHash, secureHash, rawData, data } = verifyVnpaySignature(req.query);
+  if (!valid) {
+    console.error('[VNPAY][IPN] Signature mismatch!', { secureHash, calcHash, rawData, data });
     return res.status(200).send('97');
   }
 
-  const { vnp_TxnRef, vnp_ResponseCode } = vnpData;
+  const { vnp_TxnRef, vnp_ResponseCode } = data;
   const status = vnp_ResponseCode === '00' ? 'paid' : 'payment_failed';
   try {
     await Order.findByIdAndUpdate(vnp_TxnRef, { status });
-    return res.status(200).send(vnp_ResponseCode === '00' ? '00' : '01');
-  } catch {
-    return res.status(200).send('99');
+    console.log('[VNPAY][IPN] Order %s updated to %s', vnp_TxnRef, status);
+    res.status(200).send(vnp_ResponseCode === '00' ? '00' : '01');
+  } catch (err) {
+    console.error('[VNPAY][IPN] Error updating order:', err);
+    res.status(200).send('99');
   }
 });
 
-// GET /vnpay/return – User redirect
+// GET /vnpay/return – user redirect
 router.get('/return', async (req, res) => {
-  const vnpData    = { ...req.query };
-  const secureHash = vnpData.vnp_SecureHash;
-  delete vnpData.vnp_SecureHash;
-  delete vnpData.vnp_SecureHashType;
-
-  const sortedKeys = Object.keys(vnpData).sort();
-  const hashData   = sortedKeys
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(vnpData[key])}`)
-    .join('&');
-  const calcHash   = crypto
-    .createHmac('sha512', process.env.VNPAY_HASHSECRET)
-    .update(hashData, 'utf8')
-    .digest('hex');
-
-  if (calcHash !== secureHash) {
+  console.log('[VNPAY][RETURN] incoming params:', req.query);
+  const { valid, calcHash, secureHash, rawData, data } = verifyVnpaySignature(req.query);
+  if (!valid) {
+    console.error('[VNPAY][RETURN] Signature mismatch!', { secureHash, calcHash, rawData, data });
     return res.status(400).json({ code: 1, message: 'Chữ ký không hợp lệ' });
   }
 
-  const { vnp_TxnRef, vnp_ResponseCode } = vnpData;
-  const success = vnp_ResponseCode === '00';
-  await Order.findByIdAndUpdate(vnp_TxnRef, { status: success ? 'paid' : 'payment_failed' });
+  try {
+    const { vnp_TxnRef, vnp_ResponseCode } = data;
+    const success = vnp_ResponseCode === '00';
+    await Order.findByIdAndUpdate(vnp_TxnRef, { status: success ? 'paid' : 'payment_failed' });
+    console.log('[VNPAY][RETURN] Order %s set to %s', vnp_TxnRef, success ? 'paid' : 'payment_failed');
 
-  const FE = process.env.FRONTEND_URL;
-  const target = success
-    ? `${FE}?status=success&orderId=${vnp_TxnRef}`
-    : `${FE}?status=failed&orderId=${vnp_TxnRef}&code=${vnp_ResponseCode}`;
-  return res.redirect(target);
+    const FE = process.env.FRONTEND_URL;
+    const redirectUrl = success
+      ? `${FE}?status=success&orderId=${vnp_TxnRef}`
+      : `${FE}?status=failed&orderId=${vnp_TxnRef}&code=${vnp_ResponseCode}`;
+
+    console.log('[VNPAY][RETURN] Redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('[VNPAY][RETURN] Error processing return:', err);
+    res.status(500).json({ code: 1, message: 'Lỗi xử lý thông tin thanh toán' });
+  }
 });
 
 // POST /vnpay/verify_payment – Front-end callback
@@ -157,10 +175,10 @@ router.post('/verify_payment', async (req, res) => {
   const status = code === '00' ? 'paid' : 'payment_failed';
   try {
     await Order.findByIdAndUpdate(orderId, { status });
-    return res.json({ success: code === '00' });
+    res.json({ success: code === '00' });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
+    console.error('[VNPAY][VERIFY] Error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 });
 

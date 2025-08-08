@@ -148,12 +148,13 @@ exports.cancelOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId);
     if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn' });
-    if (!['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status)) {
-      return res.status(400).json({ error: 'Không thể hủy đơn ở trạng thái hiện tại' });
+    // Chỉ cho phép hủy ở trạng thái chờ xác nhận và chờ lấy hàng
+    if (!['pending', 'packed'].includes(order.status)) {
+      return res.status(400).json({ error: 'Chỉ được hủy đơn ở trạng thái chờ xác nhận hoặc chờ lấy hàng' });
     }
     // Hoàn stock nếu đơn chưa bị hủy và có sản phẩm
     if (
-      ['pending', 'confirmed', 'packed', 'picked', 'shipping'].includes(order.status) &&
+      ['pending', 'packed'].includes(order.status) &&
       order.products && order.products.length > 0
     ) {
       for (const item of order.products) {
@@ -174,12 +175,7 @@ exports.cancelOrder = async (req, res) => {
 };
 
 exports.deleteOrder = async (req, res) => {
-  try {
-    await Order.findByIdAndDelete(req.params.orderId);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.status(403).json({ error: 'Không được phép xóa đơn hàng' });
 };
 
 exports.returnStockForCancelledOrder = async (req, res) => {

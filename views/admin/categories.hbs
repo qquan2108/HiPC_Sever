@@ -42,6 +42,18 @@
       box-shadow: 0 20px 40px -12px rgba(245, 87, 108, 0.4);
     }
 
+    .btn-danger {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateY(0);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 40px -12px rgba(245, 87, 108, 0.4);
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
     .table-row {
       transition: all 0.3s ease;
       border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -93,6 +105,25 @@
       100% {
         transform: rotate(360deg);
       }
+    }
+
+    /* Avatar style for category logo */
+    .category-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 8px 0 rgba(161,140,209,0.13);
+      margin-right: 14px;
+      border: 2px solid #fbc2eb44;
+      background: #fff;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .category-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
   </style>
 
@@ -202,7 +233,10 @@
 
         tr.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap">${idx + 1}</td>
-          <td class="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">${cat.name}</td>
+          <td class="px-6 py-4 whitespace-nowrap font-semibold text-gray-900 category-name-cell">
+            ${cat.image ? `<img src="${cat.image}" alt="${cat.name}" class="category-avatar">` : `<span class="category-avatar" style="background:#f3e8ff;"></span>`}
+            <span>${cat.name}</span>
+          </td>
           <td class="px-6 py-4 whitespace-nowrap text-gray-700">${cat.description || ''}</td>
           <td class="px-6 py-4 whitespace-nowrap text-center">
             <div class="flex justify-center space-x-2">

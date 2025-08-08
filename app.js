@@ -3,8 +3,8 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan'); 
-var hbs     = require('hbs');
+var logger = require('morgan');
+var hbs = require('hbs');
 var fs = require('fs');
 var reportRoutes = require('./routes/reports');
 var notificationsRouter = require('./routes/notifications');
@@ -12,12 +12,14 @@ var bannerRoutes = require('./routes/banners');
 var vnpayRouter = require('./routes/vnpay');
 var stripeRouter = require('./routes/stripe');
 var vnpayRouter = require('./routes/vnpay');
+var sepayRouter = require('./routes/sepay');
 var adminRouter = require('./routes/admin');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var productsRouter = require('./routes/products');
 var categorysRouter = require('./routes/categorys');
 var ordersRouter = require('./routes/orders');
+var cartRouter = require('./routes/cart');
 var buildproductsRouter = require('./routes/buildproducts');
 var chatmessagesRouter = require('./routes/chatmessages');
 var chatsessionsRouter = require('./routes/chatsessions');
@@ -31,12 +33,12 @@ var vouchersRouter = require('./routes/vouchers');
 var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
+var pcbuilderRouter = require('./routes/pcbuilder');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
 var app = express();
 app.use(cors());
-
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -53,8 +55,6 @@ const uploadDir = path.join(__dirname, 'uploads', 'banners');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(logger('dev'));
-
-
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -76,19 +76,27 @@ hbs.registerHelper('ifEquals', function (a, b, options) {
 });
 
 // Đăng ký helper JSON stringify
-  hbs.registerHelper('json', function (context) {
-    return JSON.stringify(context);
-  });
-app.use('/stripe', stripeRouter);
-app.use('/', indexRouter);
+hbs.registerHelper('json', function (context) {
+  return JSON.stringify(context);
+});
+
+hbs.registerHelper('eq', function(a, b) {
+  return a === b;
+});
+
 app.get('/admin', (req, res) => {
   return res.redirect('/login');
 });
+
+app.use('/stripe', stripeRouter);
+app.use('/sepay', sepayRouter);
+app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/users', usersRouter);
 app.use('/category', categorysRouter);
 app.use('/product', productsRouter);
 app.use('/orders', ordersRouter);
+app.use('/cartt', cartRouter);
 app.use('/buildproducts', buildproductsRouter);
 app.use('/chatmessages', chatmessagesRouter);
 app.use('/chatsessions', chatsessionsRouter);
@@ -96,18 +104,17 @@ app.use('/comparisonproducts', comparisonproductsRouter);
 app.use('/comparisons', comparisonsRouter);
 app.use('/images', imagesRouter);
 app.use('/productreviews', productreviewsRouter);
-app.use('/tsktproducts', tsktproductsRouter); // Thêm dòng này
+app.use('/tsktproducts', tsktproductsRouter);
 app.use('/brands', brandsRouter);
 app.use('/search', searchRouter);
 app.use('/vouchers', vouchersRouter);
-app.use('/combo',comboRoutes);
-app.use('/videocombo',videoRoutes);
+app.use('/combo', comboRoutes);
+app.use('/videocombo', videoRoutes);
 app.use('/vnpay', vnpayRouter);
-
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
-app.use('/vnpay', vnpayRouter);
+app.use('/pcbuild', pcbuilderRouter);
 
 
 
