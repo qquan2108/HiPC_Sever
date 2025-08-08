@@ -47,4 +47,5 @@ router.delete('/:id', ctrl.deleteProduct);
 router.get('/best-sellers', ctrl.getBestSellers);
 // Route to retrieve all products without pagination
 router.get('/all', ctrl.getAllProducts);
+
 module.exports = router;
