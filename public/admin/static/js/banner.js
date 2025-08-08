@@ -8,8 +8,18 @@ const BannerManager = {
 
   // Initialize: tải banner và gắn event
   init() {
+    // Đưa các modal ra ngoài phần tử có transform để modal hiển thị chính xác
+    this.moveModalsToBody();
     this.loadBanners();
     this.setupEventListeners();
+  },
+
+  // Di chuyển modal tới body để tránh bị ảnh hưởng bởi transform/position của phần tử cha
+  moveModalsToBody() {
+    ['addBannerModal', 'bannerPreviewModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) document.body.appendChild(el);
+    });
   },
 
   // Nếu là URL đầy đủ trả về nguyên, ngược lại prepend "/"
