@@ -258,6 +258,11 @@
 </div>
 
     <script>
+        // Move edit modal to body to prevent transform issues
+        const editOrderModalEl = document.getElementById('editOrderModal');
+        if (editOrderModalEl && editOrderModalEl.parentNode !== document.body) {
+            document.body.appendChild(editOrderModalEl);
+        }
         let currentStatus = '';
         let currentOrders = [];
         let isLoading = false;
