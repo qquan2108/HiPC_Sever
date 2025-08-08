@@ -42,7 +42,17 @@ router.post('/upload', upload.single('file'), (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { full_name, email, password, phone, address } = req.body;
+    const {
+      full_name,
+      email,
+      password,
+      phone,
+      address,
+      label,
+      provinceId,
+      districtId,
+      wardCode
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -54,12 +64,22 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const newUser = new User({
-      full_name,
-      email,
-      password: hashedPassword,
-      phone,
-      address
-    });
+  full_name,
+  email,
+  password: hashedPassword,
+  phone,
+  address, // vẫn giữ cho user cũ nếu muốn
+  addresses: [
+    {
+      label,
+      address,
+      provinceId,
+      districtId,
+      wardCode,
+      isDefault: true
+    }
+  ]
+});
 
     await newUser.save();
 
