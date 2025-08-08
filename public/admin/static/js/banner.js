@@ -43,11 +43,9 @@ const BannerManager = {
   async loadBanners() {
     const container = document.getElementById('bannerList');
     try {
-      console.log('🔄 Đang tải banner từ:', this.BANNER_API);
       const res = await fetch(this.BANNER_API);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const list = await res.json();
-      console.log('📊 Banner data:', list);
 
       if (!Array.isArray(list) || list.length === 0) {
         container.innerHTML = `
@@ -71,7 +69,7 @@ const BannerManager = {
         const createdDate = new Date(banner.createdAt).toLocaleDateString('vi-VN');
 
         col.innerHTML = `
-          <div class="card shadow-sm banner-card" style="border: 2px red">
+          <div class="card shadow-sm banner-card">
             <img src="${fullImageUrl}"
                  class="card-img-top"
                  alt="${title}"
