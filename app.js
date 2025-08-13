@@ -34,6 +34,7 @@ var searchRouter = require('./routes/search');
 var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 var pcbuilderRouter = require('./routes/pcbuilder');
+var chatRouter = require('./routes/chat');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -115,6 +116,7 @@ app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
 app.use('/pcbuild', pcbuilderRouter);
+app.use('/ai', chatRouter);
 
 
 
