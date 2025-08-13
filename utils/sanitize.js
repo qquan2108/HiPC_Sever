@@ -12,13 +12,13 @@ const searchSchema = z.object({
   sort: z.enum(["relevance", "price_asc", "price_desc", "updated_desc"]).default("updated_desc"),
 });
 
-// Schema for a single SKU lookup
-const skuSchema = z.object({ sku: z.string().trim().min(1) });
+// Schema for a single product ID lookup
+const idSchema = z.object({ id: z.string().trim().min(1) });
 
 // Escape regex special characters
 function regexEscape(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-module.exports = { searchSchema, skuSchema, regexEscape };
+module.exports = { searchSchema, idSchema, regexEscape };
 
