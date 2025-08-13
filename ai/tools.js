@@ -1,5 +1,7 @@
 const Product = require('../models/Product');
-const { searchSchema, skuSchema, regexEscape } = require('../utils/sanitize');
+const Category = require('../models/Category');
+const mongoose = require('mongoose');
+const { searchSchema, idSchema, regexEscape } = require('../utils/sanitize');
 
 // Tell Gemini what tools exist and what args they take
 const functionDeclarations = [
@@ -21,12 +23,12 @@ const functionDeclarations = [
     },
   },
   {
-    name: 'getProductBySku',
-    description: 'Get a single product by SKU.',
+    name: 'getProductById',
+    description: 'Get a single product by ID.',
     parameters: {
       type: 'OBJECT',
-      properties: { sku: { type: 'STRING' } },
-      required: ['sku'],
+      properties: { id: { type: 'STRING' } },
+      required: ['id'],
     },
   },
 ];
@@ -48,7 +50,19 @@ async function run_searchProducts(rawArgs) {
   const args = searchSchema.parse(rawArgs || {});
   const query = {};
 
-  if (args.category) query.category_id = args.category;
+  if (args.category) {
+    if (mongoose.Types.ObjectId.isValid(args.category)) {
+      query.category_id = args.category;
+    } else {
+      const cat = await Category.findOne({ name: args.category }).select('_id').lean();
+      if (cat) {
+        query.category_id = cat._id;
+      } else {
+        return { ok: true, data: [] };
+      }
+    }
+  }
+
   if (args.inStock === true) query.stock = { $gt: 0 };
   if (args.priceMin != null || args.priceMax != null) {
     query.price = {};
@@ -72,20 +86,23 @@ async function run_searchProducts(rawArgs) {
     .lean();
 
   const mapped = docs.map((d) => ({
-    sku: String(d._id),
+    _id: String(d._id),
     name: d.name,
     price: d.price,
     stock: d.stock,
-    category: d.category_id,
+    category_id: d.category_id,
     updatedAt: d.updatedAt,
   }));
 
   return { ok: true, data: mapped };
 }
 
-async function run_getProductBySku(rawArgs) {
-  const { sku } = skuSchema.parse(rawArgs || {});
-  const doc = await Product.findById(sku)
+async function run_getProductById(rawArgs) {
+  const { id } = idSchema.parse(rawArgs || {});
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return { ok: false, error: 'NOT_FOUND' };
+  }
+  const doc = await Product.findById(id)
     .select('_id name category_id price stock specifications description updatedAt')
     .lean();
   if (!doc) return { ok: false, error: 'NOT_FOUND' };
@@ -93,12 +110,12 @@ async function run_getProductBySku(rawArgs) {
   return {
     ok: true,
     data: {
-      sku: String(doc._id),
+      _id: String(doc._id),
       name: doc.name,
-      category: doc.category_id,
+      category_id: doc.category_id,
       price: doc.price,
       stock: doc.stock,
-      specs: doc.specifications,
+      specifications: doc.specifications,
       description: doc.description,
       updatedAt: doc.updatedAt,
     },
@@ -107,14 +124,14 @@ async function run_getProductBySku(rawArgs) {
 
 async function dispatchTool(name, args) {
   if (name === 'searchProducts') return run_searchProducts(args);
-  if (name === 'getProductBySku') return run_getProductBySku(args);
+  if (name === 'getProductById') return run_getProductById(args);
   return { ok: false, error: 'Unknown tool' };
 }
 
 const SYSTEM_PROMPT = `Bạn là trợ lý bán hàng cho cửa hàng điện thoại/phụ kiện.
 - Khi câu hỏi cần giá/tồn kho/chi tiết sản phẩm → gọi tool tương ứng.
 - Không tiết lộ dữ liệu nội bộ (PII, giá nhập, biên lợi nhuận).
-- Trả lời ngắn gọn bằng tiếng Việt, ghi giá VND, kèm SKU khi trích từ DB.`;
+  - Trả lời ngắn gọn bằng tiếng Việt, ghi giá VND, kèm ID sản phẩm khi trích từ DB.`;
 
 module.exports = { functionDeclarations, dispatchTool, SYSTEM_PROMPT };
 
