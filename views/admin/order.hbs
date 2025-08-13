@@ -246,7 +246,7 @@
 
     <!-- Modal chỉnh sửa đơn hàng -->
 <div id="editOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
-  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-xl relative">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xl relative" style="max-height:80vh; overflow-y:auto;">
     <button id="closeEditModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
       <i class="fas fa-times"></i>
     </button>
@@ -454,15 +454,17 @@
               });
         }
 
+        const editModal = document.getElementById('editOrderModal');
+
         // Đóng modal khi bấm nút đóng
-        document.getElementById('closeEditModal').onclick = function() {
-            document.getElementById('editOrderModal').classList.add('hidden');
-        };
+        document.getElementById('closeEditModal').addEventListener('click', () => {
+            editModal.classList.add('hidden');
+        });
 
         // Đóng modal khi click ra ngoài
-        document.getElementById('editOrderModal').onclick = function(e) {
-            if (e.target === this) this.classList.add('hidden');
-        };
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) editModal.classList.add('hidden');
+        });
 
         // Xử lý submit form chỉnh sửa (AJAX)
         function attachEditOrderFormHandler() {
