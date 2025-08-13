@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const Category = require('../models/Category');
+const mongoose = require('mongoose');
 const { searchSchema, skuSchema, regexEscape } = require('../utils/sanitize');
 
 // Tell Gemini what tools exist and what args they take
@@ -48,7 +50,19 @@ async function run_searchProducts(rawArgs) {
   const args = searchSchema.parse(rawArgs || {});
   const query = {};
 
-  if (args.category) query.category_id = args.category;
+  if (args.category) {
+    if (mongoose.Types.ObjectId.isValid(args.category)) {
+      query.category_id = args.category;
+    } else {
+      const cat = await Category.findOne({ name: args.category }).select('_id').lean();
+      if (cat) {
+        query.category_id = cat._id;
+      } else {
+        return { ok: true, data: [] };
+      }
+    }
+  }
+
   if (args.inStock === true) query.stock = { $gt: 0 };
   if (args.priceMin != null || args.priceMax != null) {
     query.price = {};
