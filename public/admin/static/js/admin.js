@@ -435,7 +435,8 @@ async function initProductForm() {
         stock: parseInt(fd.get("stock")),
         image: imageUrl,
         description: fd.get("description"),
-        specifications: Array.from(form.querySelectorAll(".spec-item input"))
+        specifications: Array.from(specContainer.querySelectorAll(".spec-item input"))
+          .filter(inp => inp.previousElementSibling && inp.previousElementSibling.tagName === "LABEL")
           .map(inp => ({
             key: inp.previousElementSibling.textContent,
             value: inp.value
