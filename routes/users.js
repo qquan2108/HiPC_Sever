@@ -146,7 +146,7 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
-    const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+    const resetLink = `https://api.hipc.site/reset-password/${token}`; //${req.protocol}://${req.get('host')}
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
