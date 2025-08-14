@@ -203,6 +203,143 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+router.post('/buy-now', async (req, res) => {
+  try {
+    const { user_id, productId, quantity = 1, variant, address, paymentMethod, shippingMethod, voucher } = req.body;
+    
+    // 1. Validation đầu vào
+    if (!user_id || !productId || !quantity) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    if (quantity <= 0) {
+      return res.status(400).json({ error: 'Số lượng phải lớn hơn 0.' });
+    }
+
+    // 2. Lấy sản phẩm
+    const prod = await Product.findById(productId);
+    if (!prod) {
+      return res.status(404).json({ error: 'Sản phẩm không tồn tại.' });
+    }
+
+    // 3. Kiểm tra tồn kho
+    if (prod.stock < quantity) {
+      return res.status(400).json({ 
+        error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock} sản phẩm` 
+      });
+    }
+
+    // 4. Tính giá (đây là điểm quan trọng)
+    const basePrice = Number(prod.price) || 0;
+    const variantPrice = Number(variant?.priceDiff) || 0;
+    const itemPrice = basePrice + variantPrice;
+    const totalPrice = itemPrice * quantity;
+
+    console.log('💰 Price calculation:', {
+      basePrice,
+      variantPrice,
+      itemPrice,
+      quantity,
+      totalPrice
+    });
+
+    // 5. Trừ kho (sử dụng transaction để đảm bảo consistency)
+    const session = await mongoose.startSession();
+    let order;
+
+    try {
+      await session.withTransaction(async () => {
+        // Kiểm tra lại stock trong transaction
+        const currentProd = await Product.findById(productId).session(session);
+        if (currentProd.stock < quantity) {
+          throw new Error(`Sản phẩm ${currentProd.name} chỉ còn ${currentProd.stock} sản phẩm`);
+        }
+
+        // Trừ kho
+        await Product.updateOne(
+          { _id: prod._id },
+          { $inc: { stock: -quantity } }
+        ).session(session);
+
+        // Tạo đơn hàng
+        order = new Order({
+          user_id,
+          products: [{
+            productId: prod._id,
+            quantity,
+            price: itemPrice, // 🔥 Quan trọng: lưu giá đã tính sẵn
+            variant: variant || {}
+          }],
+          address,
+          paymentMethod,
+          shippingMethod,
+          voucher,
+          total_price: totalPrice,
+          total: totalPrice,
+          status: 'pending',
+          createdAt: new Date()
+        });
+
+        await order.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    // 6. Auto cancel sau 20 phút (cải thiện với clearTimeout)
+    const cancelTimeout = setTimeout(async () => {
+      try {
+        const check = await Order.findById(order._id);
+        if (check && check.status === 'pending') {
+          // Hoàn lại kho
+          await Product.updateOne(
+            { _id: prod._id },
+            { $inc: { stock: quantity } }
+          );
+          
+          // Hủy đơn hàng
+          check.status = 'cancelled';
+          check.cancelledAt = new Date();
+          check.cancelReason = 'Auto cancelled after 20 minutes';
+          await check.save();
+          
+          console.log(`🚫 Auto cancelled order ${order._id} after 20 minutes`);
+        }
+      } catch (e) {
+        console.error('Auto cancel buy-now order error:', e);
+      }
+    }, 20 * 60 * 1000); // 20 phút
+
+    // Lưu timeout ID để có thể cancel nếu cần
+    order.cancelTimeoutId = cancelTimeout[Symbol.toPrimitive]?.() || cancelTimeout.toString();
+    await order.save();
+
+    // 7. Trả về response
+    res.status(200).json({
+      success: true,
+      message: 'Đặt hàng thành công',
+      data: {
+        orderId: order._id,
+        totalAmount: totalPrice,
+        // Thông tin thanh toán
+        paymentInfo: {
+          acc: '123456789', // số tài khoản nhận
+          bank: 'VCB', // mã ngân hàng
+          amount: totalPrice,
+          des: order._id.toString(), // description để mapping khi nhận webhook
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Buy now error:', err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message || 'Lỗi server' 
+    });
+  }
+});
+
 // ===== PARAMETERIZED ROUTES (must come after specific routes) =====
 
 // 5) Get orders by user ID

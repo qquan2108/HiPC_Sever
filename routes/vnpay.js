@@ -18,7 +18,20 @@ function normalizeIp(rawIp) {
   return ip === '::1' ? '127.0.0.1' : ip;
 }
 
-// Build VNPAY payment URL using URL and URLSearchParams (per VNPAY demo)
+// Helper to stringify params in a sorted order.
+// If `encode` is false, values are left unencoded (required when hashing).
+function toQueryString(params, encode = true) {
+  return Object.keys(params)
+    .sort()
+    .map(key => {
+      const k = encode ? encodeURIComponent(key) : key;
+      const v = encode ? encodeURIComponent(params[key]) : params[key];
+      return `${k}=${v}`;
+    })
+    .join('&');
+}
+
+// Build VNPAY payment URL per VNPAY specification
 function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const tmnCode   = process.env.VNPAY_TMNCODE;
   const secret    = process.env.VNPAY_HASHSECRET;
@@ -34,7 +47,6 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
     .replace(/[-:T]/g, '')
     .slice(0, 14);
 
-  // Prepare sorted parameters
   const vnp_Params = {
     vnp_Version:   '2.1.0',
     vnp_Command:   'pay',
@@ -50,26 +62,21 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
     vnp_CreateDate:createDate
   };
 
-  // Build URLSearchParams in sorted order
-  const urlObj = new URL(baseUrl);
-  Object.entries(vnp_Params)
-    .sort(([k1], [k2]) => k1.localeCompare(k2))
-    .forEach(([key, val]) => {
-      if (val !== undefined && val !== null && val !== '') {
-        urlObj.searchParams.append(key, val.toString());
-      }
-    });
+  // Compute HMAC SHA512 on unencoded query string
+  const rawData = toQueryString(vnp_Params, false);
+  const secureHash = crypto
+    .createHmac('sha512', secret)
+    .update(Buffer.from(rawData, 'utf-8'))
+    .digest('hex');
 
-  // Compute HMAC SHA512 on query string (without '?')
-  const rawData = urlObj.search.slice(1); // drop '?'
-  const hmac = crypto.createHmac('sha512', secret);
-  const secureHash = hmac.update(Buffer.from(rawData, 'utf-8')).digest('hex');
+  // Append signature parameters and build final encoded URL
+  const signedParams = {
+    ...vnp_Params,
+    vnp_SecureHashType: 'HMACSHA512',
+    vnp_SecureHash: secureHash
+  };
 
-  // Append signature params
-  urlObj.searchParams.append('vnp_SecureHashType', 'HMACSHA512');
-  urlObj.searchParams.append('vnp_SecureHash', secureHash);
-
-  return urlObj.toString();
+  return `${baseUrl}?${toQueryString(signedParams, true)}`;
 }
 
 // POST /vnpay/create_payment
@@ -107,11 +114,8 @@ function verifyVnpaySignature(query) {
   delete data.vnp_SecureHash;
   delete data.vnp_SecureHashType;
 
-  const rawData = Object.keys(data)
-    .sort()
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
-    .join('&');
-
+  // VNPAY signs the unencoded query string
+  const rawData = toQueryString(data, false);
   const calcHash = crypto
     .createHmac('sha512', process.env.VNPAY_HASHSECRET)
     .update(rawData, 'utf8')

@@ -10,7 +10,7 @@ async function getGemini() {
   if (!apiKey) throw new Error('GEMINI_API_KEY missing');
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
   cachedModel = genAI.getGenerativeModel({
     model: modelName,
