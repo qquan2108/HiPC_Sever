@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Preset Build</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .card-header {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+        }
+        .preset-category {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        .category-gaming { background-color: #dc3545; color: white; }
+        .category-work { background-color: #28a745; color: white; }
+        .category-budget { background-color: #ffc107; color: black; }
+        .product-item {
+            transition: all 0.3s ease;
+        }
+        .product-item:hover {
+            background-color: #f8f9fa;
+        }
+        .price-display {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .add-product-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .btn-action {
+            margin: 0 2px;
+        }
+        .preset-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .search-filter-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .modal-header {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+        }
+        .component-count {
+            background-color: #6c757d;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2><i class="fas fa-desktop me-2"></i>Quản lý Preset Build</h2>
+                    <div>
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createPresetModal">
+                            <i class="fas fa-plus me-1"></i>Tạo Preset Mới
+                        </button>
+                        <button class="btn btn-info" onclick="exportPresets()">
+                            <i class="fas fa-download me-1"></i>Xuất Dữ Liệu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="preset-stats" id="statsContainer">
+            <div class="stat-card">
+                <h4 id="totalPresets">0</h4>
+                <p>Tổng Preset</p>
+            </div>
+            <div class="stat-card">
+                <h4 id="totalProducts">0</h4>
+                <p>Tổng Sản Phẩm</p>
+            </div>
+            <div class="stat-card">
+                <h4 id="avgPrice">0₫</h4>
+                <p>Giá TB/Preset</p>
+            </div>
+            <div class="stat-card">
+                <h4 id="mostPopular">N/A</h4>
+                <p>Loại Phổ Biến</p>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-filter-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Tìm kiếm preset...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">Tất cả danh mục</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="work">Workstation</option>
+                        <option value="budget">Budget</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="priceFilter">
+                        <option value="">Tất cả mức giá</option>
+                        <option value="0-10000000">Dưới 10 triệu</option>
+                        <option value="10000000-25000000">10-25 triệu</option>
+                        <option value="25000000-50000000">25-50 triệu</option>
+                        <option value="50000000-999999999">Trên 50 triệu</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-1"></i>Lọc
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preset Cards -->
+        <div id="presetBuilds" class="row"></div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal tạo preset mới -->
+    <div class="modal fade" id="createPresetModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tạo Preset Mới</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createPresetForm">
+                        <div class="mb-3">
+                            <label for="presetName" class="form-label">Tên Preset *</label>
+                            <input type="text" class="form-control" id="presetName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="presetDescription" class="form-label">Mô tả</label>
+                            <textarea class="form-control" id="presetDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="presetCategory" class="form-label">Danh mục *</label>
+                            <select class="form-select" id="presetCategory" required>
+                                <option value="">Chọn danh mục</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="work">Workstation</option>
+                                <option value="budget">Budget</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success" onclick="createNewPreset()">Tạo Preset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm sản phẩm -->
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Thêm Sản Phẩm vào Preset</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="productSearch" class="form-label">Tìm kiếm sản phẩm</label>
+                        <input type="text" class="form-control" id="productSearch" placeholder="Nhập tên sản phẩm...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="productId" class="form-label">ID Sản phẩm *</label>
+                        <input type="text" class="form-control" id="productId" required placeholder="Nhập ID sản phẩm">
+                    </div>
+                    <div class="mb-3">
+                        <label for="productQuantity" class="form-label">Số lượng</label>
+                        <input type="number" class="form-control" id="productQuantity" value="1" min="1" max="10">
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>Lưu ý:</strong> Hãy đảm bảo ID sản phẩm chính xác. Bạn có thể tìm ID trong trang quản lý sản phẩm.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="addProductToPreset()">Thêm Sản Phẩm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPresets = [];
+        let currentPresetId = '';
+
+        // Fetch và render presets
+        async function fetchPresets() {
+            document.getElementById('loadingSpinner').style.display = 'block';
+            try {
+                const res = await fetch('/pcbuild/presets');
+                const presets = await res.json();
+                currentPresets = presets;
+                renderPresets(presets);
+                updateStatistics(presets);
+            } catch (error) {
+                console.error('Error fetching presets:', error);
+                showToast('Có lỗi khi tải dữ liệu', 'error');
+            } finally {
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }
+        }
+
+        // Render presets
+        function renderPresets(presets) {
+            const container = document.getElementById('presetBuilds');
+            container.innerHTML = '';
+
+            if (!presets.length) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">Chưa có preset build nào</h4>
+                            <p class="text-muted">Tạo preset đầu tiên để bắt đầu</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPresetModal">
+                                <i class="fas fa-plus me-1"></i>Tạo Preset Mới
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            presets.forEach(preset => {
+                const col = document.createElement('div');
+                col.className = 'col-lg-6 col-xl-4 mb-4';
+                col.innerHTML = `
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">${preset.name}</h5>
+                                <small>
+                                    <span class="preset-category category-${preset.category}">${getCategoryDisplayName(preset.category)}</span>
+                                    <span class="component-count">${preset.components.length}</span>
+                                </small>
+                            </div>
+                            <div>
+                                <button class="btn btn-danger btn-sm btn-action" onclick="deletePreset('${preset.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">${preset.description || 'Không có mô tả'}</p>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="price-display">${formatPrice(preset.estimatedPrice)}</span>
+                                <small class="text-muted">${preset.components.length} sản phẩm</small>
+                            </div>
+                            <div class="components-list mb-3" style="max-height: 200px; overflow-y: auto;">
+                                ${preset.components.length > 0 ? 
+                                    preset.components.map(c => `
+                                        <div class="product-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold">${c.name || c.productId}</div>
+                                                <small class="text-muted">Số lượng: ${c.quantity} • ${formatPrice(c.price ? c.price * c.quantity : 0)}</small>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeProduct('${preset.id}','${c.productId}')" title="Xóa sản phẩm">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    `).join('') 
+                                    : '<p class="text-muted text-center py-3">Chưa có sản phẩm nào</p>'
+                                }
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm" onclick="openAddProductModal('${preset.id}')">
+                                    <i class="fas fa-plus me-1"></i>Thêm sản phẩm
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="createBuildFromPreset('${preset.id}')">
+                                    <i class="fas fa-rocket me-1"></i>Tạo Build từ Preset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        // Cập nhật thống kê
+        function updateStatistics(presets) {
+            const totalPresets = presets.length;
+            const totalProducts = presets.reduce((sum, p) => sum + p.components.length, 0);
+            const avgPrice = totalPresets > 0 ? presets.reduce((sum, p) => sum + p.estimatedPrice, 0) / totalPresets : 0;
+            
+            const categoryCount = {};
+            presets.forEach(p => {
+                categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
+            });
+            const mostPopular = Object.keys(categoryCount).reduce((a, b) => categoryCount[a] > categoryCount[b] ? a : b, 'N/A');
+
+            document.getElementById('totalPresets').textContent = totalPresets;
+            document.getElementById('totalProducts').textContent = totalProducts;
+            document.getElementById('avgPrice').textContent = formatPrice(avgPrice);
+            document.getElementById('mostPopular').textContent = getCategoryDisplayName(mostPopular);
+        }
+
+        // Mở modal thêm sản phẩm
+        function openAddProductModal(presetId) {
+            currentPresetId = presetId;
+            document.getElementById('productId').value = '';
+            document.getElementById('productQuantity').value = '1';
+            new bootstrap.Modal(document.getElementById('addProductModal')).show();
+        }
+
+        // Thêm sản phẩm vào preset
+        async function addProductToPreset() {
+            const productId = document.getElementById('productId').value.trim();
+            const quantity = parseInt(document.getElementById('productQuantity').value, 10) || 1;
+
+            if (!productId) {
+                showToast('Vui lòng nhập ID sản phẩm', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/pcbuild/presets/${currentPresetId}/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, quantity })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Đã thêm sản phẩm thành công!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+                    fetchPresets();
+                } else {
+                    showToast(data.error || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                showToast('Có lỗi khi thêm sản phẩm', 'error');
+                console.error(error);
+            }
+        }
+
+        // Xóa sản phẩm khỏi preset
+        async function removeProduct(presetId, productId) {
+            if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi preset?')) return;
+
+            try {
+                const res = await fetch(`/pcbuild/presets/${presetId}/products/${productId}`, { 
+                    method: 'DELETE' 
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showToast('Đã xóa sản phẩm khỏi preset!', 'success');
+                    fetchPresets();
+                } else {
+                    showToast(data.error || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                showToast('Có lỗi khi xóa sản phẩm', 'error');
+                console.error(error);
+            }
+        }
+
+        // Tạo preset mới
+        async function createNewPreset() {
+            const name = document.getElementById('presetName').value.trim();
+            const description = document.getElementById('presetDescription').value.trim();
+            const category = document.getElementById('presetCategory').value;
+
+            if (!name || !category) {
+                showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/pcbuild/presets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description, category })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Đã tạo preset mới!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createPresetModal')).hide();
+                    fetchPresets();
+                } else {
+                    showToast(data.error || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                showToast('Có lỗi khi tạo preset', 'error');
+                console.error(error);
+            }
+        }
+
+        // Xóa preset
+        async function deletePreset(presetId) {
+            if (!confirm('Bạn có chắc muốn xóa preset này? Hành động này không thể hoàn tác.')) return;
+
+            try {
+                const res = await fetch(`/pcbuild/presets/${presetId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Đã xóa preset thành công!', 'success');
+                    fetchPresets();
+                } else {
+                    showToast(data.error || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                showToast('Có lỗi khi xóa preset', 'error');
+                console.error(error);
+            }
+        }
+
+        // Tạo build từ preset
+        async function createBuildFromPreset(presetId) {
+            const userId = prompt('Nhập User ID để tạo build:');
+            if (!userId) return showToast('Bạn cần nhập User ID', 'error');
+            try {
+                const res = await fetch(`/pcbuild/presets/${presetId}/create-build`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Đã tạo build thành công!', 'success');
+                } else {
+                    showToast(data.error || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                showToast('Có lỗi khi tạo build', 'error');
+                console.error(error);
+            }
+        }
+
+        // Áp dụng bộ lọc
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const priceRange = document.getElementById('priceFilter').value;
+
+            let filtered = currentPresets.filter(preset => {
+                const matchSearch = !search || preset.name.toLowerCase().includes(search) || 
+                                  (preset.description && preset.description.toLowerCase().includes(search));
+                const matchCategory = !category || preset.category === category;
+                
+                let matchPrice = true;
+                if (priceRange) {
+                    const [min, max] = priceRange.split('-').map(Number);
+                    matchPrice = preset.estimatedPrice >= min && preset.estimatedPrice <= max;
+                }
+
+                return matchSearch && matchCategory && matchPrice;
+            });
+
+            renderPresets(filtered);
+        }
+
+        // Xuất dữ liệu
+        function exportPresets() {
+            const dataStr = JSON.stringify(currentPresets, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `preset-builds-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('Đã xuất dữ liệu thành công!', 'success');
+        }
+
+        // Utility functions
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(price || 0);
+        }
+
+        function getCategoryDisplayName(category) {
+            const names = {
+                'gaming': 'Gaming',
+                'work': 'Workstation', 
+                'budget': 'Budget',
+                'N/A': 'N/A'
+            };
+            return names[category] || category;
+        }
+
+        function showToast(message, type = 'info') {
+            // Tạo toast notification đơn giản
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+        document.getElementById('priceFilter').addEventListener('change', applyFilters);
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Khởi tạo
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchPresets();
+        });
+    </script>
+</body>
+</html>
