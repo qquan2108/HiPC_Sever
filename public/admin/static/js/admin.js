@@ -130,6 +130,11 @@ async function initProductForm() {
   const imageFileGroup = document.getElementById("imageFileGroup");
   const imageLinkGroup = document.getElementById("imageLinkGroup");
 
+  const getSpecInputs = () =>
+    Array.from(specContainer.querySelectorAll(".spec-item input")).filter(
+      inp => inp.previousElementSibling && inp.previousElementSibling.tagName === "LABEL"
+    );
+
   let editor;
 
   if (!form || !categorySelect || !specContainer || !descInput || !descEditorEl) {
@@ -353,7 +358,7 @@ async function initProductForm() {
           // Fill spec values
           const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
           specList.forEach(spec => {
-            const input = Array.from(specContainer.querySelectorAll(".spec-item input")).find(
+            const input = getSpecInputs().find(
               inp => inp.previousElementSibling.textContent === spec.key || inp.previousElementSibling.textContent === spec.label
             );
             if (input) input.value = spec.value;
@@ -435,7 +440,7 @@ async function initProductForm() {
         stock: parseInt(fd.get("stock")),
         image: imageUrl,
         description: fd.get("description"),
-        specifications: Array.from(form.querySelectorAll(".spec-item input"))
+        specifications: getSpecInputs()
           .map(inp => ({
             key: inp.previousElementSibling.textContent,
             value: inp.value

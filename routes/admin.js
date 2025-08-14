@@ -31,20 +31,24 @@ router.get('/users/:id/edit', async (req, res) => {
 router.get('/products', async (req, res) => {
   const products = await Product.find()
     .populate('category_id', 'name')
-    .populate('brand_id', 'name');
+    .populate('brand_id', 'name')
+    .lean();
   res.render('admin/products-static', { layout: 'admin/layout', products });
 });
 router.get('/products/create', async (req, res) => {
-  const [categories, brands] = await Promise.all([Category.find(), Brand.find()]);
+  const [categories, brands] = await Promise.all([
+    Category.find().lean(),
+    Brand.find().lean()
+  ]);
   res.render('admin/form', { layout: 'admin/layout', categories, brands, product: {} });
 });
 router.get('/products/:id/edit', async (req, res) => {
   const [product, categories, brands] = await Promise.all([
-    Product.findById(req.params.id),
-    Category.find(),
-    Brand.find()
+    Product.findById(req.params.id).lean(),
+    Category.find().lean(),
+    Brand.find().lean()
   ]);
-  const tsktTemplates = await TsktProduct.find({ category_id: product.category_id });
+  const tsktTemplates = await TsktProduct.find({ category_id: product.category_id }).lean();
   res.render('admin/form', { layout: 'admin/layout', product, categories, brands, tsktTemplates });
 });
 
@@ -234,5 +238,11 @@ const { user_id, comboId } = req.body;
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+router.get('/manage-builds', (req, res) => {
+  res.render('admin/manage-builds', { layout: 'admin/layout' });
+});
+router.get('/preset-build', (req, res) => {
+  res.render('admin/preset-build', { layout: 'admin/layout' });
 });
 module.exports = router;
