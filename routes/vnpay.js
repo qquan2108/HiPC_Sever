@@ -83,7 +83,15 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
 router.post('/create_payment', async (req, res) => {
   const { orderId, amount, orderInfo } = req.body;
   try {
-    const ip = req.headers['x-forwarded-for'] || req.ip;
+    console.log("line 86: Request body:", req);
+    
+    const ip = req.headers['x-forwarded-for']
+      || req.ip
+      || req.socket.remoteAddress;
+    
+    console.log("line 90: IP address:", ip);
+    
+    
     const paymentUrl = buildVnpayUrl(
       orderId,
       parseFloat(amount),
