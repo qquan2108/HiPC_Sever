@@ -239,4 +239,10 @@ const { user_id, comboId } = req.body;
     res.status(500).json({ message: err.message });
   }
 });
+router.get('/manage-builds', (req, res) => {
+  res.render('admin/manage-builds', { layout: 'admin/layout' });
+});
+router.get('/preset-build', (req, res) => {
+  res.render('admin/preset-build', { layout: 'admin/layout' });
+});
 module.exports = router;
