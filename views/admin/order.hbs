@@ -199,6 +199,7 @@
         </div>
 
         <!-- Orders Table -->
+        <div class="mb-4 text-right">Tổng đơn hàng: <span id="orderCount">0</span></div>
         <div class="glass-card rounded-2xl overflow-hidden slide-up">
             <div class="overflow-x-auto">
                 <table class="min-w-full">
@@ -286,6 +287,10 @@
             currentOrders = data.data;
             totalPages = data.totalPages;
             currentPage = data.page;
+            const countEl = document.getElementById('orderCount');
+            if (countEl && typeof data.total === 'number') {
+                countEl.textContent = data.total;
+            }
             setLoading(false);
             return data;
         }

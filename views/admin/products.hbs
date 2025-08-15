@@ -17,18 +17,4 @@
   </thead>
   <tbody id="productTable"></tbody>
 </table>
-
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchProducts(1);
-    const search = document.getElementById('searchInput');
-    if (search) {
-      search.addEventListener('input', () => {
-        productQuery = search.value.trim();
-        currentPage = 1;
-        hasMore = true;
-        fetchProducts(1, productQuery);
-      });
-    }
-  });
-</script>
+<div id="scrollSentinel" class="py-4 text-center text-gray-500">Đang tải...</div>

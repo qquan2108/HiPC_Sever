@@ -22,6 +22,16 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+function setupNumberInput(input) {
+  if (!input) return;
+  const format = () => {
+    const raw = input.value.replace(/[^0-9]/g, '');
+    input.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+  input.addEventListener('input', format);
+  format();
+}
+
 /* —— PRODUCTS —— */
 let currentPage = 1;
 let hasMore = true;
@@ -42,16 +52,23 @@ async function fetchProducts(page = 1, q = productQuery) {
 
     const data = await res.json();
     const products = data.products || data.items || [];
+
+    if (typeof data.total === 'number') {
+      const countEl = document.getElementById('productCount');
+      if (countEl) countEl.textContent = data.total;
+    }
+
     const more = 'hasMore' in data ? data.hasMore
       : (data.page && data.totalPages ? data.page < data.totalPages : false);
     renderProducts(products, page > 1);
     hasMore = more;
     currentPage = page;
+    const sentinel = document.getElementById("scrollSentinel");
+    if (sentinel) sentinel.style.display = hasMore ? 'block' : 'none';
 
     // Re-attach observer if more pages remain
-    if (hasMore && observer) {
-      const sentinel = document.getElementById("scrollSentinel");
-      if (sentinel) observer.observe(sentinel);
+    if (hasMore && observer && sentinel) {
+      observer.observe(sentinel);
     }
   } catch (err) {
     console.error("Lỗi tải sản phẩm:", err);
@@ -129,6 +146,8 @@ async function initProductForm() {
   const imageLink = document.getElementById("imageLink");
   const imageFileGroup = document.getElementById("imageFileGroup");
   const imageLinkGroup = document.getElementById("imageLinkGroup");
+  const priceInput = form.querySelector('input[name="price"]');
+  const stockInput = form.querySelector('input[name="stock"]');
 
   const getSpecInputs = () =>
     Array.from(specContainer.querySelectorAll(".spec-item input")).filter(
@@ -141,6 +160,9 @@ async function initProductForm() {
     console.error('Required form elements not found');
     return;
   }
+
+  setupNumberInput(priceInput);
+  setupNumberInput(stockInput);
 
   // Initialize CKEditor
   try {
@@ -335,9 +357,10 @@ async function initProductForm() {
 
         // Fill basic fields
         form.querySelector('input[name="name"]').value = prod.name || '';
-        form.querySelector('input[name="price"]').value = prod.price || '';
-        form.querySelector('input[name="stock"]').value = prod.stock || '';
+        if (priceInput) { priceInput.value = prod.price || ''; priceInput.dispatchEvent(new Event('input')); }
+        if (stockInput) { stockInput.value = prod.stock || ''; stockInput.dispatchEvent(new Event('input')); }
         if (editor) editor.setData(prod.description || "");
+        if (descInput) descInput.value = prod.description || '';
 
         if (imagePreview) {
           imagePreview.src = prod.image || '';
@@ -353,7 +376,18 @@ async function initProductForm() {
 
         if (prod.category_id && prod.category_id._id) {
           categorySelect.value = prod.category_id._id;
-          await loadSpecsAndVariants(prod.category_id._id, prod.variants || {});
+
+          const existingVariantMap = Array.isArray(prod.variants)
+            ? prod.variants.reduce((acc, g) => {
+                const vals = Array.isArray(g.options)
+                  ? g.options.map(o => o.label || o)
+                  : [];
+                acc[g.key || g.name] = vals;
+                return acc;
+              }, {})
+            : {};
+
+          await loadSpecsAndVariants(prod.category_id._id, existingVariantMap);
 
           // Fill spec values
           const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
@@ -436,8 +470,8 @@ async function initProductForm() {
         name: fd.get("name"),
         category_id: fd.get("category_id"),
         brand_id: fd.get("brand_id"),
-        price: parseFloat(fd.get("price")),
-        stock: parseInt(fd.get("stock")),
+        price: Number(String(fd.get("price")).replace(/[^0-9]/g, '')),
+        stock: Number(String(fd.get("stock")).replace(/[^0-9]/g, '')),
         image: imageUrl,
         description: fd.get("description"),
         specifications: getSpecInputs()
@@ -537,10 +571,11 @@ function initExcelUpload() {
 
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
 
-      await res.json();
+      const data = await res.json();
       currentPage = 1;
       hasMore = true;
       fetchProducts(1);
+      alert(`Đã nhập ${data.imported} sản phẩm\nLỗi: ${data.failed}`);
       showToast('Tải lên thành công', 'success');
     } catch (err) {
       console.error('Excel upload error:', err);
