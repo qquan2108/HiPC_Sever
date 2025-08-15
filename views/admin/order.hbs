@@ -271,11 +271,27 @@
   </div>
 </div>
 
+    <!-- Modal xem chi tiết đơn hàng -->
+<div id="viewOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl relative" style="max-height:80vh; overflow-y:auto;">
+    <button id="closeViewModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="viewOrderContent">
+      <div class="text-center text-gray-400 py-8">Đang tải...</div>
+    </div>
+  </div>
+</div>
+
     <script>
         // Move modals to body to prevent transform issues
         const statusModalEl = document.getElementById('statusModal');
         if (statusModalEl && statusModalEl.parentNode !== document.body) {
             document.body.appendChild(statusModalEl);
+        }
+        const viewOrderModalEl = document.getElementById('viewOrderModal');
+        if (viewOrderModalEl && viewOrderModalEl.parentNode !== document.body) {
+            document.body.appendChild(viewOrderModalEl);
         }
         const viewOrderModalEl = document.getElementById('viewOrderModal');
         if (viewOrderModalEl && viewOrderModalEl.parentNode !== document.body) {
@@ -544,9 +560,15 @@
         document.getElementById('closeViewModal').addEventListener('click', () => {
             viewModal.classList.add('hidden');
         });
+        document.getElementById('closeViewModal').addEventListener('click', () => {
+            viewModal.classList.add('hidden');
+        });
 
         statusModal.addEventListener('click', (e) => {
             if (e.target === statusModal) statusModal.classList.add('hidden');
+        });
+        viewModal.addEventListener('click', (e) => {
+            if (e.target === viewModal) viewModal.classList.add('hidden');
         });
         viewModal.addEventListener('click', (e) => {
             if (e.target === viewModal) viewModal.classList.add('hidden');
