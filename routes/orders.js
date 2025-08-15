@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     let orders = await Order.find(filter)
       .populate('products.productId')
       .populate('combos.comboId')
-      .populate('user_id', 'full_name')
+      .populate('user_id', 'full_name phone')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -491,7 +491,7 @@ router.put('/:id', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('user_id', 'full_name email')
+      .populate('user_id', 'full_name phone email')
       .populate('products.productId', 'name price image')
       .populate('combos.comboId')
       .lean();

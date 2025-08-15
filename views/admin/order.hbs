@@ -324,21 +324,23 @@
         function getStatusIcon(status) {
             const icons = {
                 pending: 'fas fa-clock',
-                confirmed: 'fas fa-check-circle',
-                shipped: 'fas fa-truck',
+                packed: 'fas fa-box',
+                shipping: 'fas fa-truck',
                 delivered: 'fas fa-check-double',
-                canceled: 'fas fa-times-circle'
+                return_requested: 'fas fa-undo-alt',
+                cancelled: 'fas fa-times-circle'
             };
             return icons[status] || 'fas fa-question-circle';
         }
 
         function getStatusText(status) {
             const texts = {
-                pending: 'Chờ xử lý',
-                confirmed: 'Đã xác nhận',
-                shipped: 'Đang giao',
+                pending: 'Chờ xác nhận',
+                packed: 'Chờ lấy hàng',
+                shipping: 'Chờ giao hàng',
                 delivered: 'Đã giao',
-                canceled: 'Đã hủy'
+                return_requested: 'Trả hàng',
+                cancelled: 'Đã huỷ'
             };
             return texts[status] || status;
         }
@@ -495,11 +497,9 @@
                                 </div>`;
                     }).join('');
                 }
-                const receiverName = typeof order.address === 'object' ? (order.address.full_name || '') : '';
-                const receiverPhone = typeof order.address === 'object' ? (order.address.phone || '') : '';
-                const receiverAddress = typeof order.address === 'object'
-                    ? (order.address.address || order.address.street || '')
-                    : (order.address || '');
+                const receiverName = order.user_id?.full_name || '';
+                const receiverPhone = order.user_id?.phone || '';
+                const receiverAddress = order.address || '';
                 container.innerHTML = `
                     <h2 class="text-xl font-bold mb-4">Đơn hàng #${order._id}</h2>
                     <div class="mb-4">
