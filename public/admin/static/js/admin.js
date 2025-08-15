@@ -1,5 +1,3 @@
-/* Admin JS for Products, Users, Categories */
-
 // Kiểm tra xem các biến đã được khai báo chưa
 if (typeof window.adminConfig === 'undefined') {
   window.adminConfig = {
