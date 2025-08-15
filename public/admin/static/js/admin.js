@@ -22,6 +22,16 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+function setupNumberInput(input) {
+  if (!input) return;
+  const format = () => {
+    const raw = input.value.replace(/[^0-9]/g, '');
+    input.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+  input.addEventListener('input', format);
+  format();
+}
+
 /* —— PRODUCTS —— */
 let currentPage = 1;
 let hasMore = true;
@@ -53,11 +63,12 @@ async function fetchProducts(page = 1, q = productQuery) {
     renderProducts(products, page > 1);
     hasMore = more;
     currentPage = page;
+    const sentinel = document.getElementById("scrollSentinel");
+    if (sentinel) sentinel.style.display = hasMore ? 'block' : 'none';
 
     // Re-attach observer if more pages remain
-    if (hasMore && observer) {
-      const sentinel = document.getElementById("scrollSentinel");
-      if (sentinel) observer.observe(sentinel);
+    if (hasMore && observer && sentinel) {
+      observer.observe(sentinel);
     }
   } catch (err) {
     console.error("Lỗi tải sản phẩm:", err);
@@ -135,6 +146,8 @@ async function initProductForm() {
   const imageLink = document.getElementById("imageLink");
   const imageFileGroup = document.getElementById("imageFileGroup");
   const imageLinkGroup = document.getElementById("imageLinkGroup");
+  const priceInput = form.querySelector('input[name="price"]');
+  const stockInput = form.querySelector('input[name="stock"]');
 
   const getSpecInputs = () =>
     Array.from(specContainer.querySelectorAll(".spec-item input")).filter(
@@ -147,6 +160,9 @@ async function initProductForm() {
     console.error('Required form elements not found');
     return;
   }
+
+  setupNumberInput(priceInput);
+  setupNumberInput(stockInput);
 
   // Initialize CKEditor
   try {
@@ -341,8 +357,8 @@ async function initProductForm() {
 
         // Fill basic fields
         form.querySelector('input[name="name"]').value = prod.name || '';
-        form.querySelector('input[name="price"]').value = prod.price || '';
-        form.querySelector('input[name="stock"]').value = prod.stock || '';
+        if (priceInput) { priceInput.value = prod.price || ''; priceInput.dispatchEvent(new Event('input')); }
+        if (stockInput) { stockInput.value = prod.stock || ''; stockInput.dispatchEvent(new Event('input')); }
         if (editor) editor.setData(prod.description || "");
         if (descInput) descInput.value = prod.description || '';
 
@@ -454,8 +470,8 @@ async function initProductForm() {
         name: fd.get("name"),
         category_id: fd.get("category_id"),
         brand_id: fd.get("brand_id"),
-        price: parseFloat(fd.get("price")),
-        stock: parseInt(fd.get("stock")),
+        price: Number(String(fd.get("price")).replace(/[^0-9]/g, '')),
+        stock: Number(String(fd.get("stock")).replace(/[^0-9]/g, '')),
         image: imageUrl,
         description: fd.get("description"),
         specifications: getSpecInputs()
