@@ -1,13 +1,4 @@
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Toastr CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
 <style>
-  body {
-    background: linear-gradient(120deg, #a18cd1 0%, #fbc2eb 100%);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    min-height: 100vh;
-  }
   .card {
     border-radius: 1.2rem;
     box-shadow: 0 4px 24px 0 rgba(161,140,209,0.10);
@@ -72,41 +63,6 @@
     box-shadow: 0 0 0 2px #a18cd1, 0 0 8px #fbc2eb;
     background: #fff;
   }
-  .list-group-item {
-    border-radius: 0.7rem !important;
-    margin-bottom: 0.5rem;
-    border: none;
-    transition: background 0.2s;
-  }
-  .list-group-item-action:focus, .list-group-item-action:hover {
-    background: #fbc2eb33;
-  }
-  .list-group-item-secondary {
-    background: #f3e8ff !important;
-    color: #a18cd1 !important;
-  }
-  .badge {
-    font-size: 0.95em;
-    padding: 0.5em 1em;
-    border-radius: 1em;
-    font-weight: 500;
-  }
-  #notifDetail .card-header {
-    background: linear-gradient(90deg, #a18cd1 0%, #fbc2eb 100%);
-    color: #fff;
-    border-radius: 1.2rem 1.2rem 0 0;
-  }
-  #notifDetail .card-footer {
-    background: #fff;
-    border-radius: 0 0 1.2rem 1.2rem;
-    border-top: none;
-  }
-  #emptyState {
-    font-size: 1.1rem;
-    color: #a18cd1;
-    margin-top: 3rem;
-    opacity: 0.7;
-  }
   @media (max-width: 991px) {
     .container {
       padding: 0 0.5rem;
@@ -150,209 +106,31 @@
       </form>
     </div>
   </div>
-  <!-- Toast container -->
-  <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
-
-  <div class="row">
-    <!-- Danh sách thông báo -->
-    <div class="col-md-4 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-white text-gradient fw-bold" style="color:#a18cd1;">
-          <i class="fas fa-list me-2"></i>Danh sách thông báo
-        </div>
-        <div class="card-body p-2" style="min-height: 350px;">
-          <div class="list-group" id="notifList"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Chi tiết thông báo -->
-    <div class="col-md-8 mb-4">
-      <div id="notifDetail" class="card d-none shadow-sm">
-        <div class="card-header">
-          <h5 id="notifDetailTitle" class="mb-1"></h5>
-          <small id="notifDetailDate" class="text-light"></small>
-        </div>
-        <div class="card-body">
-          <p id="notifDetailMessage" class="mb-2"></p>
-          <div id="notifOrder" class="border-top pt-2 d-none">
-            <h6 class="mb-1">Thông tin đơn hàng</h6>
-            <div id="notifOrderInfo" class="small"></div>
-          </div>
-        </div>
-        <div class="card-footer d-flex justify-content-end gap-2">
-          <button id="markReadBtn" class="btn btn-success me-2">
-            <i class="fas fa-check-circle me-1"></i>Đánh dấu đã đọc
-          </button>
-          <button id="deleteBtn" class="btn btn-danger">
-            <i class="fas fa-trash me-1"></i>Xóa
-          </button>
-        </div>
-      </div>
-      <div id="emptyState" class="text-center text-muted mt-5">
-        <i class="fas fa-bell-slash fa-2x mb-3"></i><br>
-        Chọn một thông báo để xem chi tiết.
-      </div>
-    </div>
-  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-
 <script>
-  // Hàm hiển thị toastr notification
-  function notify(type, title, message) {
-    toastr.options = {
-      "closeButton": true,
-      "progressBar": true,
-      "positionClass": "toast-top-right",
-      "timeOut": "5000"
+  document.getElementById('createForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const payload = {
+      type: document.getElementById('typeInput').value,
+      title: document.getElementById('titleInput').value,
+      message: document.getElementById('messageInput').value
     };
-    switch(type) {
-      case 'success': toastr.success(message, title); break;
-      case 'info':    toastr.info(message, title);    break;
-      case 'warning': toastr.warning(message, title); break;
-      case 'danger':  toastr.error(message, title);   break;
-      default:        toastr.info(message, title);
-    }
-  }
-
-  let notifications = [];
-
-  document.addEventListener('DOMContentLoaded', async () => {
     try {
-      const res = await fetch('/notifications');
-      if (!res.ok) throw new Error('Không lấy được thông báo');
-      notifications = await res.json();
-      renderList();
-
-      // Hiển thị toast với những thông báo mới
-      notifications.filter(n => !n.isRead).forEach(n => {
-        notify(n.type, n.title, n.message);
+      const resp = await fetch('/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-
-      // Lắng nghe thông báo mới qua SSE
-      const es = new EventSource('/notifications/stream');
-      es.onmessage = ev => {
-        const n = JSON.parse(ev.data);
-        notifications.unshift(n);
-        renderList();
-        notify(n.type, n.title, n.message);
-      };
-
-      const form = document.getElementById('createForm');
-      form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const payload = {
-          type: document.getElementById('typeInput').value,
-          title: document.getElementById('titleInput').value,
-          message: document.getElementById('messageInput').value
-        };
-        const resp = await fetch('/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (resp.ok) {
-          form.reset();
-        }
-      });
+      if (resp.ok) {
+        alert('Đã gửi thông báo');
+        e.target.reset();
+      } else {
+        alert('Gửi thông báo thất bại');
+      }
     } catch (err) {
       console.error(err);
-      document.getElementById('notifList').innerHTML = `<div class="text-danger p-3">Không thể tải danh sách thông báo.</div>`;
+      alert('Lỗi kết nối máy chủ');
     }
   });
-
-  function renderList() {
-    const listEl = document.getElementById('notifList');
-    listEl.innerHTML = '';
-
-    if (!notifications.length) {
-      document.getElementById('notifDetail').classList.add('d-none');
-      document.getElementById('emptyState').classList.remove('d-none');
-      listEl.innerHTML = `<div class="text-center text-muted py-4">Chưa có thông báo nào.</div>`;
-      return;
-    }
-
-    notifications.forEach(n => {
-      const a = document.createElement('a');
-      a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start' + (n.isRead ? ' list-group-item-secondary' : '');
-      a.href = '#';
-      a.dataset.id = n._id;
-      a.innerHTML = `
-        <div class="ms-2 me-auto">
-          <div class="fw-bold">${n.title}</div>
-          <small class="text-muted">${new Date(n.createdAt).toLocaleString()}</small>
-        </div>
-        <span class="badge bg-${n.isRead ? 'secondary' : 'primary'} rounded-pill">${n.isRead ? 'Đã xem' : 'Mới'}</span>
-      `;
-      a.addEventListener('click', (e) => {
-        e.preventDefault();
-        showDetail(n._id);
-      });
-      listEl.appendChild(a);
-    });
-
-    // Nếu chưa chọn thông báo nào thì hiện emptyState
-    if (!document.getElementById('notifDetail').classList.contains('showing')) {
-      document.getElementById('notifDetail').classList.add('d-none');
-      document.getElementById('emptyState').classList.remove('d-none');
-    }
-  }
-
-  function showDetail(id) {
-    const n = notifications.find(x => x._id === id);
-    if (!n) return;
-    document.getElementById('notifDetailTitle').textContent = n.title;
-    document.getElementById('notifDetailDate').textContent = new Date(n.createdAt).toLocaleString();
-    document.getElementById('notifDetailMessage').textContent = n.message;
-    const orderInfoDiv = document.getElementById('notifOrder');
-    const orderContent = document.getElementById('notifOrderInfo');
-    if (n.relatedOrder) {
-      orderInfoDiv.classList.remove('d-none');
-      const o = n.relatedOrder;
-      orderContent.innerHTML = `
-        <div><strong>Mã đơn:</strong> ${o._id}</div>
-        <div><strong>Khách:</strong> ${o.user_id?.full_name || ''}</div>
-        <div><strong>Tổng:</strong> ${o.total || o.total_price || 0}</div>
-        <div><strong>Trạng thái:</strong> ${o.status}</div>`;
-    } else {
-      orderInfoDiv.classList.add('d-none');
-      orderContent.innerHTML = '';
-    }
-    document.getElementById('notifDetail').classList.remove('d-none');
-    document.getElementById('notifDetail').classList.add('showing');
-    document.getElementById('emptyState').classList.add('d-none');
-
-    document.getElementById('markReadBtn').onclick = () => markRead(id);
-    document.getElementById('deleteBtn').onclick = () => deleteNotif(id);
-  }
-
-  async function markRead(id) {
-    await fetch(`/notifications/${id}/read`, { method: 'PATCH' });
-    notifications = notifications.map(n => n._id === id ? { ...n, isRead: true } : n);
-    renderList();
-    showDetail(id);
-  }
-
-  async function deleteNotif(id) {
-    await fetch(`/notifications/${id}`, { method: 'DELETE' });
-    notifications = notifications.filter(n => n._id !== id);
-    renderList();
-    resetDetail();
-  }
-
-  function resetDetail() {
-    document.getElementById('notifDetail').classList.add('d-none');
-    document.getElementById('notifDetail').classList.remove('showing');
-    document.getElementById('emptyState').classList.remove('d-none');
-    const orderDiv = document.getElementById('notifOrder');
-    const orderContent = document.getElementById('notifOrderInfo');
-    if (orderDiv && orderContent) {
-      orderDiv.classList.add('d-none');
-      orderContent.innerHTML = '';
-    }
-  }
 </script>

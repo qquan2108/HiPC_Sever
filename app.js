@@ -8,6 +8,7 @@ var hbs = require('hbs');
 var fs = require('fs');
 var reportRoutes = require('./routes/reports');
 var notificationsRouter = require('./routes/notifications');
+var pushRouter = require('./routes/push');
 var bannerRoutes = require('./routes/banners');
 var vnpayRouter = require('./routes/vnpay');
 var stripeRouter = require('./routes/stripe');
@@ -115,6 +116,7 @@ app.use('/vnpay', vnpayRouter);
 app.use('/reports', reportRoutes);
 app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
+app.use('/api/push', pushRouter);
 app.use('/pcbuild', pcbuilderRouter);
 app.use('/ai', chatRouter);
 
