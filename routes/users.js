@@ -53,7 +53,8 @@ router.post('/register', async (req, res) => {
       label,
       provinceId,
       districtId,
-      wardCode
+      wardCode,
+      avatarUrl
     } = req.body;
 
     // Check if user already exists
@@ -64,24 +65,38 @@ router.post('/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Process avatarUrl similar to update route
+    let processedAvatar = '';
+    if (typeof avatarUrl === 'string') {
+      if (avatarUrl.startsWith('data:')) {
+        processedAvatar = '';
+      } else if (avatarUrl.startsWith('http')) {
+        const host = `${req.protocol}://${req.get('host')}/`;
+        processedAvatar = avatarUrl.replace(host, '');
+      } else {
+        processedAvatar = avatarUrl;
+      }
+    }
+
     // Create user
     const newUser = new User({
-  full_name,
-  email,
-  password: hashedPassword,
-  phone,
-  address, // vẫn giữ cho user cũ nếu muốn
-  addresses: [
-    {
-      label,
-      address,
-      provinceId,
-      districtId,
-      wardCode,
-      isDefault: true
-    }
-  ]
-});
+      full_name,
+      email,
+      password: hashedPassword,
+      phone,
+      address, // vẫn giữ cho user cũ nếu muốn
+      avatarUrl: processedAvatar,
+      addresses: [
+        {
+          label,
+          address,
+          provinceId,
+          districtId,
+          wardCode,
+          isDefault: true
+        }
+      ]
+    });
 
     await newUser.save();
 

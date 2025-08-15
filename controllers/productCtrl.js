@@ -5,6 +5,31 @@ const Order = require('../models/Order'); // Thêm dòng này ở đầu file n�
 const mongoose    = require('mongoose');
 // controllers/productCtrl.js
 
+// Convert various client variant formats into the schema expected by Product model
+function normalizeVariants(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(group => {
+      // accept both `key` and older `name` field for group name
+      const key = group.key || group.name;
+      if (!key) return null;
+
+      // options may be provided either as full objects or simple string arrays
+      let opts = [];
+      if (Array.isArray(group.options)) {
+        opts = group.options.map(opt => ({
+          label: opt.label ?? opt,
+          priceDiff: opt.priceDiff ?? 0
+        }));
+      } else if (Array.isArray(group.values)) {
+        opts = group.values.map(v => ({ label: v, priceDiff: 0 }));
+      }
+
+      return { key, options: opts };
+    })
+    .filter(Boolean);
+}
+
 // Create product
 exports.createProduct = async (req, res) => {
   try {
@@ -27,10 +52,9 @@ exports.createProduct = async (req, res) => {
     // Parse và validate variants
     let parsedVariants = [];
     try {
-      parsedVariants = JSON.parse(variants);
-      if (!Array.isArray(parsedVariants)) {
-        throw new Error();
-      }
+      const raw = JSON.parse(variants);
+      if (!Array.isArray(raw)) throw new Error();
+      parsedVariants = normalizeVariants(raw);
     } catch (e) {
       return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
@@ -84,10 +108,9 @@ exports.updateProduct = async (req, res) => {
 
     let parsedVariants = [];
     try {
-      parsedVariants = JSON.parse(variants);
-      if (!Array.isArray(parsedVariants)) {
-        throw new Error();
-      }
+      const raw = JSON.parse(variants);
+      if (!Array.isArray(raw)) throw new Error();
+      parsedVariants = normalizeVariants(raw);
     } catch (e) {
       return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
