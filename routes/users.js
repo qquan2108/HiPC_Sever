@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const Banner = require('../models/Banner');
 require('dotenv').config();
-const nodemailer = require('nodemailer');
+const { sendMail } = require('../utils/mailer');
 const crypto = require('crypto');
 
 const fs = require('fs');
@@ -162,16 +162,8 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
     const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-    await transporter.sendMail({
+    await sendMail({
       to: user.email,
-      from: process.env.EMAIL_USER,
       subject: 'Đặt lại mật khẩu',
       text: `Bạn nhận được email này vì đã yêu cầu đặt lại mật khẩu.\n\nVui lòng click vào link sau để đặt lại mật khẩu:\n${resetLink}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
     });
@@ -199,6 +191,15 @@ router.post('/reset-password/:token', async (req, res) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
+    try {
+      await sendMail({
+        to: user.email,
+        subject: 'Đặt lại mật khẩu thành công',
+        text: 'Mật khẩu của bạn đã được cập nhật thành công.',
+      });
+    } catch (mailErr) {
+      console.error('Failed to send reset confirmation:', mailErr);
+    }
     res.json({ message: 'Đặt lại mật khẩu thành công' });
   } catch (err) {
     console.error(err);
