@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const { send } = require('../utils/notificationStream');
+const push = require('../utils/pushSender');
 
 // Tạo thông báo mới
 exports.create = async (req, res) => {
@@ -8,6 +9,10 @@ exports.create = async (req, res) => {
     const notif = await Notification.create({ type, title, message, relatedOrder });
     const populated = await notif.populate({ path: 'relatedOrder', populate: { path: 'user_id', select: 'full_name' } });
     send(populated);
+    // gửi push notification tới tất cả thiết bị đã đăng ký
+    push.sendToAll({ title, message, data: { notificationId: notif._id } }).catch(err => {
+      console.error('push error', err);
+    });
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
