@@ -155,6 +155,30 @@ router.get('/code/:code', async (req, res) => {
   }
 });
 
+// 🔍 DEBUG ROUTE - Add this to inspect voucher data
+router.get('/debug/:code', async (req, res) => {
+  try {
+    const voucher = await Voucher.findOne({ code: req.params.code.toUpperCase() });
+    if (!voucher) {
+      return res.status(404).json({ error: 'Voucher not found' });
+    }
+    
+    // Return raw voucher data for debugging
+    res.json({
+      raw: voucher,
+      processed: {
+        discount_type: voucher.discount_type,
+        discount_value: Number(voucher.discount_value),
+        discount_value_type: typeof voucher.discount_value,
+        max_discount: voucher.max_discount,
+        max_discount_type: typeof voucher.max_discount
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST create voucher
 router.post('/', validateVoucherData, async (req, res) => {
   try {
@@ -164,16 +188,30 @@ router.post('/', validateVoucherData, async (req, res) => {
       return res.status(400).json({ error: 'Mã voucher đã tồn tại' });
     }
 
+    // Chuẩn hóa dữ liệu đầu vào
     const voucherData = {
-      ...req.body,
-      code: req.body.code.toUpperCase(), // Ensure uppercase
+      code: req.body.code.toUpperCase(),
+      discount_type: req.body.discount_type, // 'percentage' hoặc 'fixed'
+      discount_value: Number(req.body.discount_value),
+      min_order_amount: req.body.min_order_amount ? Number(req.body.min_order_amount) : 0,
+      max_discount: req.body.max_discount ? Number(req.body.max_discount) : undefined,
+      quantity: req.body.quantity ? Number(req.body.quantity) : 1,
+      description: req.body.description || '',
+      title: req.body.title || '',
+      start_date: req.body.start_date ? new Date(req.body.start_date) : undefined,
+      end_date: req.body.end_date ? new Date(req.body.end_date) : undefined,
       created_at: new Date(),
       updated_at: new Date()
     };
 
+    // Xóa các trường undefined để tránh lỗi schema
+    Object.keys(voucherData).forEach(
+      key => voucherData[key] === undefined && delete voucherData[key]
+    );
+
     const newVoucher = new Voucher(voucherData);
     await newVoucher.save();
-    
+
     res.status(201).json({
       message: 'Tạo voucher thành công',
       voucher: newVoucher
@@ -300,9 +338,6 @@ router.post('/apply', async (req, res) => {
     
     await voucher.save();
 
-    // Log usage (optional - you can create a VoucherUsage model for this)
-    // await logVoucherUsage(voucher._id, userId, orderAmount, discountAmount);
-
     res.json({
       success: true,
       message: 'Áp dụng voucher thành công',
@@ -364,23 +399,24 @@ router.get('/stats/overview', async (req, res) => {
   try {
     const now = new Date();
     
-    const [total, active, expired, outOfStock, totalUsed] = await Promise.all([    // total vouchers
-    Voucher.countDocuments({}),
-    // active vouchers
-    Voucher.countDocuments({
-      quantity: { $gt: 0 },
-      $and: [
-        { $or: [{ start_date: { $exists: false } }, { start_date: { $lte: now } }] },
-        { $or: [{ end_date: { $exists: false } }, { end_date: { $gte: now } }] }
-      ]
-    }),
-    // expired vouchers
-    Voucher.countDocuments({ end_date: { $lt: now } }),
-    // out of stock vouchers
-    Voucher.countDocuments({ quantity: { $lte: 0 } }),
-    // total used (sum)
-    Voucher.aggregate([{ $group: { _id: null, total: { $sum: { $ifNull: ["$used_count", 0] } } } }]),
-  ]);
+    const [total, active, expired, outOfStock, totalUsed] = await Promise.all([
+      // total vouchers
+      Voucher.countDocuments({}),
+      // active vouchers
+      Voucher.countDocuments({
+        quantity: { $gt: 0 },
+        $and: [
+          { $or: [{ start_date: { $exists: false } }, { start_date: { $lte: now } }] },
+          { $or: [{ end_date: { $exists: false } }, { end_date: { $gte: now } }] }
+        ]
+      }),
+      // expired vouchers
+      Voucher.countDocuments({ end_date: { $lt: now } }),
+      // out of stock vouchers
+      Voucher.countDocuments({ quantity: { $lte: 0 } }),
+      // total used (sum)
+      Voucher.aggregate([{ $group: { _id: null, total: { $sum: { $ifNull: ["$used_count", 0] } } } }]),
+    ]);
 
     // expiring soon (next X days)
     const days = Number(req.query.days || 7);
@@ -478,24 +514,64 @@ function validateVoucherConditions(voucher, orderAmount) {
   return { valid: true, message: 'Hợp lệ' };
 }
 
+// ✅ FIXED calculateDiscountAmount function with proper debugging
 function calculateDiscountAmount(voucher, orderAmount) {
   let discount = 0;
 
-  if (voucher.discount_type === 'percentage') {
-    const pct = voucher.discount_value || 0;
-    discount = (orderAmount * pct) / 100;
+  // Add debugging logs
+  console.log('🔍 Voucher calculation debug:', {
+    voucherCode: voucher.code,
+    discountType: voucher.discount_type,
+    discountValue: voucher.discount_value,
+    discountValueType: typeof voucher.discount_value,
+    maxDiscount: voucher.max_discount,
+    orderAmount: orderAmount
+  });
 
-    if (typeof voucher.max_discount === 'number') {
+  if (voucher.discount_type === 'percentage') {
+    // ✅ Ensure it's a number
+    const pct = Number(voucher.discount_value) || 0;
+    discount = (orderAmount * pct) / 100;
+    
+    console.log('📊 Percentage calculation:', {
+      percentage: pct,
+      calculation: `${orderAmount} * ${pct} / 100`,
+      result: discount
+    });
+
+    // Apply max discount limit if exists
+    if (typeof voucher.max_discount === 'number' && voucher.max_discount > 0) {
+      const originalDiscount = discount;
       discount = Math.min(discount, voucher.max_discount);
+      
+      if (originalDiscount !== discount) {
+        console.log('🔒 Max discount applied:', {
+          original: originalDiscount,
+          maxLimit: voucher.max_discount,
+          final: discount
+        });
+      }
     }
-  } else {
-    // fixed amount
-    discount = voucher.discount_value || 0;
+  } else if (voucher.discount_type === 'fixed') {
+    // ✅ Ensure it's a number
+    discount = Number(voucher.discount_value) || 0;
+    
+    console.log('💰 Fixed discount:', {
+      fixedAmount: discount
+    });
   }
 
-  // prevent negative final amount
-  discount = Math.max(0, Math.min(discount, orderAmount));
-  return discount;
+  // Prevent negative final amount
+  const finalDiscount = Math.max(0, Math.min(discount, orderAmount));
+  
+  console.log('✅ Final discount result:', {
+    calculatedDiscount: discount,
+    finalDiscount: finalDiscount,
+    orderAmount: orderAmount,
+    afterDiscount: orderAmount - finalDiscount
+  });
+
+  return finalDiscount;
 }
 
 module.exports = router;

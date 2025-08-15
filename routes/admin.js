@@ -96,7 +96,6 @@ router.get('/faq', (req, res) => {
 });
 
 //order
-const Order = require('../models/Order');
 const { transitions } = require('../utils/orderStatus');
 
 // Trang list orders (đã có)

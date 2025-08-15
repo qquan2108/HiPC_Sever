@@ -37,7 +37,7 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const tmnCode = process.env.VNPAY_TMNCODE;
   const secret = process.env.VNPAY_HASHSECRET;
   // const baseUrl = process.env.VNPAY_APIURL;
-  const vnpUrl = process.env.VNPAY_APIURL;
+  var vnpUrl = process.env.VNPAY_APIURL;
   const returnUrl = process.env.VNPAY_RETURNURL;
   const ipAddr = normalizeIp(rawIp);
 
