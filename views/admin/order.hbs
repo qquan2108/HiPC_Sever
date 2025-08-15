@@ -245,14 +245,27 @@
         <div id="pagination" class="mt-4 flex justify-center space-x-2"></div>
     </div>
 
-    <!-- Modal chỉnh sửa đơn hàng -->
-<div id="editOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
-  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xl relative" style="max-height:80vh; overflow-y:auto;">
-    <button id="closeEditModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
+    <!-- Modal thay đổi trạng thái -->
+<div id="statusModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative" style="max-height:80vh; overflow-y:auto;">
+    <button id="closeStatusModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
       <i class="fas fa-times"></i>
     </button>
-    <div id="editOrderFormContainer">
-      <!-- Nội dung form sẽ được load ở đây -->
+    <h2 class="text-xl font-bold mb-4">Thay đổi trạng thái</h2>
+    <div id="statusOptions" class="space-y-2"></div>
+    <div class="mt-4 text-right">
+      <button id="confirmStatusBtn" class="btn-primary px-4 py-2">Cập nhật</button>
+    </div>
+  </div>
+</div>
+
+    <!-- Modal xem chi tiết đơn hàng -->
+<div id="viewOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl relative" style="max-height:80vh; overflow-y:auto;">
+    <button id="closeViewModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="viewOrderContent">
       <div class="text-center text-gray-400 py-8">Đang tải...</div>
     </div>
   </div>
@@ -272,9 +285,13 @@
 
     <script>
         // Move modals to body to prevent transform issues
-        const editOrderModalEl = document.getElementById('editOrderModal');
-        if (editOrderModalEl && editOrderModalEl.parentNode !== document.body) {
-            document.body.appendChild(editOrderModalEl);
+        const statusModalEl = document.getElementById('statusModal');
+        if (statusModalEl && statusModalEl.parentNode !== document.body) {
+            document.body.appendChild(statusModalEl);
+        }
+        const viewOrderModalEl = document.getElementById('viewOrderModal');
+        if (viewOrderModalEl && viewOrderModalEl.parentNode !== document.body) {
+            document.body.appendChild(viewOrderModalEl);
         }
         const viewOrderModalEl = document.getElementById('viewOrderModal');
         if (viewOrderModalEl && viewOrderModalEl.parentNode !== document.body) {
@@ -285,6 +302,8 @@
         let isLoading = false;
         let currentPage = 1;
         let totalPages = 1;
+        let statusTabs = [];
+        let changingOrderId = null;
 
         async function fetchStatusTabs() {
             const res = await fetch('/orders/status-tabs');
@@ -434,7 +453,7 @@
                             <button onclick="viewOrder('${order._id}')" class="btn-secondary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button onclick="editOrder('${order._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
+                            <button onclick="changeStatus('${order._id}', '${order.status}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                         </div>
@@ -519,63 +538,59 @@
             }
         }
 
-        function editOrder(id) {
-            // Hiện modal
-            document.getElementById('editOrderModal').classList.remove('hidden');
-            // Hiện loading
-            document.getElementById('editOrderFormContainer').innerHTML = '<div class="text-center text-gray-400 py-8">Đang tải...</div>';
-            // Lấy form từ server (render partial)
-            fetch(`/admin/orders/${id}/edit?ajax=1`)
-              .then(res => res.text())
-              .then(html => {
-                document.getElementById('editOrderFormContainer').innerHTML = html;
-                attachEditOrderFormHandler();
-              });
+        function changeStatus(id, current) {
+            changingOrderId = id;
+            const modal = document.getElementById('statusModal');
+            const container = document.getElementById('statusOptions');
+            container.innerHTML = statusTabs.map(tab => `
+                <label class="flex items-center space-x-2">
+                    <input type="radio" name="status" value="${tab.key}" ${tab.key === current ? 'checked' : ''}>
+                    <span>${tab.label}</span>
+                </label>
+            `).join('');
+            modal.classList.remove('hidden');
         }
 
-        const editModal = document.getElementById('editOrderModal');
+        const statusModal = document.getElementById('statusModal');
         const viewModal = document.getElementById('viewOrderModal');
 
-        // Đóng modal khi bấm nút đóng
-        document.getElementById('closeEditModal').addEventListener('click', () => {
-            editModal.classList.add('hidden');
+        document.getElementById('closeStatusModal').addEventListener('click', () => {
+            statusModal.classList.add('hidden');
+        });
+        document.getElementById('closeViewModal').addEventListener('click', () => {
+            viewModal.classList.add('hidden');
         });
         document.getElementById('closeViewModal').addEventListener('click', () => {
             viewModal.classList.add('hidden');
         });
 
-        // Đóng modal khi click ra ngoài
-        editModal.addEventListener('click', (e) => {
-            if (e.target === editModal) editModal.classList.add('hidden');
+        statusModal.addEventListener('click', (e) => {
+            if (e.target === statusModal) statusModal.classList.add('hidden');
+        });
+        viewModal.addEventListener('click', (e) => {
+            if (e.target === viewModal) viewModal.classList.add('hidden');
         });
         viewModal.addEventListener('click', (e) => {
             if (e.target === viewModal) viewModal.classList.add('hidden');
         });
 
-        // Xử lý submit form chỉnh sửa (AJAX)
-        function attachEditOrderFormHandler() {
-            const form = document.getElementById('orderForm');
-            if (!form) return;
-            form.onsubmit = async function(e) {
-                e.preventDefault();
-                const formData = new FormData(form);
-                const id = form.getAttribute('data-id');
-                const status = formData.get('status');
-                const res = await fetch(`/orders/${id}/status`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status })
-                });
-                if (res.ok) {
-                    showNotification('Cập nhật đơn hàng thành công!', 'success');
-                    document.getElementById('editOrderModal').classList.add('hidden');
-                    await fetchOrders(currentStatus, document.getElementById('searchInput').value.trim(), currentPage);
-                    renderOrders(currentOrders);
-                } else {
-                    showNotification('Có lỗi khi cập nhật đơn hàng!', 'error');
-                }
-            };
-        }
+        document.getElementById('confirmStatusBtn').addEventListener('click', async () => {
+            const selected = document.querySelector('#statusOptions input[name="status"]:checked');
+            if (!selected || !changingOrderId) return;
+            const res = await fetch(`/orders/${changingOrderId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: selected.value })
+            });
+            if (res.ok) {
+                showNotification('Cập nhật trạng thái thành công!', 'success');
+                statusModal.classList.add('hidden');
+                await fetchOrders(currentStatus, document.getElementById('searchInput').value.trim(), currentPage);
+                renderOrders(currentOrders);
+            } else {
+                showNotification('Có lỗi khi cập nhật trạng thái!', 'error');
+            }
+        });
 
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
@@ -611,8 +626,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const tabs = await fetchStatusTabs();
-            renderStatusOptions(tabs);
+            statusTabs = await fetchStatusTabs();
+            renderStatusOptions(statusTabs);
             await fetchOrders();
             renderOrders(currentOrders);
 
