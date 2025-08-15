@@ -258,11 +258,27 @@
   </div>
 </div>
 
+    <!-- Modal xem chi tiết đơn hàng -->
+<div id="viewOrderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl relative" style="max-height:80vh; overflow-y:auto;">
+    <button id="closeViewModal" class="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-xl">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="viewOrderContent">
+      <div class="text-center text-gray-400 py-8">Đang tải...</div>
+    </div>
+  </div>
+</div>
+
     <script>
-        // Move edit modal to body to prevent transform issues
+        // Move modals to body to prevent transform issues
         const editOrderModalEl = document.getElementById('editOrderModal');
         if (editOrderModalEl && editOrderModalEl.parentNode !== document.body) {
             document.body.appendChild(editOrderModalEl);
+        }
+        const viewOrderModalEl = document.getElementById('viewOrderModal');
+        if (viewOrderModalEl && viewOrderModalEl.parentNode !== document.body) {
+            document.body.appendChild(viewOrderModalEl);
         }
         let currentStatus = '';
         let currentOrders = [];
@@ -413,11 +429,11 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Hành động">
                         <div class="flex justify-center space-x-2">
-                            <button onclick="editOrder('${order._id}')" class="btn-secondary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
-                                <i class="fas fa-edit"></i>
+                            <button onclick="viewOrder('${order._id}')" class="btn-secondary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
+                                <i class="fas fa-eye"></i>
                             </button>
-                            <button onclick="deleteOrder('${order._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
-                                <i class="fas fa-trash"></i>
+                            <button onclick="editOrder('${order._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
+                                <i class="fas fa-sync-alt"></i>
                             </button>
                         </div>
                     </td>
@@ -445,6 +461,64 @@
             }
         }
 
+        async function viewOrder(id) {
+            const modal = document.getElementById('viewOrderModal');
+            const container = document.getElementById('viewOrderContent');
+            modal.classList.remove('hidden');
+            container.innerHTML = '<div class="text-center text-gray-400 py-8">Đang tải...</div>';
+            try {
+                const res = await fetch(`/orders/${id}`);
+                const order = await res.json();
+                const total = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(order.total || 0);
+                let productsHtml = '';
+                if (Array.isArray(order.products)) {
+                    productsHtml = order.products.map(p => {
+                        const img = p.productId?.image || 'https://via.placeholder.com/80';
+                        const name = p.productId?.name || '';
+                        const variant = p.variant?.label || '';
+                        const qty = p.quantity || 0;
+                        const price = new Intl.NumberFormat('vi-VN', {
+                            style: 'currency',
+                            currency: 'VND'
+                        }).format((p.productId?.price || 0) + (p.variant?.priceDiff || 0));
+                        return `<div class="flex items-center mb-4">
+                                    <img src="${img}" class="w-16 h-16 object-cover rounded mr-4" alt="${name}">
+                                    <div class="flex-1">
+                                        <div class="font-medium">${name}</div>
+                                        <div class="text-sm text-gray-500">${variant}</div>
+                                    </div>
+                                    <div class="text-sm text-gray-500 mr-4">x${qty}</div>
+                                    <div class="font-semibold">${price}</div>
+                                </div>`;
+                    }).join('');
+                }
+                const receiverName = typeof order.address === 'object' ? (order.address.full_name || '') : '';
+                const receiverPhone = typeof order.address === 'object' ? (order.address.phone || '') : '';
+                const receiverAddress = typeof order.address === 'object'
+                    ? (order.address.address || order.address.street || '')
+                    : (order.address || '');
+                container.innerHTML = `
+                    <h2 class="text-xl font-bold mb-4">Đơn hàng #${order._id}</h2>
+                    <div class="mb-4">
+                        <div class="mb-2"><strong>Người nhận:</strong> ${receiverName}</div>
+                        <div class="mb-2"><strong>SĐT:</strong> ${receiverPhone}</div>
+                        <div class="mb-2"><strong>Địa chỉ:</strong> ${receiverAddress}</div>
+                        <div class="mb-2"><strong>Phương thức thanh toán:</strong> ${order.paymentMethod || ''}</div>
+                        <div class="mb-2"><strong>Tổng giá trị:</strong> ${total}</div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Sản phẩm</h3>
+                        ${productsHtml}
+                    </div>
+                `;
+            } catch (err) {
+                container.innerHTML = '<div class="text-center text-red-500 py-8">Không thể tải chi tiết đơn hàng</div>';
+            }
+        }
+
         function editOrder(id) {
             // Hiện modal
             document.getElementById('editOrderModal').classList.remove('hidden');
@@ -460,15 +534,22 @@
         }
 
         const editModal = document.getElementById('editOrderModal');
+        const viewModal = document.getElementById('viewOrderModal');
 
         // Đóng modal khi bấm nút đóng
         document.getElementById('closeEditModal').addEventListener('click', () => {
             editModal.classList.add('hidden');
         });
+        document.getElementById('closeViewModal').addEventListener('click', () => {
+            viewModal.classList.add('hidden');
+        });
 
         // Đóng modal khi click ra ngoài
         editModal.addEventListener('click', (e) => {
             if (e.target === editModal) editModal.classList.add('hidden');
+        });
+        viewModal.addEventListener('click', (e) => {
+            if (e.target === viewModal) viewModal.classList.add('hidden');
         });
 
         // Xử lý submit form chỉnh sửa (AJAX)
