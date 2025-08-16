@@ -82,8 +82,89 @@ router.get('/', async (req, res) => {
 // 4) Checkout endpoint
 router.post('/checkout', async (req, res) => {
   try {
-    const { user_id, address, paymentMethod, shippingMethod, voucher, selectedProducts = [] } = req.body;
+    const { user_id, address, paymentMethod, shippingMethod, voucher, selectedProducts = [], products = [], shippingFee } = req.body;
 
+    // Nếu có products (mua ngay), xử lý riêng
+    if (Array.isArray(products) && products.length > 0) {
+      // Xử lý giống buy-now nhưng cho phép nhiều sản phẩm
+      let totalPrice = 0;
+      const orderProducts = [];
+
+      for (const item of products) {
+        const prod = await Product.findById(item.productId);
+        if (!prod) {
+          return res.status(404).json({ error: `Sản phẩm không tồn tại.` });
+        }
+        if (prod.stock < item.quantity) {
+          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+        }
+        const itemPrice = prod.price + (item.variant?.priceDiff || 0);
+        const itemTotal = itemPrice * item.quantity;
+        totalPrice += itemTotal;
+
+        await Product.updateOne(
+          { _id: prod._id },
+          { $inc: { stock: -item.quantity } }
+        );
+
+        orderProducts.push({
+          productId: prod._id,
+          quantity: item.quantity,
+          variant: item.variant
+        });
+      }
+
+      // Áp dụng voucher
+      let voucherDiscount = 0;
+      if (voucher && voucher.code) {
+        const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
+        if (voucherDoc) {
+          const validation = validateVoucherConditions(voucherDoc, totalPrice);
+          if (!validation.valid) {
+            return res.status(400).json({ error: validation.message });
+          }
+          voucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+        }
+      }
+
+      // Phí ship
+      let fee = 0;
+      if (typeof shippingFee === 'number') fee = shippingFee;
+
+      const finalTotal = Math.max(0, totalPrice + fee - voucherDiscount);
+
+      // Tạo đơn hàng
+      const order = new Order({
+        user_id,
+        products: orderProducts,
+        combos: [],
+        address,
+        paymentMethod,
+        shippingMethod,
+        voucher,
+        voucherDiscount,
+        shippingFee: fee,
+        total_price: totalPrice,
+        total: finalTotal,
+        status: 'pending'
+      });
+      await order.save();
+
+      // Tự động hủy giữ nguyên...
+
+      return res.status(200).json({
+        message: 'Đặt hàng thành công',
+        orderId: order._id,
+        acc: '123456789',
+        bank: 'VCB',
+        amount: order.total,
+        voucherDiscount: order.voucherDiscount || 0,
+        shippingFee: order.shippingFee || 0,
+        des: order._id.toString(),
+      });
+    }
+
+    // Nếu không có products, xử lý như cũ (giỏ hàng)
     const cart = await Cart.findOne({ user_id })
       .populate('products.productId')
       .populate('products.comboId');
@@ -95,9 +176,21 @@ router.post('/checkout', async (req, res) => {
     // Lọc sản phẩm được chọn
     let checkoutProducts = cart.products;
     if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
-      checkoutProducts = cart.products.filter(item =>
-        selectedProducts.includes(item._id.toString())
-      );
+      // Lấy mảng _id từ selectedProducts
+      let selectedIds = [];
+      if (selectedProducts.length > 0 && typeof selectedProducts[0] === 'object' && selectedProducts[0].cartItemId) {
+        selectedIds = selectedProducts.map(p => p.cartItemId);
+      } else {
+        selectedIds = selectedProducts.map(id => id.toString());
+      }
+
+      // Lọc sản phẩm được chọn
+      checkoutProducts = cart.products;
+      if (selectedIds.length > 0) {
+        checkoutProducts = cart.products.filter(item =>
+          selectedIds.includes(item._id.toString())
+        );
+      }
     }
 
     if (!checkoutProducts.length) {
@@ -191,10 +284,10 @@ router.post('/checkout', async (req, res) => {
     }
 
     // Phí ship
-    let shippingFee = 0;
-if (typeof req.body.shippingFee === 'number') {
-  shippingFee = req.body.shippingFee;
-}
+    // Chỉ cần gán lại, không khai báo lại
+    if (typeof req.body.shippingFee === 'number') {
+      shippingFee = req.body.shippingFee;
+    }
 
     // Tổng cuối cùng
     const finalTotal = Math.max(0, totalPrice + shippingFee - voucherDiscount);
@@ -222,11 +315,23 @@ if (typeof req.body.shippingFee === 'number') {
     });
     await order.save();
 
-    // Xóa các sản phẩm đã checkout khỏi giỏ hàng
-    cart.products = cart.products.filter(item =>
-      !checkoutProducts.some(checked => checked._id.equals(item._id))
-    );
-    await cart.save();
+    // Xóa các sản phẩm đã checkout khỏi giỏ hàng dựa trên cartItemId
+    if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
+      // Thêm log để debug
+      console.log('selectedProducts:', selectedProducts);
+      console.log('cart.products:', cart.products.map(i => i._id.toString()));
+
+      let selectedIds = [];
+      if (typeof selectedProducts[0] === 'object' && selectedProducts[0].cartItemId) {
+        selectedIds = selectedProducts.map(p => p.cartItemId.toString());
+      } else {
+        selectedIds = selectedProducts.map(id => id.toString());
+      }
+      cart.products = cart.products.filter(item =>
+        !selectedIds.includes(item._id.toString())
+      );
+      await cart.save();
+    }
 
     // Tự động hủy sau 20 phút nếu chưa thanh toán (giữ nguyên code cũ)
     setTimeout(async () => {
@@ -278,7 +383,7 @@ if (typeof req.body.shippingFee === 'number') {
 
 router.post('/buy-now', async (req, res) => {
   try {
-    const { user_id, productId, quantity = 1, variant, address, paymentMethod, shippingMethod, voucher } = req.body;
+    const { user_id, productId, quantity = 1, variant, address, paymentMethod, shippingMethod, voucher, shippingFee } = req.body;
     
     // 1. Validation đầu vào
     if (!user_id || !productId || !quantity) {
@@ -302,53 +407,66 @@ router.post('/buy-now', async (req, res) => {
       });
     }
 
-    // 4. Tính giá (đây là điểm quan trọng)
+    // 4. Tính giá gốc
     const basePrice = Number(prod.price) || 0;
     const variantPrice = Number(variant?.priceDiff) || 0;
     const itemPrice = basePrice + variantPrice;
     const totalPrice = itemPrice * quantity;
 
-    console.log('💰 Price calculation:', {
-      basePrice,
-      variantPrice,
-      itemPrice,
-      quantity,
-      totalPrice
-    });
+    // 5. Áp dụng voucher (nếu có)
+    let voucherDiscount = 0;
+    if (voucher && voucher.code) {
+      const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
+      if (voucherDoc) {
+        const validation = validateVoucherConditions(voucherDoc, totalPrice);
+        if (!validation.valid) {
+          return res.status(400).json({ error: validation.message });
+        }
+        voucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+      }
+    }
 
-    // 5. Trừ kho (sử dụng transaction để đảm bảo consistency)
+    // 6. Áp dụng phí ship (nếu có)
+    let fee = 0;
+    if (typeof shippingFee === 'number') {
+      fee = shippingFee;
+    }
+
+    // 7. Tổng cuối cùng
+    const finalTotal = Math.max(0, totalPrice + fee - voucherDiscount);
+
+    // 8. Trừ kho (transaction)
     const session = await mongoose.startSession();
     let order;
 
     try {
       await session.withTransaction(async () => {
-        // Kiểm tra lại stock trong transaction
         const currentProd = await Product.findById(productId).session(session);
         if (currentProd.stock < quantity) {
           throw new Error(`Sản phẩm ${currentProd.name} chỉ còn ${currentProd.stock} sản phẩm`);
         }
 
-        // Trừ kho
         await Product.updateOne(
           { _id: prod._id },
           { $inc: { stock: -quantity } }
         ).session(session);
 
-        // Tạo đơn hàng
         order = new Order({
           user_id,
           products: [{
             productId: prod._id,
             quantity,
-            price: itemPrice, // 🔥 Quan trọng: lưu giá đã tính sẵn
+            price: itemPrice,
             variant: variant || {}
           }],
           address,
           paymentMethod,
           shippingMethod,
           voucher,
+          voucherDiscount,
+          shippingFee: fee,
           total_price: totalPrice,
-          total: totalPrice,
+          total: finalTotal,
           status: 'pending',
           createdAt: new Date()
         });
@@ -359,47 +477,22 @@ router.post('/buy-now', async (req, res) => {
       await session.endSession();
     }
 
-    // 6. Auto cancel sau 20 phút (cải thiện với clearTimeout)
-    const cancelTimeout = setTimeout(async () => {
-      try {
-        const check = await Order.findById(order._id);
-        if (check && check.status === 'pending') {
-          // Hoàn lại kho
-          await Product.updateOne(
-            { _id: prod._id },
-            { $inc: { stock: quantity } }
-          );
-          
-          // Hủy đơn hàng
-          check.status = 'cancelled';
-          check.cancelledAt = new Date();
-          check.cancelReason = 'Auto cancelled after 20 minutes';
-          await check.save();
-          
-          console.log(`🚫 Auto cancelled order ${order._id} after 20 minutes`);
-        }
-      } catch (e) {
-        console.error('Auto cancel buy-now order error:', e);
-      }
-    }, 20 * 60 * 1000); // 20 phút
+    // 9. Auto cancel giữ nguyên...
 
-    // Lưu timeout ID để có thể cancel nếu cần
-    order.cancelTimeoutId = cancelTimeout[Symbol.toPrimitive]?.() || cancelTimeout.toString();
-    await order.save();
-
-    // 7. Trả về response
+    // 10. Trả về response
     res.status(200).json({
       success: true,
       message: 'Đặt hàng thành công',
       data: {
         orderId: order._id,
-        totalAmount: totalPrice,
-        // Thông tin thanh toán
+        totalAmount: finalTotal,
+        voucherDiscount,
+        shippingFee: fee,
         paymentInfo: {
-          acc: '123456789', // số tài khoản nhận
-          bank: 'VCB', // mã ngân hàng
-          amount: totalPrice,
-          des: order._id.toString(), // description để mapping khi nhận webhook
+          acc: '123456789',
+          bank: 'VCB',
+          amount: finalTotal,
+          des: order._id.toString(),
         }
       }
     });

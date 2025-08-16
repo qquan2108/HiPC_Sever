@@ -137,6 +137,7 @@ exports.createOrder = async (req, res) => {
     await order.save();
     try {
       await sendOrderEmail(order._id, 'created');
+      console.log('Confirmation email sent successfully');
     } catch (err) {
       console.error('Failed to send confirmation email:', err);
     }
