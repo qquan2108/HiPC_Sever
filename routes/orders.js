@@ -82,10 +82,10 @@ router.get('/', async (req, res) => {
 // 4) Checkout endpoint
 router.post('/checkout', async (req, res) => {
   try {
-    const { user_id, address, paymentMethod, shippingMethod, voucher, selectedProducts = [], products = [], shippingFee } = req.body;
+    let { user_id, address, paymentMethod, shippingMethod, voucher, selectedProducts = [], products = [], shippingFee } = req.body;
 
     // Nếu có products (mua ngay), xử lý riêng
-    if (Array.isArray(products) && products.length > 0) {
+     if (Array.isArray(products) && products.length > 0 && (!Array.isArray(selectedProducts) || selectedProducts.length === 0)) {
       // Xử lý giống buy-now nhưng cho phép nhiều sản phẩm
       let totalPrice = 0;
       const orderProducts = [];
