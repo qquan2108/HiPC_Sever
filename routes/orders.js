@@ -18,7 +18,12 @@ router.get('/unpaid', async (req, res) => {
     const { user_id } = req.query;
     if (!user_id) return res.status(400).json({ error: "Thiếu user_id" });
 
-    const orders = await Order.find({ user_id, status: 'pending' })
+    // Thêm điều kiện paymentMethod !== 'cod'
+    const orders = await Order.find({ 
+      user_id, 
+      status: 'pending',
+      paymentMethod: { $ne: 'cod' } // Loại bỏ đơn COD
+    })
       .sort({ createdAt: -1 })
       .lean();
 
