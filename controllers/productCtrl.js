@@ -73,11 +73,18 @@ exports.createProduct = async (req, res) => {
 
     await newItem.save();
 
-    // Nếu có image, lưu vào collection Image
-    if (req.body.image) {
+    // Nếu có mảng imageUrls, lưu tất cả ảnh
+    if (Array.isArray(req.body.imageUrls)) {
+      for (const url of req.body.imageUrls) {
+        await new Image({
+          product_id: newItem._id,
+          url
+        }).save();
+      }
+    } else if (req.body.image) {
       await new Image({
         product_id: newItem._id,
-        url:        req.body.image
+        url: req.body.image
       }).save();
     }
 
@@ -91,45 +98,45 @@ exports.createProduct = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
-    const {
-      name,
-      category_id,
-      brand_id,
-      price,
-      description = '',
-      stock = 0,
-      specifications = [],
-      variants = '[]'          // Mặc định là chuỗi JSON mảng
-    } = req.body;
-
-    if (!Array.isArray(specifications)) {
-      return res.status(400).json({ error: 'specifications phải là mảng' });
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
-    let parsedVariants = [];
-    try {
-      const raw = JSON.parse(variants);
-      if (!Array.isArray(raw)) throw new Error();
-      parsedVariants = normalizeVariants(raw);
-    } catch (e) {
-      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+    // Chỉ cập nhật trường nếu được gửi lên
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.category_id !== undefined) updates.category_id = req.body.category_id;
+    if (req.body.brand_id !== undefined) updates.brand_id = req.body.brand_id;
+    if (req.body.price !== undefined) updates.price = req.body.price;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.stock !== undefined) updates.stock = req.body.stock;
+
+    // specifications
+    if (req.body.specifications !== undefined) {
+      if (!Array.isArray(req.body.specifications)) {
+        return res.status(400).json({ error: 'specifications phải là mảng' });
+      }
+      updates.specifications = req.body.specifications;
     }
 
-    // Chuẩn bị object updates
-    const updates = {
-      name,
-      category_id,
-      brand_id,
-      price,
-      description,
-      stock,
-      specifications,
-      variants: parsedVariants
-    };
+    // variants
+    if (req.body.variants !== undefined) {
+      let parsedVariants = [];
+      try {
+        const raw = typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants;
+        if (!Array.isArray(raw)) throw new Error();
+        parsedVariants = normalizeVariants(raw);
+      } catch (e) {
+        return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+      }
+      updates.variants = parsedVariants;
+    }
 
+    // Cập nhật sản phẩm
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
-      updates,
+      { $set: updates },
       { new: true, runValidators: true }
     );
     if (!updated) {
@@ -143,6 +150,14 @@ exports.updateProduct = async (req, res) => {
         product_id: updated._id,
         url:        req.body.image
       }).save();
+    }
+
+    // Nếu có mảng imageUrls, lưu tất cả ảnh
+    if (Array.isArray(req.body.imageUrls)) {
+      await Image.deleteMany({ product_id: updated._id });
+      for (const url of req.body.imageUrls) {
+        await new Image({ product_id: updated._id, url }).save();
+      }
     }
 
     res.json(updated);

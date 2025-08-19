@@ -13,7 +13,14 @@ const VoucherSchema = new mongoose.Schema({
   end_date: { type: Date },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
-  used_count: { type: Number, default: 0 }
+  used_count: { type: Number, default: 0 },
+  // Thêm loại voucher
+  apply_for: { 
+    type: String, 
+    enum: ['order', 'shipping'], // 'order' cho đơn hàng, 'shipping' cho phí vận chuyển
+    default: 'order',
+    required: true
+  }
 });
 
 module.exports = mongoose.model('Voucher', VoucherSchema);

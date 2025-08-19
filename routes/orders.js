@@ -87,10 +87,14 @@ router.get('/', async (req, res) => {
 // 4) Checkout endpoint
 router.post('/checkout', async (req, res) => {
   try {
-    let { user_id, address, paymentMethod, shippingMethod, voucher, selectedProducts = [], products = [], shippingFee } = req.body;
+    let {
+      user_id, address, paymentMethod, shippingMethod,
+      selectedOrderVoucher, selectedShippingVoucher,
+      products = [], shippingFee, selectedProducts
+    } = req.body;
 
     // Nếu có products (mua ngay), xử lý riêng
-     if (Array.isArray(products) && products.length > 0 && (!Array.isArray(selectedProducts) || selectedProducts.length === 0)) {
+    if (Array.isArray(products) && products.length > 0 && (!Array.isArray(selectedProducts) || selectedProducts.length === 0)) {
       // Xử lý giống buy-now nhưng cho phép nhiều sản phẩm
       let totalPrice = 0;
       const orderProducts = [];
@@ -119,54 +123,63 @@ router.post('/checkout', async (req, res) => {
         });
       }
 
-      // Áp dụng voucher
-      let voucherDiscount = 0;
-      if (voucher && voucher.code) {
-        const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
-        if (voucherDoc) {
+      // Áp dụng voucher cho đơn hàng (chỉ loại 'order')
+      let orderVoucherDiscount = 0, orderVoucherId = null;
+      if (selectedOrderVoucher && selectedOrderVoucher.code) {
+        const voucherDoc = await Voucher.findOne({ code: selectedOrderVoucher.code.toUpperCase() });
+        if (voucherDoc && voucherDoc.apply_for === 'order') {
           const validation = validateVoucherConditions(voucherDoc, totalPrice);
-          if (!validation.valid) {
-            return res.status(400).json({ error: validation.message });
-          }
-          voucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+          if (!validation.valid) return res.status(400).json({ error: validation.message });
+          orderVoucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+          orderVoucherId = voucherDoc._id;
         }
       }
 
-      // Phí ship
-      let fee = 0;
-      if (typeof shippingFee === 'number') fee = shippingFee;
+      // Áp dụng voucher cho phí vận chuyển (chỉ loại 'shipping')
+      let shippingVoucherDiscount = 0, shippingVoucherId = null;
+      if (selectedShippingVoucher && selectedShippingVoucher.code) {
+        const voucherDoc = await Voucher.findOne({ code: selectedShippingVoucher.code.toUpperCase() });
+        if (voucherDoc && voucherDoc.apply_for === 'shipping') {
+          const validation = validateVoucherConditions(voucherDoc, shippingFee);
+          if (!validation.valid) return res.status(400).json({ error: validation.message });
+          shippingVoucherDiscount = calculateDiscountAmount(voucherDoc, shippingFee);
+          shippingVoucherId = voucherDoc._id;
+        }
+      }
 
-      const finalTotal = Math.max(0, totalPrice + fee - voucherDiscount);
+      // Tính phí vận chuyển sau giảm
+      const finalShippingFee = Math.max(0, shippingFee - shippingVoucherDiscount);
+
+      // Tổng cuối cùng
+      const finalTotal = Math.max(0, totalPrice - orderVoucherDiscount + finalShippingFee);
 
       // Tạo đơn hàng
       const order = new Order({
         user_id,
         products: orderProducts,
-        combos: [],
         address,
         paymentMethod,
         shippingMethod,
-        voucher,
-        voucherDiscount,
-        shippingFee: fee,
+        voucher: orderVoucherId, // voucher đơn hàng
+        voucherDiscount: orderVoucherDiscount,
+        shippingVoucher: shippingVoucherId, // voucher phí vận chuyển
+        shippingVoucherDiscount: shippingVoucherDiscount,
+        shippingFee: finalShippingFee,
         total_price: totalPrice,
         total: finalTotal,
         status: 'pending'
       });
       await order.save();
 
-      // Tự động hủy giữ nguyên...
-
       return res.status(200).json({
         message: 'Đặt hàng thành công',
         orderId: order._id,
-        acc: '123456789',
-        bank: 'VCB',
         amount: order.total,
         voucherDiscount: order.voucherDiscount || 0,
+        shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
         shippingFee: order.shippingFee || 0,
         des: order._id.toString(),
-      });
+      }); // THÊM return ở đây
     }
 
     // Nếu không có products, xử lý như cũ (giỏ hàng)
@@ -175,7 +188,7 @@ router.post('/checkout', async (req, res) => {
       .populate('products.comboId');
 
     if (!cart || !cart.products.length) {
-      return res.status(400).json({ error: 'Giỏ hàng trống' });
+      return res.status(400).json({ error: 'Giỏ hàng trống' }); // THÊM return
     }
 
     // Lọc sản phẩm được chọn
@@ -199,7 +212,7 @@ router.post('/checkout', async (req, res) => {
     }
 
     if (!checkoutProducts.length) {
-      return res.status(400).json({ error: 'Không có sản phẩm nào được chọn để thanh toán' });
+      return res.status(400).json({ error: 'Không có sản phẩm nào được chọn để thanh toán' }); // THÊM return
     }
 
     // Tính tổng tiền + kiểm tra tồn kho
@@ -226,7 +239,7 @@ router.post('/checkout', async (req, res) => {
         });
 
         if (prod.stock < item.quantity) {
-          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` }); // THÊM return
         }
         totalPrice += itemTotal;
 
@@ -274,6 +287,9 @@ router.post('/checkout', async (req, res) => {
         });
       }
     }
+
+    // Thêm dòng này để lấy voucher từ request
+    const voucher = req.body.selectedOrderVoucher || null;
 
     // Sau khi tính totalPrice (giá gốc + biến thể)
     let voucherDiscount = 0;
@@ -338,18 +354,25 @@ router.post('/checkout', async (req, res) => {
       await cart.save();
     }
 
-    // Tự động hủy sau 20 phút nếu chưa thanh toán (giữ nguyên code cũ)
-    setTimeout(async () => {
+    // Tự động hủy đơn hàng pending sau 10 phút nếu chưa thanh toán
+    setInterval(async () => {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       try {
-        const check = await Order.findById(order._id);
-        if (check && check.status === 'pending') {
-          for (const p of check.products) {
+        const expiredOrders = await Order.find({
+          status: 'pending',
+          createdAt: { $lte: tenMinutesAgo }
+        });
+
+        for (const order of expiredOrders) {
+          // Trả lại kho cho từng sản phẩm
+          for (const p of order.products) {
             await Product.updateOne(
               { _id: p.productId },
               { $inc: { stock: p.quantity } }
             );
           }
-          for (const c of check.combos) {
+          // Trả lại kho cho combo nếu có
+          for (const c of order.combos || []) {
             const combo = await Combo.findById(c.comboId);
             if (combo) {
               for (const pid of combo.productIds) {
@@ -360,23 +383,23 @@ router.post('/checkout', async (req, res) => {
               }
             }
           }
-          check.status = 'cancelled';
-          check.cancelledAt = new Date();
-          await check.save();
+          order.status = 'cancelled';
+          order.cancelledAt = new Date();
+          await order.save();
+          console.log(`Order ${order._id} auto-cancelled after 10 minutes`);
         }
-      } catch (e) {
-        console.error('Auto cancel order error:', e);
+      } catch (err) {
+        console.error('Auto cancel orders error:', err);
       }
-    }, 20 * 60 * 1000);
+    }, 60 * 1000); // Kiểm tra mỗi phút
 
-    // ✅ Thông tin QR để frontend gọi VietQRScreen
+    // Trả về response
     res.status(200).json({
       message: 'Đặt hàng thành công',
       orderId: order._id,
-      acc: '123456789',
-      bank: 'VCB',
       amount: order.total,
       voucherDiscount: order.voucherDiscount || 0,
+      shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
       shippingFee: order.shippingFee || 0,
       des: order._id.toString(),
     });

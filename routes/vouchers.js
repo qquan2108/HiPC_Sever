@@ -4,24 +4,29 @@ const Voucher = require('../models/Voucher');
 
 // Validation middleware
 const validateVoucherData = (req, res, next) => {
-  const { code, discount_value, discount_type } = req.body;
-  
+  const { code, discount_value, discount_type, apply_for } = req.body;
+
   if (!code) {
     return res.status(400).json({ error: 'Mã voucher là bắt buộc' });
   }
-  
+
   if (!discount_value || discount_value <= 0) {
     return res.status(400).json({ error: 'Giá trị giảm giá phải lớn hơn 0' });
   }
-  
+
   if (!['percentage', 'fixed'].includes(discount_type)) {
     return res.status(400).json({ error: 'Loại giảm giá phải là percentage hoặc fixed' });
   }
-  
+
   if (discount_type === 'percentage' && discount_value > 100) {
     return res.status(400).json({ error: 'Phần trăm giảm giá không được vượt quá 100%' });
   }
-  
+
+  // Validate apply_for
+  if (!['order', 'shipping'].includes(apply_for)) {
+    return res.status(400).json({ error: 'Trường apply_for phải là order hoặc shipping' });
+  }
+
   next();
 };
 
@@ -44,6 +49,10 @@ router.get('/', async (req, res) => {
     // Build filter query
     let filterQuery = {};
     const now = new Date();
+
+    if (req.query.apply_for && ['order', 'shipping'].includes(req.query.apply_for)) {
+      filterQuery.apply_for = req.query.apply_for;
+    }
 
     // Search by code or description
     if (search) {
@@ -191,7 +200,7 @@ router.post('/', validateVoucherData, async (req, res) => {
     // Chuẩn hóa dữ liệu đầu vào
     const voucherData = {
       code: req.body.code.toUpperCase(),
-      discount_type: req.body.discount_type, // 'percentage' hoặc 'fixed'
+      discount_type: req.body.discount_type,
       discount_value: Number(req.body.discount_value),
       min_order_amount: req.body.min_order_amount ? Number(req.body.min_order_amount) : 0,
       max_discount: req.body.max_discount ? Number(req.body.max_discount) : undefined,
@@ -200,6 +209,7 @@ router.post('/', validateVoucherData, async (req, res) => {
       title: req.body.title || '',
       start_date: req.body.start_date ? new Date(req.body.start_date) : undefined,
       end_date: req.body.end_date ? new Date(req.body.end_date) : undefined,
+      apply_for: req.body.apply_for, // Thêm dòng này
       created_at: new Date(),
       updated_at: new Date()
     };
@@ -320,6 +330,9 @@ router.post('/apply', async (req, res) => {
     const voucher = await Voucher.findOne({ code: code.toUpperCase() });
     if (!voucher) {
       return res.status(404).json({ error: 'Voucher không tồn tại' });
+    }
+    if (req.body.apply_for && voucher.apply_for !== req.body.apply_for) {
+      return res.status(400).json({ error: 'Voucher không áp dụng cho loại này' });
     }
 
     const validation = validateVoucherConditions(voucher, orderAmount);
