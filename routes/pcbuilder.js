@@ -5,6 +5,8 @@ const BuildProduct = require('../models/BuildProduct');
 const Product = require('../models/Product');
 const { calculateTotalPrice, estimatePerformance, checkCompatibility } = require('../utils/pcBuilders');
 const mongoose = require('mongoose');
+const Preset = require('../models/Preset');
+const Combo = require('../models/Combo');
 
 // Preset builds với khả năng chỉnh sửa
 let PRESET_BUILDS = [
@@ -34,9 +36,46 @@ let PRESET_BUILDS = [
   }
 ];
 
-// Lấy danh sách preset builds
-router.get('/presets', (req, res) => {
-  res.json(PRESET_BUILDS);
+// Lấy danh sách preset builds (MongoDB)
+router.get('/presets', async (req, res) => {
+  try {
+    const presets = await Preset.find().populate('comboIds');
+    // Tính số sản phẩm và giá ước tính cho mỗi preset
+    const result = [];
+    for (const preset of presets) {
+      let components = [];
+      let estimatedPrice = 0;
+      for (const combo of preset.comboIds) {
+        await combo.populate('productIds');
+        for (const prod of combo.productIds) {
+          if (!components.some(c => c.productId === prod._id.toString())) {
+            components.push({
+              productId: prod._id.toString(),
+              name: prod.name,
+              price: prod.price,
+              quantity: 1
+            });
+            estimatedPrice += prod.price;
+          }
+        }
+      }
+      result.push({
+        _id: preset._id,
+        name: preset.name,
+        description: preset.description,
+        category: preset.category,
+        comboIds: preset.comboIds.map(c => c._id),
+        comboNames: preset.comboIds.map(c => c.name),
+        components,
+        estimatedPrice,
+        image: preset.image, // <-- Thêm dòng này để trả về ảnh đại diện
+        createdAt: preset.createdAt
+      });
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Thêm sản phẩm vào preset build
@@ -308,23 +347,14 @@ router.put('/:buildId', async (req, res) => {
 });
 
 // Tạo preset mới
-router.post('/presets', (req, res) => {
+router.post('/presets', async (req, res) => {
   try {
-    const { name, description, category } = req.body;
+    const { name, description, category, image } = req.body; // nhận image
     if (!name || !category) {
       return res.status(400).json({ error: 'Thiếu tên hoặc danh mục.' });
     }
-    // Tạo id ngẫu nhiên (có thể dùng uuid hoặc Date.now)
-    const id = Date.now().toString();
-    const preset = {
-      id,
-      name,
-      description,
-      category,
-      components: [],
-      estimatedPrice: 0
-    };
-    PRESET_BUILDS.push(preset);
+    const preset = new Preset({ name, description, category, image, comboIds: [] });
+    await preset.save();
     res.status(201).json({ message: 'Đã tạo preset mới', preset });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -341,6 +371,37 @@ router.delete('/presets/:presetId', (req, res) => {
     }
     PRESET_BUILDS.splice(idx, 1);
     res.json({ message: 'Đã xóa preset thành công.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Gán combo vào preset
+router.post('/presets/:presetId/combo', async (req, res) => {
+  try {
+    const { presetId } = req.params;
+    const { comboId } = req.body;
+    const preset = await Preset.findById(presetId);
+    if (!preset) return res.status(404).json({ error: 'Không tìm thấy preset' });
+    if (!preset.comboIds.map(id => id.toString()).includes(comboId)) {
+      preset.comboIds.push(comboId);
+      await preset.save();
+    }
+    res.json({ message: 'Đã gán combo vào preset', preset });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Xóa combo khỏi preset
+router.delete('/presets/:presetId/combo/:comboId', async (req, res) => {
+  try {
+    const { presetId, comboId } = req.params;
+    const preset = await Preset.findById(presetId);
+    if (!preset) return res.status(404).json({ error: 'Không tìm thấy preset' });
+    preset.comboIds = preset.comboIds.filter(id => id.toString() !== comboId);
+    await preset.save();
+    res.json({ message: 'Đã xóa combo khỏi preset', preset });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -102,9 +102,90 @@ router.post("/buy-now", async (req, res) => {
       address,
       paymentMethod,
       shippingMethod,
-      voucher,
-      shippingFee,
-    } = req.body;
+      voucher: orderVoucherId, // Order voucher ID
+      voucherDiscount: orderVoucherDiscount,
+      shippingVoucher: shippingVoucherId, // Shipping voucher ID  
+      shippingVoucherDiscount: shippingVoucherDiscount,
+      shippingFee: finalShippingFee, // Already discounted
+      total_price: totalPrice,
+      total: finalTotal,
+      status: 'pending'
+    });
+    await order.save();
+
+    // Xóa các sản phẩm đã checkout khỏi giỏ hàng
+    if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
+      console.log('selectedProducts:', selectedProducts);
+      console.log('cart.products:', cart.products.map(i => i._id.toString()));
+
+      let selectedIds = [];
+      if (typeof selectedProducts[0] === 'object' && selectedProducts[0].cartItemId) {
+        selectedIds = selectedProducts.map(p => p.cartItemId.toString());
+      } else {
+        selectedIds = selectedProducts.map(id => id.toString());
+      }
+      cart.products = cart.products.filter(item =>
+        !selectedIds.includes(item._id.toString())
+      );
+      await cart.save();
+    }
+
+    // Auto cancel logic (keeping existing)
+    setInterval(async () => {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      try {
+        const expiredOrders = await Order.find({
+          status: 'pending',
+          createdAt: { $lte: tenMinutesAgo }
+        });
+
+        for (const order of expiredOrders) {
+          // Return stock for products
+          for (const p of order.products) {
+            await Product.updateOne(
+              { _id: p.productId },
+              { $inc: { stock: p.quantity } }
+            );
+          }
+          // Return stock for combos if any
+          for (const c of order.combos || []) {
+            const combo = await Combo.findById(c.comboId);
+            if (combo) {
+              for (const pid of combo.productIds) {
+                await Product.updateOne(
+                  { _id: pid },
+                  { $inc: { stock: c.quantity } }
+                );
+              }
+            }
+          }
+          order.status = 'cancelled';
+          order.cancelledAt = new Date();
+          await order.save();
+          console.log(`Order ${order._id} auto-cancelled after 10 minutes`);
+        }
+      } catch (err) {
+        console.error('Auto cancel orders error:', err);
+      }
+    }, 60 * 1000);
+
+    // === FIXED: Return proper response ===
+    res.status(200).json({
+      message: 'Đặt hàng thành công',
+      orderId: order._id,
+      amount: order.total,
+      originalAmount: totalPrice,
+      voucherDiscount: order.voucherDiscount || 0,
+      shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
+      originalShippingFee: shippingFee || 0,
+      finalShippingFee: order.shippingFee || 0,
+      des: order._id.toString(),
+    });
+  } catch (err) {
+    console.error('❌ CHECKOUT ERROR:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
     // 1. Validation đầu vào
     if (!user_id || !productId || !quantity) {
