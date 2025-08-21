@@ -9,10 +9,19 @@ const User = require('../models/userModel');
 const Video = require('../models/Video');
 const Combo = require('../models/Combo');
 const Image = require('../models/Image');
+const Order = require('../models/Order');
 
 // Dashboard
-router.get('/dashboard', (req, res) => {
-  res.render('admin/index', { layout: 'admin/layout' });
+router.get('/dashboard', async (req, res) => {
+  const [productCount, orderCount] = await Promise.all([
+    Product.countDocuments(),
+    Order.countDocuments()
+  ]);
+  res.render('admin/index', {
+    layout: 'admin/layout',
+    productCount,
+    orderCount
+  });
 });
 
 // Quản lý Người dùng (static + JS fetch)
@@ -87,7 +96,6 @@ router.get('/faq', (req, res) => {
 });
 
 //order
-const Order = require('../models/Order');
 const { transitions } = require('../utils/orderStatus');
 
 // Trang list orders (đã có)
@@ -245,4 +253,10 @@ router.get('/manage-builds', (req, res) => {
 router.get('/preset-build', (req, res) => {
   res.render('admin/preset-build', { layout: 'admin/layout' });
 });
+
+// Quản lý voucher
+router.get('/vouchers', (req, res) => {
+  res.render('admin/vouchers', { layout: 'admin/layout' });
+});
+
 module.exports = router;

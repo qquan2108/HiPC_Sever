@@ -1,7 +1,9 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Image = require('../models/Image');
 const { canTransition } = require('../utils/orderStatus');
 const Notification = require('../models/Notification');
+const { sendMail } = require('../utils/mailer');
 
 //thong bao 
 const createOrderNotification = async (order, status) => {
@@ -51,6 +53,73 @@ const createOrderNotification = async (order, status) => {
   });
 };
 
+// Gửi email cho người dùng khi tạo đơn hoặc giao thành công
+const sendOrderEmail = async (orderId, type) => {
+  try {
+    const order = await Order.findById(orderId)
+      .populate('user_id', 'full_name email phone')
+      .populate('products.productId', 'name price')
+      .lean();
+    if (!order || !order.user_id) return;
+
+    const imgMap = {};
+    const productIds = order.products.map(p => p.productId?._id);
+    if (productIds.length) {
+      const images = await Image.find({ product_id: { $in: productIds } }).lean();
+      images.forEach(img => {
+        imgMap[img.product_id.toString()] = img.url;
+      });
+    }
+
+    const rows = order.products.map(item => {
+      const prod = item.productId;
+      const imgUrl = imgMap[prod._id.toString()] || '';
+      const variant = item.variant ? `${item.variant.key}: ${item.variant.label}` : '';
+      const unitPrice = prod.price + (item.variant ? item.variant.priceDiff : 0);
+      return `<tr>
+        <td>${prod.name}</td>
+        <td><img src="${imgUrl}" width="50"/></td>
+        <td>${variant}</td>
+        <td>${item.quantity}</td>
+        <td>${unitPrice}</td>
+      </tr>`;
+    }).join('');
+
+    const subject = type === 'delivered'
+      ? 'Thông báo giao hàng thành công'
+      : 'Thông báo đặt hàng thành công';
+
+    const heading = type === 'delivered'
+      ? 'Đơn hàng của bạn đã được giao thành công.'
+      : 'Cảm ơn bạn đã đặt hàng.';
+
+    const html = `
+      <h3>${heading}</h3>
+      <p><strong>Tên:</strong> ${order.user_id.full_name}</p>
+      <p><strong>Số điện thoại:</strong> ${order.user_id.phone || ''}</p>
+      <p><strong>Địa chỉ:</strong> ${order.address}</p>
+      <table border="1" cellspacing="0" cellpadding="5">
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th>Ảnh</th>
+            <th>Biến thể</th>
+            <th>Số lượng</th>
+            <th>Đơn giá</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+
+    await sendMail({ to: order.user_id.email, subject, html });
+  } catch (err) {
+    console.error('Error sending order email:', err);
+  }
+};
+
 // Tạo mới đơn hàng
 exports.createOrder = async (req, res) => {
   try {
@@ -66,6 +135,12 @@ exports.createOrder = async (req, res) => {
     };
     const order = new Order(payload);
     await order.save();
+    try {
+      await sendOrderEmail(order._id, 'created');
+      console.log('Confirmation email sent successfully');
+    } catch (err) {
+      console.error('Failed to send confirmation email:', err);
+    }
     res.status(201).json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -137,6 +212,13 @@ exports.updateStatus = async (req, res) => {
     order.status = status;
     await order.save();
     await createOrderNotification(order, status);
+    if (status === 'delivered') {
+      try {
+        await sendOrderEmail(order._id, 'delivered');
+      } catch (err) {
+        console.error('Failed to send delivery email:', err);
+      }
+    }
     res.json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });

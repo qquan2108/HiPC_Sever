@@ -277,6 +277,34 @@ router.get('/by-product/:product_id', async (req, res) => {
   }
 });
 
+// API kiểm tra user đã mua sản phẩm chưa (để được đánh giá)
+router.get('/check-bought', async (req, res) => {
+  try {
+    const { user_id, product_id } = req.query;
+    if (!user_id || !product_id) {
+      return res.status(400).json({ error: 'Thiếu user_id hoặc product_id' });
+    }
+    if (!isValidObjectId(user_id) || !isValidObjectId(product_id)) {
+      return res.status(400).json({ error: 'user_id hoặc product_id không hợp lệ' });
+    }
+    // Log truy vấn
+    console.log('Query:', {
+      user_id: mongoose.Types.ObjectId(user_id),
+      status: 'delivered',
+      'products.productId': mongoose.Types.ObjectId(product_id)
+    });
+    const bought = await Order.findOne({
+      user_id: mongoose.Types.ObjectId(user_id),
+      status: 'delivered',
+      'products.productId': mongoose.Types.ObjectId(product_id)
+    }).lean();
+    console.log('Bought:', bought);
+    res.json({ hasBought: !!bought });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Helper function để cập nhật rating trung bình cho sản phẩm
 async function updateProductAverageRating(productId) {
   try {

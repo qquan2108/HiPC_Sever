@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preset Build</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        /* Header Section */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Modern Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.6);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-outline:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        /* Search Bar */
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        /* Stats Cards */
+        .stats-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: slideInUp 0.6s ease-out 0.2s both;
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats-label {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Table Container */
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInUp 0.6s ease-out 0.4s both;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 1.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            transform: scale(1.005);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .table tbody td {
+            padding: 1.25rem 1rem;
+            vertical-align: middle;
+        }
+
+        /* Product Image */
+        .product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .product-image:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Price Badge */
+        .price-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Stock Badge */
+        .stock-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .stock-high {
+            background: rgba(72, 187, 120, 0.2);
+            color: #22543d;
+        }
+
+        .stock-medium {
+            background: rgba(237, 137, 54, 0.2);
+            color: #c05621;
+        }
+
+        .stock-low {
+            background: rgba(245, 101, 101, 0.2);
+            color: #c53030;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-action {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .btn-edit:hover {
+            background: #3b82f6;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Animations */
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            transform: translateY(50px) scale(0.9);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            color: #1a202c;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                max-width: none;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1><i class="fas fa-cubes"></i> Quản Lý Preset Build</h1>
+            <p class="header-subtitle">Tạo, chỉnh sửa, xóa và gán combo sản phẩm cho các cấu hình preset build</p>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openPresetModal()">
+                    <i class="fas fa-plus"></i> Thêm Preset
+                </button>
+            </div>
+        </div>
+
+        <!-- Preset Table -->
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ảnh đại diện</th> <!-- Thêm cột này -->
+                        <th>Tên Preset</th>
+                        <th>Danh mục</th>
+                        <th>Số sản phẩm</th>
+                        <th>Giá ước tính</th>
+                        <th>Combo gán</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="presetTable">
+                    <!-- Preset rows sẽ được render bằng JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa Preset -->
+    <div class="modal-overlay" id="presetModal">
+        <div class="modal">
+            <h2><i class="fas fa-plus-circle"></i> Thêm Preset Build</h2>
+            <form id="addPresetForm">
+                <div class="form-group">
+                    <label class="form-label">Tên preset</label>
+                    <input type="text" class="form-input" id="presetName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Danh mục</label>
+                    <input type="text" class="form-input" id="presetCategory" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Mô tả</label>
+                    <textarea class="form-input" id="presetDesc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ảnh đại diện (URL)</label>
+                    <input type="text" class="form-input" id="presetImage" placeholder="Nhập URL ảnh hoặc upload">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-outline" onclick="closePresetModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu Preset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gán Combo -->
+    <div class="modal-overlay" id="comboAssignModal">
+        <div class="modal">
+            <h2><i class="fas fa-layer-group"></i> Gán Combo vào Preset</h2>
+            <select id="comboSelect" class="form-select" style="margin-bottom: 1rem;">
+                <option value="">-- Chọn combo --</option>
+            </select>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="assignComboBtn" class="btn btn-primary">Gán combo</button>
+                <button type="button" class="btn btn-outline" onclick="closeComboAssignModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let presets = [];
+        let combos = [];
+        let currentPresetId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPresets();
+            loadCombos();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('addPresetForm').onsubmit = addPreset;
+            document.getElementById('assignComboBtn').onclick = handleAssignCombo;
+        }
+
+        // Load preset list
+        async function loadPresets() {
+            const res = await fetch('/pcbuild/presets');
+            presets = await res.json();
+            renderPresetTable();
+        }
+
+        // Load combo list
+        async function loadCombos() {
+            try {
+                const res = await fetch('/combo');
+                combos = await res.json();
+                renderComboSelect();
+            } catch (error) {
+                showToast('Không thể tải danh sách combo', 'error');
+            }
+        }
+
+        // Render preset table
+        function renderPresetTable() {
+            const tbody = document.getElementById('presetTable');
+            tbody.innerHTML = '';
+            if (!presets.length) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Chưa có preset nào</td></tr>`;
+                return;
+            }
+            presets.forEach(preset => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        ${preset.image
+                            ? `<img src="${preset.image}" alt="Ảnh" style="width:48px;height:48px;object-fit:cover;border-radius:8px;">`
+                            : '<span style="color:#aaa;">(Không có)</span>'}
+                    </td>
+                    <td>${preset.name}</td>
+                    <td>${preset.category}</td>
+                    <td>${preset.components ? preset.components.length : 0}</td>
+                    <td>${formatCurrency(preset.estimatedPrice || 0)}</td>
+                    <td>
+                        ${(preset.comboNames && preset.comboNames.length > 0)
+                            ? preset.comboNames.join(', ')
+                            : 'Chưa có combo'}
+                    </td>
+                    <td>
+                        <button class="btn btn-edit" onclick="openEditPreset('${preset._id}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-delete" onclick="deletePreset('${preset._id}')"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-secondary" onclick="openAssignCombo('${preset._id}')"><i class="fas fa-layer-group"></i> Gán combo</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Thêm preset
+        async function addPreset(e) {
+            e.preventDefault();
+            const name = document.getElementById('presetName').value;
+            const category = document.getElementById('presetCategory').value;
+            const description = document.getElementById('presetDesc').value;
+            const image = document.getElementById('presetImage').value; // lấy ảnh
+            const res = await fetch('/pcbuild/presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, category, description, image })
+            });
+            if (res.ok) {
+                closePresetModal();
+                loadPresets();
+                showToast('Đã thêm preset mới!', 'success');
+            }
+        }
+
+        // Xóa preset
+        async function deletePreset(id) {
+            if (!confirm('Xóa preset này?')) return;
+            await fetch(`/pcbuild/presets/${id}`, { method: 'DELETE' });
+            loadPresets();
+            showToast('Đã xóa preset!', 'success');
+        }
+
+        // Sửa preset (tùy chọn, bạn có thể mở modal và điền lại thông tin)
+
+        // Gán combo vào preset
+        function openAssignCombo(presetId) {
+            currentPresetId = presetId;
+            document.getElementById('comboAssignModal').classList.add('active');
+            renderComboSelect();
+        }
+
+        function renderComboSelect() {
+            const select = document.getElementById('comboSelect');
+            select.innerHTML = '<option value="">-- Chọn combo --</option>';
+            combos.forEach(combo => {
+                select.innerHTML += `<option value="${combo._id}">${combo.name}</option>`;
+            });
+        }
+
+        // Khi chọn combo, thêm tất cả sản phẩm vào preset
+        async function handleAssignCombo() {
+            const comboId = document.getElementById('comboSelect').value;
+            if (!comboId || !currentPresetId) return;
+            await fetch(`/pcbuild/presets/${currentPresetId}/combo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comboId })
+            });
+            closeComboAssignModal();
+            loadPresets();
+            showToast('Đã gán combo vào preset!', 'success');
+        }
+
+        // Modal functions
+        function openPresetModal() {
+            document.getElementById('presetModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePresetModal() {
+            document.getElementById('presetModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        function closeComboAssignModal() {
+            document.getElementById('comboAssignModal').classList.remove('active');
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount);
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Đóng modal khi click ngoài
+        document.getElementById('presetModal').addEventListener('click', function(e) {
+            if (e.target === this) closePresetModal();
+        });
+        document.getElementById('comboAssignModal').addEventListener('click', function(e) {
+            if (e.target === this) closeComboAssignModal();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePresetModal();
+                closeComboAssignModal();
+            }
+        });
+    </script>
+    <style>
+        /* Bạn có thể giữ lại style cũ hoặc chỉnh lại cho phù hợp */
+    </style>
+</body>
+</html>

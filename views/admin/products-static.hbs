@@ -27,6 +27,7 @@
   </div>
 
   <!-- 3. Bảng products -->
+  <div class="mt-2 text-right">Tổng sản phẩm: <span id="productCount">0</span></div>
   <div class="table-container">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
@@ -40,23 +41,6 @@
       </thead>
       <tbody id="productTable" class="bg-white divide-y divide-gray-200"></tbody>
     </table>
-
-    </div>
-    <div id="pagination" class="mt-4 flex justify-center space-x-2"></div>
   </div>
-
-<script>
-  // Khi DOM sẵn sàng, khởi động fetch
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchProducts(1);
-    const search = document.getElementById('searchInput');
-    if (search) {
-      search.addEventListener('input', () => {
-        productQuery = search.value.trim();
-        currentPage = 1;
-        fetchProducts(1, productQuery);
-      });
-    }
-  });
-
-</script>
+  <div id="scrollSentinel" class="py-4 text-center text-gray-500">Đang tải...</div>
+</div>
