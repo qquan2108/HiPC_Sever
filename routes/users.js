@@ -161,8 +161,15 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
-    const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-    await sendMail({
+    const resetLink = `https://api.hipc.site/reset-password/${token}`; //${req.protocol}://${req.get('host')}
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    await transporter.sendMail({
       to: user.email,
       subject: 'Đặt lại mật khẩu',
       text: `Bạn nhận được email này vì đã yêu cầu đặt lại mật khẩu.\n\nVui lòng click vào link sau để đặt lại mật khẩu:\n${resetLink}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
