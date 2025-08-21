@@ -5,6 +5,31 @@ const Order = require('../models/Order'); // Thêm dòng này ở đầu file n�
 const mongoose    = require('mongoose');
 // controllers/productCtrl.js
 
+// Convert various client variant formats into the schema expected by Product model
+function normalizeVariants(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(group => {
+      // accept both `key` and older `name` field for group name
+      const key = group.key || group.name;
+      if (!key) return null;
+
+      // options may be provided either as full objects or simple string arrays
+      let opts = [];
+      if (Array.isArray(group.options)) {
+        opts = group.options.map(opt => ({
+          label: opt.label ?? opt,
+          priceDiff: opt.priceDiff ?? 0
+        }));
+      } else if (Array.isArray(group.values)) {
+        opts = group.values.map(v => ({ label: v, priceDiff: 0 }));
+      }
+
+      return { key, options: opts };
+    })
+    .filter(Boolean);
+}
+
 // Create product
 exports.createProduct = async (req, res) => {
   try {
@@ -27,10 +52,9 @@ exports.createProduct = async (req, res) => {
     // Parse và validate variants
     let parsedVariants = [];
     try {
-      parsedVariants = JSON.parse(variants);
-      if (!Array.isArray(parsedVariants)) {
-        throw new Error();
-      }
+      const raw = JSON.parse(variants);
+      if (!Array.isArray(raw)) throw new Error();
+      parsedVariants = normalizeVariants(raw);
     } catch (e) {
       return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
@@ -49,11 +73,18 @@ exports.createProduct = async (req, res) => {
 
     await newItem.save();
 
-    // Nếu có image, lưu vào collection Image
-    if (req.body.image) {
+    // Nếu có mảng imageUrls, lưu tất cả ảnh
+    if (Array.isArray(req.body.imageUrls)) {
+      for (const url of req.body.imageUrls) {
+        await new Image({
+          product_id: newItem._id,
+          url
+        }).save();
+      }
+    } else if (req.body.image) {
       await new Image({
         product_id: newItem._id,
-        url:        req.body.image
+        url: req.body.image
       }).save();
     }
 
@@ -67,46 +98,45 @@ exports.createProduct = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
-    const {
-      name,
-      category_id,
-      brand_id,
-      price,
-      description = '',
-      stock = 0,
-      specifications = [],
-      variants = '[]'          // Mặc định là chuỗi JSON mảng
-    } = req.body;
-
-    if (!Array.isArray(specifications)) {
-      return res.status(400).json({ error: 'specifications phải là mảng' });
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
-    let parsedVariants = [];
-    try {
-      parsedVariants = JSON.parse(variants);
-      if (!Array.isArray(parsedVariants)) {
-        throw new Error();
+    // Chỉ cập nhật trường nếu được gửi lên
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.category_id !== undefined) updates.category_id = req.body.category_id;
+    if (req.body.brand_id !== undefined) updates.brand_id = req.body.brand_id;
+    if (req.body.price !== undefined) updates.price = req.body.price;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.stock !== undefined) updates.stock = req.body.stock;
+
+    // specifications
+    if (req.body.specifications !== undefined) {
+      if (!Array.isArray(req.body.specifications)) {
+        return res.status(400).json({ error: 'specifications phải là mảng' });
       }
-    } catch (e) {
-      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+      updates.specifications = req.body.specifications;
     }
 
-    // Chuẩn bị object updates
-    const updates = {
-      name,
-      category_id,
-      brand_id,
-      price,
-      description,
-      stock,
-      specifications,
-      variants: parsedVariants
-    };
+    // variants
+    if (req.body.variants !== undefined) {
+      let parsedVariants = [];
+      try {
+        const raw = typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants;
+        if (!Array.isArray(raw)) throw new Error();
+        parsedVariants = normalizeVariants(raw);
+      } catch (e) {
+        return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
+      }
+      updates.variants = parsedVariants;
+    }
 
+    // Cập nhật sản phẩm
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
-      updates,
+      { $set: updates },
       { new: true, runValidators: true }
     );
     if (!updated) {
@@ -120,6 +150,14 @@ exports.updateProduct = async (req, res) => {
         product_id: updated._id,
         url:        req.body.image
       }).save();
+    }
+
+    // Nếu có mảng imageUrls, lưu tất cả ảnh
+    if (Array.isArray(req.body.imageUrls)) {
+      await Image.deleteMany({ product_id: updated._id });
+      for (const url of req.body.imageUrls) {
+        await new Image({ product_id: updated._id, url }).save();
+      }
     }
 
     res.json(updated);
@@ -164,7 +202,8 @@ exports.getProducts = async (req, res) => {
     res.json({
       products: productsWithImage,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
+      total
     });
   } catch (err) {
     console.error('Error in getProducts:', err);
@@ -479,6 +518,17 @@ exports.uploadProductsFromExcel = async (req, res) => {
           continue;
         }
 
+        const rawId = row.id || row._id;
+        const idCond = rawId && mongoose.Types.ObjectId.isValid(rawId)
+          ? { _id: rawId }
+          : null;
+        const dupFilter = idCond ? { $or: [idCond, { name: row.name }] } : { name: row.name };
+        const exists = await Product.findOne(dupFilter).lean();
+        if (exists) {
+          errors.push(`Row ${row.name}: Duplicate id or name`);
+          continue;
+        }
+
         let specs = [];
         const rawSpecs = row.tskt || row.specifications;
         if (rawSpecs) {
@@ -490,41 +540,56 @@ exports.uploadProductsFromExcel = async (req, res) => {
           }
         }
 
-        const product = new Product({
+        let variants = [];
+        if (row.variants) {
+          try {
+            const parsedVar = typeof row.variants === 'string' ? JSON.parse(row.variants) : row.variants;
+            if (Array.isArray(parsedVar)) variants = normalizeVariants(parsedVar);
+          } catch (e) {
+            errors.push(`Row ${row.name}: Invalid variants format`);
+          }
+        }
+
+        const productData = {
           name:        row.name,
           category_id: row.category_id,
           brand_id:    row.brand_id || undefined,
           price:       parseFloat(row.price),
           description: row.description || '',
           stock:       parseInt(row.stock) || 0,
-          specifications: specs
-        });
-        
+          specifications: specs,
+          variants
+        };
+
+        if (rawId && mongoose.Types.ObjectId.isValid(rawId)) {
+          productData._id = rawId;
+        }
+
+        const product = new Product(productData);
         await product.save();
-        
-        // Add image if provided
+
         if (row.image) {
           await new Image({
             product_id: product._id,
             url: row.image
           }).save();
         }
-        
+
         created.push(product);
       } catch (error) {
         errors.push(`Row ${row.name || 'Unknown'}: ${error.message}`);
       }
     }
 
-    // Clean up uploaded file
     fs.unlink(req.file.path, (err) => {
       if (err) console.error('Error deleting uploaded file:', err);
     });
 
-    res.json({ 
-      success: true, 
-      createdCount: created.length,
-      errors: errors.length > 0 ? errors : undefined
+    res.json({
+      success: errors.length === 0,
+      imported: created.length,
+      failed: errors.length,
+      errors
     });
   } catch (err) {
     console.error('Error in uploadProductsFromExcel:', err);
@@ -548,6 +613,7 @@ exports.exportProductsToExcel = async (req, res) => {
     });
 
     const rows = products.map(p => ({
+      id:          p._id.toString(),
       name:        p.name,
       category_id: p.category_id?._id?.toString() || '',
       category:    p.category_id?.name || '',
@@ -557,7 +623,8 @@ exports.exportProductsToExcel = async (req, res) => {
       description: p.description,
       stock:       p.stock,
       image:       imageMap[p._id] || '',
-      specifications: JSON.stringify(p.specifications || [])
+      specifications: JSON.stringify(p.specifications || []),
+      variants: JSON.stringify(p.variants || [])
     }));
 
     const xlsx = require('xlsx');

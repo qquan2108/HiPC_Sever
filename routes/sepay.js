@@ -1,14 +1,27 @@
 // routes/sepay.js
 const express = require('express');
 const router  = express.Router();
+const mongoose = require('mongoose');
+const Order = require('../models/Order');
 
 router.post('/webhook', async (req, res) => {
   try {
     const data = req.body;
     console.log('Webhook SePay:', data);
 
-    // Tìm đơn theo description hoặc id truyền kèm (tuỳ bạn gửi gì vào "des")
-    const orderId = data.description || data.orderId || data.id;
+    // Tách ObjectId từ description nếu có dạng "BankAPINotify <ObjectId>"
+    let orderId = data.description || data.orderId || data.id;
+    if (typeof orderId === 'string') {
+      // Tìm chuỗi 24 ký tự hex trong description
+      const match = orderId.match(/[a-f\d]{24}/i);
+      if (match) orderId = match[0];
+    }
+
+    // Kiểm tra ObjectId hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ error: 'orderId không hợp lệ' });
+    }
+
     const order = await Order.findById(orderId);
 
     if (order && order.status === 'pending') {

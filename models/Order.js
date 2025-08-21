@@ -50,6 +50,9 @@ const orderSchema = new mongoose.Schema({
   paymentMethod:    String,
   shippingMethod:   String,
   voucher:          { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher', default: null },
+  voucherDiscount:  { type: Number, default: 0 },
+  shippingVoucher:  { type: mongoose.Schema.Types.ObjectId, ref: 'Voucher', default: null }, // mới
+  shippingVoucherDiscount: { type: Number, default: 0 }, // mới
   total:            { type: Number, default: 0 },
   cancelledAt:      Date
 }, { timestamps: true });
