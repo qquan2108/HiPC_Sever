@@ -92,120 +92,29 @@ router.get("/", async (req, res) => {
 // 4) Checkout endpoint
 router.post("/checkout", orderCtrl.createOrder);
 
-router.post("/buy-now", async (req, res) => {
+router.post('/buy-now', async (req, res) => {
   try {
-    const {
-      user_id,
-      productId,
-      quantity = 1,
-      variant,
-      address,
-      paymentMethod,
-      shippingMethod,
-      voucher: orderVoucherId, // Order voucher ID
-      voucherDiscount: orderVoucherDiscount,
-      shippingVoucher: shippingVoucherId, // Shipping voucher ID  
-      shippingVoucherDiscount: shippingVoucherDiscount,
-      shippingFee: finalShippingFee, // Already discounted
-      total_price: totalPrice,
-      total: finalTotal,
-      status: 'pending'
-    });
-    await order.save();
-
-    // Xóa các sản phẩm đã checkout khỏi giỏ hàng
-    if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
-      console.log('selectedProducts:', selectedProducts);
-      console.log('cart.products:', cart.products.map(i => i._id.toString()));
-
-      let selectedIds = [];
-      if (typeof selectedProducts[0] === 'object' && selectedProducts[0].cartItemId) {
-        selectedIds = selectedProducts.map(p => p.cartItemId.toString());
-      } else {
-        selectedIds = selectedProducts.map(id => id.toString());
-      }
-      cart.products = cart.products.filter(item =>
-        !selectedIds.includes(item._id.toString())
-      );
-      await cart.save();
-    }
-
-    // Auto cancel logic (keeping existing)
-    setInterval(async () => {
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-      try {
-        const expiredOrders = await Order.find({
-          status: 'pending',
-          createdAt: { $lte: tenMinutesAgo }
-        });
-
-        for (const order of expiredOrders) {
-          // Return stock for products
-          for (const p of order.products) {
-            await Product.updateOne(
-              { _id: p.productId },
-              { $inc: { stock: p.quantity } }
-            );
-          }
-          // Return stock for combos if any
-          for (const c of order.combos || []) {
-            const combo = await Combo.findById(c.comboId);
-            if (combo) {
-              for (const pid of combo.productIds) {
-                await Product.updateOne(
-                  { _id: pid },
-                  { $inc: { stock: c.quantity } }
-                );
-              }
-            }
-          }
-          order.status = 'cancelled';
-          order.cancelledAt = new Date();
-          await order.save();
-          console.log(`Order ${order._id} auto-cancelled after 10 minutes`);
-        }
-      } catch (err) {
-        console.error('Auto cancel orders error:', err);
-      }
-    }, 60 * 1000);
-
-    // === FIXED: Return proper response ===
-    res.status(200).json({
-      message: 'Đặt hàng thành công',
-      orderId: order._id,
-      amount: order.total,
-      originalAmount: totalPrice,
-      voucherDiscount: order.voucherDiscount || 0,
-      shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
-      originalShippingFee: shippingFee || 0,
-      finalShippingFee: order.shippingFee || 0,
-      des: order._id.toString(),
-    });
-  } catch (err) {
-    console.error('❌ CHECKOUT ERROR:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
+    const { user_id, productId, quantity = 1, variant, address, paymentMethod, shippingMethod, voucher, shippingFee } = req.body;
+    
     // 1. Validation đầu vào
     if (!user_id || !productId || !quantity) {
-      return res.status(400).json({ error: "Thiếu thông tin bắt buộc." });
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
     if (quantity <= 0) {
-      return res.status(400).json({ error: "Số lượng phải lớn hơn 0." });
+      return res.status(400).json({ error: 'Số lượng phải lớn hơn 0.' });
     }
 
     // 2. Lấy sản phẩm
     const prod = await Product.findById(productId);
     if (!prod) {
-      return res.status(404).json({ error: "Sản phẩm không tồn tại." });
+      return res.status(404).json({ error: 'Sản phẩm không tồn tại.' });
     }
 
     // 3. Kiểm tra tồn kho
     if (prod.stock < quantity) {
-      return res.status(400).json({
-        error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock} sản phẩm`,
+      return res.status(400).json({ 
+        error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock} sản phẩm` 
       });
     }
 
@@ -218,9 +127,7 @@ router.post("/buy-now", async (req, res) => {
     // 5. Áp dụng voucher (nếu có)
     let voucherDiscount = 0;
     if (voucher && voucher.code) {
-      const voucherDoc = await Voucher.findOne({
-        code: voucher.code?.toUpperCase?.() || voucher.code,
-      });
+      const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
       if (voucherDoc) {
         const validation = validateVoucherConditions(voucherDoc, totalPrice);
         if (!validation.valid) {
@@ -232,7 +139,7 @@ router.post("/buy-now", async (req, res) => {
 
     // 6. Áp dụng phí ship (nếu có)
     let fee = 0;
-    if (typeof shippingFee === "number") {
+    if (typeof shippingFee === 'number') {
       fee = shippingFee;
     }
 
@@ -247,9 +154,7 @@ router.post("/buy-now", async (req, res) => {
       await session.withTransaction(async () => {
         const currentProd = await Product.findById(productId).session(session);
         if (currentProd.stock < quantity) {
-          throw new Error(
-            `Sản phẩm ${currentProd.name} chỉ còn ${currentProd.stock} sản phẩm`
-          );
+          throw new Error(`Sản phẩm ${currentProd.name} chỉ còn ${currentProd.stock} sản phẩm`);
         }
 
         await Product.updateOne(
@@ -259,14 +164,12 @@ router.post("/buy-now", async (req, res) => {
 
         order = new Order({
           user_id,
-          products: [
-            {
-              productId: prod._id,
-              quantity,
-              price: itemPrice,
-              variant: variant || {},
-            },
-          ],
+          products: [{
+            productId: prod._id,
+            quantity,
+            price: itemPrice,
+            variant: variant || {}
+          }],
           address,
           paymentMethod,
           shippingMethod,
@@ -275,8 +178,8 @@ router.post("/buy-now", async (req, res) => {
           shippingFee: fee,
           total_price: totalPrice,
           total: finalTotal,
-          status: "pending",
-          createdAt: new Date(),
+          status: 'pending',
+          createdAt: new Date()
         });
 
         await order.save({ session });
@@ -290,25 +193,26 @@ router.post("/buy-now", async (req, res) => {
     // 10. Trả về response
     res.status(200).json({
       success: true,
-      message: "Đặt hàng thành công",
+      message: 'Đặt hàng thành công',
       data: {
         orderId: order._id,
         totalAmount: finalTotal,
         voucherDiscount,
         shippingFee: fee,
         paymentInfo: {
-          acc: "123456789",
-          bank: "VCB",
+          acc: '123456789',
+          bank: 'VCB',
           amount: finalTotal,
           des: order._id.toString(),
-        },
-      },
+        }
+      }
     });
+
   } catch (err) {
-    console.error("❌ Buy now error:", err);
-    res.status(500).json({
+    console.error('❌ Buy now error:', err);
+    res.status(500).json({ 
       success: false,
-      error: err.message || "Lỗi server",
+      error: err.message || 'Lỗi server' 
     });
   }
 });
