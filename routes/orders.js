@@ -83,8 +83,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// 4) Checkout endpoint
+// 4) Checkout endpoint - FIXED VERSION
 router.post('/checkout', async (req, res) => {
   try {
     let {
@@ -179,22 +178,21 @@ router.post('/checkout', async (req, res) => {
         shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
         shippingFee: order.shippingFee || 0,
         des: order._id.toString(),
-      }); // THÊM return ở đây
+      });
     }
 
-    // Nếu không có products, xử lý như cũ (giỏ hàng)
+    // === CART CHECKOUT LOGIC - FIXED ===
     const cart = await Cart.findOne({ user_id })
       .populate('products.productId')
       .populate('products.comboId');
 
     if (!cart || !cart.products.length) {
-      return res.status(400).json({ error: 'Giỏ hàng trống' }); // THÊM return
+      return res.status(400).json({ error: 'Giỏ hàng trống' });
     }
 
     // Lọc sản phẩm được chọn
     let checkoutProducts = cart.products;
     if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
-      // Lấy mảng _id từ selectedProducts
       let selectedIds = [];
       if (selectedProducts.length > 0 && typeof selectedProducts[0] === 'object' && selectedProducts[0].cartItemId) {
         selectedIds = selectedProducts.map(p => p.cartItemId);
@@ -202,17 +200,13 @@ router.post('/checkout', async (req, res) => {
         selectedIds = selectedProducts.map(id => id.toString());
       }
 
-      // Lọc sản phẩm được chọn
-      checkoutProducts = cart.products;
-      if (selectedIds.length > 0) {
-        checkoutProducts = cart.products.filter(item =>
-          selectedIds.includes(item._id.toString())
-        );
-      }
+      checkoutProducts = cart.products.filter(item =>
+        selectedIds.includes(item._id.toString())
+      );
     }
 
     if (!checkoutProducts.length) {
-      return res.status(400).json({ error: 'Không có sản phẩm nào được chọn để thanh toán' }); // THÊM return
+      return res.status(400).json({ error: 'Không có sản phẩm nào được chọn để thanh toán' });
     }
 
     // Tính tổng tiền + kiểm tra tồn kho
@@ -226,7 +220,6 @@ router.post('/checkout', async (req, res) => {
         const itemPrice = prod.price + (item.variant?.priceDiff || 0);
         const itemTotal = itemPrice * item.quantity;
 
-        // Log chi tiết từng sản phẩm
         console.log('[CHECKOUT] Sản phẩm:', {
           name: prod.name,
           productId: prod._id,
@@ -239,7 +232,7 @@ router.post('/checkout', async (req, res) => {
         });
 
         if (prod.stock < item.quantity) {
-          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` }); // THÊM return
+          return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
         }
         totalPrice += itemTotal;
 
@@ -270,7 +263,6 @@ router.post('/checkout', async (req, res) => {
 
         const comboTotal = combo.price * item.quantity;
 
-        // Log chi tiết từng combo
         console.log('[CHECKOUT] Combo:', {
           comboId: combo._id,
           name: combo.name,
@@ -288,35 +280,62 @@ router.post('/checkout', async (req, res) => {
       }
     }
 
-    // Thêm dòng này để lấy voucher từ request
-    const voucher = req.body.selectedOrderVoucher || null;
-
-    // Sau khi tính totalPrice (giá gốc + biến thể)
-    let voucherDiscount = 0;
-    if (voucher && voucher.code) {
-      const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
-      if (voucherDoc) {
+    // === FIXED: Apply ORDER voucher ===
+    let orderVoucherDiscount = 0, orderVoucherId = null;
+    if (selectedOrderVoucher && selectedOrderVoucher.code) {
+      const voucherDoc = await Voucher.findOne({ code: selectedOrderVoucher.code.toUpperCase() });
+      if (voucherDoc && voucherDoc.apply_for === 'order') {
         const validation = validateVoucherConditions(voucherDoc, totalPrice);
         if (!validation.valid) {
           return res.status(400).json({ error: validation.message });
         }
-        voucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+        orderVoucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
+        orderVoucherId = voucherDoc._id;
       }
     }
 
-    // Phí ship
-    // Chỉ cần gán lại, không khai báo lại
-    if (typeof req.body.shippingFee === 'number') {
-      shippingFee = req.body.shippingFee;
+    // === FIXED: Apply SHIPPING voucher ===
+    let shippingVoucherDiscount = 0, shippingVoucherId = null;
+    if (selectedShippingVoucher && selectedShippingVoucher.code) {
+      const voucherDoc = await Voucher.findOne({ code: selectedShippingVoucher.code.toUpperCase() });
+      if (voucherDoc && voucherDoc.apply_for === 'shipping') {
+        const validation = validateVoucherConditions(voucherDoc, shippingFee);
+        if (!validation.valid) {
+          return res.status(400).json({ error: validation.message });
+        }
+        shippingVoucherDiscount = calculateDiscountAmount(voucherDoc, shippingFee);
+        shippingVoucherId = voucherDoc._id;
+        
+        // Decrease voucher quantity for shipping voucher
+        voucherDoc.quantity -= 1;
+        voucherDoc.used_count = (voucherDoc.used_count || 0) + 1;
+        voucherDoc.updated_at = new Date();
+        await voucherDoc.save();
+      }
     }
 
-    // Tổng cuối cùng
-    const finalTotal = Math.max(0, totalPrice + shippingFee - voucherDiscount);
+    // Decrease quantity for order voucher if used
+    if (orderVoucherId) {
+      await Voucher.updateOne(
+        { _id: orderVoucherId },
+        { 
+          $inc: { quantity: -1, used_count: 1 },
+          $set: { updated_at: new Date() }
+        }
+      );
+    }
+
+    // === FIXED: Calculate final amounts ===
+    const finalShippingFee = Math.max(0, (shippingFee || 0) - shippingVoucherDiscount);
+    const finalTotal = Math.max(0, totalPrice - orderVoucherDiscount + finalShippingFee);
 
     // Log thông tin chi tiết trước khi tạo đơn hàng
-    console.log('totalPrice:', totalPrice);
-    console.log('voucherDiscount:', voucherDiscount);
-    console.log('shippingFee:', shippingFee);
+    console.log('=== CHECKOUT CALCULATION ===');
+    console.log('totalPrice (before vouchers):', totalPrice);
+    console.log('orderVoucherDiscount:', orderVoucherDiscount);
+    console.log('shippingFee (original):', shippingFee);
+    console.log('shippingVoucherDiscount:', shippingVoucherDiscount);
+    console.log('finalShippingFee:', finalShippingFee);
     console.log('finalTotal:', finalTotal);
 
     // Tạo đơn hàng
@@ -327,18 +346,19 @@ router.post('/checkout', async (req, res) => {
       address,
       paymentMethod,
       shippingMethod,
-      voucher,
-      voucherDiscount,
-      shippingFee,
+      voucher: orderVoucherId, // Order voucher ID
+      voucherDiscount: orderVoucherDiscount,
+      shippingVoucher: shippingVoucherId, // Shipping voucher ID  
+      shippingVoucherDiscount: shippingVoucherDiscount,
+      shippingFee: finalShippingFee, // Already discounted
       total_price: totalPrice,
       total: finalTotal,
       status: 'pending'
     });
     await order.save();
 
-    // Xóa các sản phẩm đã checkout khỏi giỏ hàng dựa trên cartItemId
+    // Xóa các sản phẩm đã checkout khỏi giỏ hàng
     if (Array.isArray(selectedProducts) && selectedProducts.length > 0) {
-      // Thêm log để debug
       console.log('selectedProducts:', selectedProducts);
       console.log('cart.products:', cart.products.map(i => i._id.toString()));
 
@@ -354,7 +374,7 @@ router.post('/checkout', async (req, res) => {
       await cart.save();
     }
 
-    // Tự động hủy đơn hàng pending sau 10 phút nếu chưa thanh toán
+    // Auto cancel logic (keeping existing)
     setInterval(async () => {
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       try {
@@ -364,14 +384,14 @@ router.post('/checkout', async (req, res) => {
         });
 
         for (const order of expiredOrders) {
-          // Trả lại kho cho từng sản phẩm
+          // Return stock for products
           for (const p of order.products) {
             await Product.updateOne(
               { _id: p.productId },
               { $inc: { stock: p.quantity } }
             );
           }
-          // Trả lại kho cho combo nếu có
+          // Return stock for combos if any
           for (const c of order.combos || []) {
             const combo = await Combo.findById(c.comboId);
             if (combo) {
@@ -391,20 +411,22 @@ router.post('/checkout', async (req, res) => {
       } catch (err) {
         console.error('Auto cancel orders error:', err);
       }
-    }, 60 * 1000); // Kiểm tra mỗi phút
+    }, 60 * 1000);
 
-    // Trả về response
+    // === FIXED: Return proper response ===
     res.status(200).json({
       message: 'Đặt hàng thành công',
       orderId: order._id,
       amount: order.total,
+      originalAmount: totalPrice,
       voucherDiscount: order.voucherDiscount || 0,
       shippingVoucherDiscount: order.shippingVoucherDiscount || 0,
-      shippingFee: order.shippingFee || 0,
+      originalShippingFee: shippingFee || 0,
+      finalShippingFee: order.shippingFee || 0,
       des: order._id.toString(),
     });
   } catch (err) {
-    console.error(err);
+    console.error('❌ CHECKOUT ERROR:', err);
     res.status(500).json({ error: err.message });
   }
 });

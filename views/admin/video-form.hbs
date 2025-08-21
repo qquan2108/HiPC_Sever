@@ -824,19 +824,57 @@ async function loadCombos() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const combos = await response.json();
-    
+
+    // Render combo vào #existingCombos
+    const existingCombos = document.getElementById('existingCombos');
+    if (!combos || combos.length === 0) {
+      existingCombos.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-box-open"></i>
+          <p>Chưa có combo nào.</p>
+        </div>
+      `;
+    } else {
+      existingCombos.innerHTML = combos.map(combo => `
+        <div class="combo-summary" style="margin-bottom: 24px;">
+          <div style="display:flex;align-items:center;gap:16px;">
+            ${combo.image ? `<img src="${combo.image}" alt="${combo.name}" style="width:60px;height:60px;object-fit:cover;border-radius:12px;">` : ''}
+            <div>
+              <div style="font-size:1.1rem;font-weight:600;">${combo.name}</div>
+              <div style="color:#e74c3c;font-weight:600;">${formatPrice(combo.price)}</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <strong>Sản phẩm:</strong>
+            <ul style="margin:8px 0 0 18px;padding:0;">
+              ${combo.productIds && combo.productIds.length > 0
+                ? combo.productIds.map(p => `<li>${p.name || 'Sản phẩm'} (${formatPrice(p.price || 0)})</li>`).join('')
+                : '<li>Chưa có sản phẩm</li>'
+              }
+            </ul>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ==== Thêm đoạn này để cập nhật <select id="comboSelect"> ====
     const comboSelect = document.getElementById('comboSelect');
-    comboSelect.innerHTML = '<option value="">Chọn combo...</option>';
-    
-    combos.forEach(combo => {
-      const option = document.createElement('option');
-      option.value = combo._id;
-      option.textContent = `${combo.name} - ${formatPrice(combo.price)}`;
-      comboSelect.appendChild(option);
-    });
+    if (comboSelect) {
+      comboSelect.innerHTML = `<option value="">Chọn combo...</option>`;
+      combos.forEach(combo => {
+        comboSelect.innerHTML += `<option value="${combo._id}">${combo.name} - ${formatPrice(combo.price)}</option>`;
+      });
+    }
+    // ============================================================
   } catch (error) {
     console.error('Error loading combos:', error);
     showNotification('Không thể tải danh sách combo', 'error');
+    document.getElementById('existingCombos').innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>Lỗi tải combo.</p>
+      </div>
+    `;
   }
 }
 

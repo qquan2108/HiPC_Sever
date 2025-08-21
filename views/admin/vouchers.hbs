@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Voucher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            animation: fadeInUp 0.8s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .add-btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+        }
+
+        .add-btn:hover:before {
+            left: 100%;
+        }
+
+        .add-btn:active {
+            transform: translateY(0);
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: slideInUp 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 20px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+            position: relative;
+        }
+
+        th:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        th:hover:after {
+            width: 100%;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        tr {
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        tbody tr:hover {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            transform: scale(1.01);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: center;
+            display: inline-block;
+            min-width: 80px;
+            transition: all 0.3s ease;
+        }
+
+        .status-active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .status-expired {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            margin: 0 4px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .edit-btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .delete-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            transform: scale(0.8) translateY(20px);
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .floating-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .shape:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 20%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .shape:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
+        }
+
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+                border-radius: 16px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            table {
+                font-size: 0.875rem;
+            }
+            
+            th, td {
+                padding: 12px 8px;
+            }
+            
+            .modal {
+                padding: 24px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Quản lý Voucher</h1>
+            <button class="add-btn" onclick="openModal()">
+                <span>+ Thêm Voucher</span>
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table id="voucherTable">
+                <thead>
+                    <tr>
+                        <th>Mã Voucher</th>
+                        <th>Loại Giảm Giá</th>
+                        <th>Giá Trị</th>
+                        <th>Số Lượng</th>
+                        <th>Áp Dụng</th>
+                        <th>Ngày Bắt Đầu</th>
+                        <th>Ngày Kết Thúc</th>
+                        <th>Trạng Thái</th>
+                        <th>Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="voucherTableBody">
+                    <!-- Dữ liệu sẽ được render bằng JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="voucherModal" class="modal-overlay">
+        <div class="modal">
+            <h3 class="modal-title" id="modalTitle">Thêm Voucher Mới</h3>
+            <form id="voucherForm">
+                <input type="hidden" name="id" />
+                
+                <div class="form-group">
+                    <label class="form-label">Mã voucher</label>
+                    <input class="form-input" name="code" required placeholder="Nhập mã voucher" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Loại giảm giá</label>
+                    <select class="form-select" name="discount_type">
+                        <option value="percentage">Phần trăm (%)</option>
+                        <option value="fixed">Số tiền cố định</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Giá trị giảm</label>
+                    <input class="form-input" name="discount_value" type="number" min="1" required placeholder="Nhập giá trị" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Số lượng</label>
+                    <input class="form-input" name="quantity" type="number" min="1" required placeholder="Nhập số lượng" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Áp dụng cho</label>
+                    <select class="form-select" name="apply_for">
+                        <option value="order">Đơn hàng</option>
+                        <option value="shipping">Phí vận chuyển</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ngày bắt đầu</label>
+                    <input class="form-input" name="start_date" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ngày kết thúc</label>
+                    <input class="form-input" name="end_date" type="date" />
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu Voucher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+const API_URL = '/vouchers';
+const tableBody = document.getElementById('voucherTableBody');
+const modal = document.getElementById('voucherModal');
+const form = document.getElementById('voucherForm');
+let editingId = null;
+
+// Hiển thị modal
+function openModal(voucher = null) {
+    modal.classList.add('show');
+    form.reset();
+    editingId = null;
+    document.getElementById('modalTitle').innerText = voucher ? 'Sửa Voucher' : 'Thêm Voucher Mới';
+    if (voucher) {
+        editingId = voucher._id;
+        form.code.value = voucher.code;
+        form.discount_type.value = voucher.discount_type;
+        form.discount_value.value = voucher.discount_value;
+        form.quantity.value = voucher.quantity;
+        form.apply_for.value = voucher.apply_for;
+        form.start_date.value = voucher.start_date ? voucher.start_date.substr(0,10) : '';
+        form.end_date.value = voucher.end_date ? voucher.end_date.substr(0,10) : '';
+    }
+}
+function closeModal() {
+    modal.classList.remove('show');
+}
+
+// Định dạng ngày
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('vi-VN');
+}
+
+// Định dạng giá trị giảm giá
+function formatDiscount(v) {
+    if (v.discount_type === 'percentage') return v.discount_value + '%';
+    return Number(v.discount_value).toLocaleString('vi-VN') + 'đ';
+}
+
+// Định dạng trạng thái
+function formatStatus(status) {
+    if (status === 'active') return '<span class="status-badge status-active">Hoạt động</span>';
+    if (status === 'expired') return '<span class="status-badge status-expired">Hết hạn</span>';
+    if (status === 'not_started') return '<span class="status-badge status-pending">Chưa bắt đầu</span>';
+    if (status === 'out_of_stock') return '<span class="status-badge status-expired">Hết lượt</span>';
+    return status;
+}
+
+// Render bảng voucher
+function renderTable(vouchers) {
+    tableBody.innerHTML = '';
+    if (!vouchers.length) {
+        tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Không có voucher nào</td></tr>';
+        return;
+    }
+    vouchers.forEach(v => {
+        tableBody.innerHTML += `
+        <tr>
+            <td><strong>${v.code}</strong></td>
+            <td>${v.discount_type === 'percentage' ? 'Phần trăm' : 'Số tiền'}</td>
+            <td>${formatDiscount(v)}</td>
+            <td>${v.quantity}</td>
+            <td>${v.apply_for === 'order' ? 'Đơn hàng' : 'Phí vận chuyển'}</td>
+            <td>${formatDate(v.start_date)}</td>
+            <td>${formatDate(v.end_date)}</td>
+            <td>${formatStatus(v.status)}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editVoucher('${v._id}')">Sửa</button>
+                <button class="action-btn delete-btn" onclick="deleteVoucher('${v._id}')">Xóa</button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+// Lấy danh sách voucher
+function fetchVouchers() {
+    fetch(API_URL)
+        .then(res => res.json())
+        .then(data => renderTable(data.vouchers || []));
+}
+
+// Sửa voucher
+window.editVoucher = function(id) {
+    fetch(`${API_URL}/${id}`)
+        .then(res => res.json())
+        .then(voucher => openModal(voucher));
+};
+
+// Xóa voucher
+window.deleteVoucher = function(id) {
+    if (confirm('Bạn chắc chắn muốn xóa voucher này?')) {
+        fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(() => fetchVouchers());
+    }
+};
+
+// Thêm/sửa voucher
+form.onsubmit = function(e) {
+    e.preventDefault();
+    const data = {
+        code: form.code.value,
+        discount_type: form.discount_type.value,
+        discount_value: form.discount_value.value,
+        quantity: form.quantity.value,
+        apply_for: form.apply_for.value,
+        start_date: form.start_date.value,
+        end_date: form.end_date.value
+    };
+    let url = API_URL, method = 'POST';
+    if (editingId) {
+        url += '/' + editingId;
+        method = 'PUT';
+    }
+    fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.error) {
+            alert(resp.error);
+        } else {
+            closeModal();
+            fetchVouchers();
+        }
+    });
+};
+
+// Đóng modal khi click ngoài modal
+modal.onclick = function(e) {
+    if (e.target === modal) closeModal();
+};
+
+// Khởi tạo
+fetchVouchers();
+</script>
+</body>
+</html>

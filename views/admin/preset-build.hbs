@@ -3,563 +3,762 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Preset Build</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Preset Build</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .card-header {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            color: white;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .preset-category {
-            font-size: 0.8rem;
-            padding: 2px 8px;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        /* Header Section */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Modern Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
             border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
-        .category-gaming { background-color: #dc3545; color: white; }
-        .category-work { background-color: #28a745; color: white; }
-        .category-budget { background-color: #ffc107; color: black; }
-        .product-item {
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.6);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-outline:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        /* Search Bar */
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
-        .product-item:hover {
-            background-color: #f8f9fa;
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
         }
-        .price-display {
-            font-weight: bold;
-            color: #007bff;
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1.1rem;
         }
-        .add-product-section {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-        }
-        .btn-action {
-            margin: 0 2px;
-        }
-        .preset-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
+
+        /* Stats Cards */
+        .stats-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.5rem;
             text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: slideInUp 0.6s ease-out 0.2s both;
         }
-        .search-filter-section {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .modal-header {
-            background: linear-gradient(45deg, #007bff, #0056b3);
+
+        .stats-label {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Table Container */
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInUp 0.6s ease-out 0.4s both;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 1.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            transform: scale(1.005);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .table tbody td {
+            padding: 1.25rem 1rem;
+            vertical-align: middle;
+        }
+
+        /* Product Image */
+        .product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .product-image:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Price Badge */
+        .price-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #48bb78, #38a169);
             color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
         }
-        .component-count {
-            background-color: #6c757d;
+
+        /* Stock Badge */
+        .stock-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .stock-high {
+            background: rgba(72, 187, 120, 0.2);
+            color: #22543d;
+        }
+
+        .stock-medium {
+            background: rgba(237, 137, 54, 0.2);
+            color: #c05621;
+        }
+
+        .stock-low {
+            background: rgba(245, 101, 101, 0.2);
+            color: #c53030;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-action {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .btn-edit:hover {
+            background: #3b82f6;
             color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-top-color: #667eea;
             border-radius: 50%;
-            padding: 2px 8px;
-            font-size: 0.8rem;
-            margin-left: 5px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Animations */
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            transform: translateY(50px) scale(0.9);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            color: #1a202c;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                max-width: none;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .table {
+                min-width: 600px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid mt-4">
-        <!-- Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h2><i class="fas fa-desktop me-2"></i>Quản lý Preset Build</h2>
-                    <div>
-                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createPresetModal">
-                            <i class="fas fa-plus me-1"></i>Tạo Preset Mới
-                        </button>
-                        <button class="btn btn-info" onclick="exportPresets()">
-                            <i class="fas fa-download me-1"></i>Xuất Dữ Liệu
-                        </button>
-                    </div>
-                </div>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1><i class="fas fa-cubes"></i> Quản Lý Preset Build</h1>
+            <p class="header-subtitle">Tạo, chỉnh sửa, xóa và gán combo sản phẩm cho các cấu hình preset build</p>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openPresetModal()">
+                    <i class="fas fa-plus"></i> Thêm Preset
+                </button>
             </div>
         </div>
 
-        <!-- Statistics -->
-        <div class="preset-stats" id="statsContainer">
-            <div class="stat-card">
-                <h4 id="totalPresets">0</h4>
-                <p>Tổng Preset</p>
-            </div>
-            <div class="stat-card">
-                <h4 id="totalProducts">0</h4>
-                <p>Tổng Sản Phẩm</p>
-            </div>
-            <div class="stat-card">
-                <h4 id="avgPrice">0₫</h4>
-                <p>Giá TB/Preset</p>
-            </div>
-            <div class="stat-card">
-                <h4 id="mostPopular">N/A</h4>
-                <p>Loại Phổ Biến</p>
-            </div>
+        <!-- Preset Table -->
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ảnh đại diện</th> <!-- Thêm cột này -->
+                        <th>Tên Preset</th>
+                        <th>Danh mục</th>
+                        <th>Số sản phẩm</th>
+                        <th>Giá ước tính</th>
+                        <th>Combo gán</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="presetTable">
+                    <!-- Preset rows sẽ được render bằng JS -->
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <!-- Search and Filter -->
-        <div class="search-filter-section">
-            <div class="row">
-                <div class="col-md-4">
-                    <input type="text" class="form-control" id="searchInput" placeholder="Tìm kiếm preset...">
+    <!-- Modal Thêm/Sửa Preset -->
+    <div class="modal-overlay" id="presetModal">
+        <div class="modal">
+            <h2><i class="fas fa-plus-circle"></i> Thêm Preset Build</h2>
+            <form id="addPresetForm">
+                <div class="form-group">
+                    <label class="form-label">Tên preset</label>
+                    <input type="text" class="form-input" id="presetName" required>
                 </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="categoryFilter">
-                        <option value="">Tất cả danh mục</option>
-                        <option value="gaming">Gaming</option>
-                        <option value="work">Workstation</option>
-                        <option value="budget">Budget</option>
-                    </select>
+                <div class="form-group">
+                    <label class="form-label">Danh mục</label>
+                    <input type="text" class="form-input" id="presetCategory" required>
                 </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="priceFilter">
-                        <option value="">Tất cả mức giá</option>
-                        <option value="0-10000000">Dưới 10 triệu</option>
-                        <option value="10000000-25000000">10-25 triệu</option>
-                        <option value="25000000-50000000">25-50 triệu</option>
-                        <option value="50000000-999999999">Trên 50 triệu</option>
-                    </select>
+                <div class="form-group">
+                    <label class="form-label">Mô tả</label>
+                    <textarea class="form-input" id="presetDesc"></textarea>
                 </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary w-100" onclick="applyFilters()">
-                        <i class="fas fa-filter me-1"></i>Lọc
-                    </button>
+                <div class="form-group">
+                    <label class="form-label">Ảnh đại diện (URL)</label>
+                    <input type="text" class="form-input" id="presetImage" placeholder="Nhập URL ảnh hoặc upload">
                 </div>
-            </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-outline" onclick="closePresetModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu Preset</button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <!-- Preset Cards -->
-        <div id="presetBuilds" class="row"></div>
-
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="text-center" style="display: none;">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Đang tải...</span>
+    <!-- Modal Gán Combo -->
+    <div class="modal-overlay" id="comboAssignModal">
+        <div class="modal">
+            <h2><i class="fas fa-layer-group"></i> Gán Combo vào Preset</h2>
+            <select id="comboSelect" class="form-select" style="margin-bottom: 1rem;">
+                <option value="">-- Chọn combo --</option>
+            </select>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="assignComboBtn" class="btn btn-primary">Gán combo</button>
+                <button type="button" class="btn btn-outline" onclick="closeComboAssignModal()">Đóng</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal tạo preset mới -->
-    <div class="modal fade" id="createPresetModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Tạo Preset Mới</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="createPresetForm">
-                        <div class="mb-3">
-                            <label for="presetName" class="form-label">Tên Preset *</label>
-                            <input type="text" class="form-control" id="presetName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="presetDescription" class="form-label">Mô tả</label>
-                            <textarea class="form-control" id="presetDescription" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="presetCategory" class="form-label">Danh mục *</label>
-                            <select class="form-select" id="presetCategory" required>
-                                <option value="">Chọn danh mục</option>
-                                <option value="gaming">Gaming</option>
-                                <option value="work">Workstation</option>
-                                <option value="budget">Budget</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success" onclick="createNewPreset()">Tạo Preset</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
 
-    <!-- Modal thêm sản phẩm -->
-    <div class="modal fade" id="addProductModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm Sản Phẩm vào Preset</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="productSearch" class="form-label">Tìm kiếm sản phẩm</label>
-                        <input type="text" class="form-control" id="productSearch" placeholder="Nhập tên sản phẩm...">
-                    </div>
-                    <div class="mb-3">
-                        <label for="productId" class="form-label">ID Sản phẩm *</label>
-                        <input type="text" class="form-control" id="productId" required placeholder="Nhập ID sản phẩm">
-                    </div>
-                    <div class="mb-3">
-                        <label for="productQuantity" class="form-label">Số lượng</label>
-                        <input type="number" class="form-control" id="productQuantity" value="1" min="1" max="10">
-                    </div>
-                    <div class="alert alert-info">
-                        <strong>Lưu ý:</strong> Hãy đảm bảo ID sản phẩm chính xác. Bạn có thể tìm ID trong trang quản lý sản phẩm.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" onclick="addProductToPreset()">Thêm Sản Phẩm</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentPresets = [];
-        let currentPresetId = '';
+        let presets = [];
+        let combos = [];
+        let currentPresetId = null;
 
-        // Fetch và render presets
-        async function fetchPresets() {
-            document.getElementById('loadingSpinner').style.display = 'block';
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPresets();
+            loadCombos();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('addPresetForm').onsubmit = addPreset;
+            document.getElementById('assignComboBtn').onclick = handleAssignCombo;
+        }
+
+        // Load preset list
+        async function loadPresets() {
+            const res = await fetch('/pcbuild/presets');
+            presets = await res.json();
+            renderPresetTable();
+        }
+
+        // Load combo list
+        async function loadCombos() {
             try {
-                const res = await fetch('/pcbuild/presets');
-                const presets = await res.json();
-                currentPresets = presets;
-                renderPresets(presets);
-                updateStatistics(presets);
+                const res = await fetch('/combo');
+                combos = await res.json();
+                renderComboSelect();
             } catch (error) {
-                console.error('Error fetching presets:', error);
-                showToast('Có lỗi khi tải dữ liệu', 'error');
-            } finally {
-                document.getElementById('loadingSpinner').style.display = 'none';
+                showToast('Không thể tải danh sách combo', 'error');
             }
         }
 
-        // Render presets
-        function renderPresets(presets) {
-            const container = document.getElementById('presetBuilds');
-            container.innerHTML = '';
-
+        // Render preset table
+        function renderPresetTable() {
+            const tbody = document.getElementById('presetTable');
+            tbody.innerHTML = '';
             if (!presets.length) {
-                container.innerHTML = `
-                    <div class="col-12">
-                        <div class="text-center py-5">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">Chưa có preset build nào</h4>
-                            <p class="text-muted">Tạo preset đầu tiên để bắt đầu</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPresetModal">
-                                <i class="fas fa-plus me-1"></i>Tạo Preset Mới
-                            </button>
-                        </div>
-                    </div>
-                `;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Chưa có preset nào</td></tr>`;
                 return;
             }
-
             presets.forEach(preset => {
-                const col = document.createElement('div');
-                col.className = 'col-lg-6 col-xl-4 mb-4';
-                col.innerHTML = `
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="mb-0">${preset.name}</h5>
-                                <small>
-                                    <span class="preset-category category-${preset.category}">${getCategoryDisplayName(preset.category)}</span>
-                                    <span class="component-count">${preset.components.length}</span>
-                                </small>
-                            </div>
-                            <div>
-                                <button class="btn btn-danger btn-sm btn-action" onclick="deletePreset('${preset.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted small mb-3">${preset.description || 'Không có mô tả'}</p>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="price-display">${formatPrice(preset.estimatedPrice)}</span>
-                                <small class="text-muted">${preset.components.length} sản phẩm</small>
-                            </div>
-                            <div class="components-list mb-3" style="max-height: 200px; overflow-y: auto;">
-                                ${preset.components.length > 0 ? 
-                                    preset.components.map(c => `
-                                        <div class="product-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                                            <div class="flex-grow-1">
-                                                <div class="fw-bold">${c.name || c.productId}</div>
-                                                <small class="text-muted">Số lượng: ${c.quantity} • ${formatPrice(c.price ? c.price * c.quantity : 0)}</small>
-                                            </div>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="removeProduct('${preset.id}','${c.productId}')" title="Xóa sản phẩm">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    `).join('') 
-                                    : '<p class="text-muted text-center py-3">Chưa có sản phẩm nào</p>'
-                                }
-                            </div>
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary btn-sm" onclick="openAddProductModal('${preset.id}')">
-                                    <i class="fas fa-plus me-1"></i>Thêm sản phẩm
-                                </button>
-                                <button class="btn btn-success btn-sm" onclick="createBuildFromPreset('${preset.id}')">
-                                    <i class="fas fa-rocket me-1"></i>Tạo Build từ Preset
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        ${preset.image
+                            ? `<img src="${preset.image}" alt="Ảnh" style="width:48px;height:48px;object-fit:cover;border-radius:8px;">`
+                            : '<span style="color:#aaa;">(Không có)</span>'}
+                    </td>
+                    <td>${preset.name}</td>
+                    <td>${preset.category}</td>
+                    <td>${preset.components ? preset.components.length : 0}</td>
+                    <td>${formatCurrency(preset.estimatedPrice || 0)}</td>
+                    <td>
+                        ${(preset.comboNames && preset.comboNames.length > 0)
+                            ? preset.comboNames.join(', ')
+                            : 'Chưa có combo'}
+                    </td>
+                    <td>
+                        <button class="btn btn-edit" onclick="openEditPreset('${preset._id}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-delete" onclick="deletePreset('${preset._id}')"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-secondary" onclick="openAssignCombo('${preset._id}')"><i class="fas fa-layer-group"></i> Gán combo</button>
+                    </td>
                 `;
-                container.appendChild(col);
+                tbody.appendChild(tr);
             });
         }
 
-        // Cập nhật thống kê
-        function updateStatistics(presets) {
-            const totalPresets = presets.length;
-            const totalProducts = presets.reduce((sum, p) => sum + p.components.length, 0);
-            const avgPrice = totalPresets > 0 ? presets.reduce((sum, p) => sum + p.estimatedPrice, 0) / totalPresets : 0;
-            
-            const categoryCount = {};
-            presets.forEach(p => {
-                categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
-            });
-            const mostPopular = Object.keys(categoryCount).reduce((a, b) => categoryCount[a] > categoryCount[b] ? a : b, 'N/A');
-
-            document.getElementById('totalPresets').textContent = totalPresets;
-            document.getElementById('totalProducts').textContent = totalProducts;
-            document.getElementById('avgPrice').textContent = formatPrice(avgPrice);
-            document.getElementById('mostPopular').textContent = getCategoryDisplayName(mostPopular);
-        }
-
-        // Mở modal thêm sản phẩm
-        function openAddProductModal(presetId) {
-            currentPresetId = presetId;
-            document.getElementById('productId').value = '';
-            document.getElementById('productQuantity').value = '1';
-            new bootstrap.Modal(document.getElementById('addProductModal')).show();
-        }
-
-        // Thêm sản phẩm vào preset
-        async function addProductToPreset() {
-            const productId = document.getElementById('productId').value.trim();
-            const quantity = parseInt(document.getElementById('productQuantity').value, 10) || 1;
-
-            if (!productId) {
-                showToast('Vui lòng nhập ID sản phẩm', 'error');
-                return;
-            }
-
-            try {
-                const res = await fetch(`/pcbuild/presets/${currentPresetId}/products`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId, quantity })
-                });
-
-                const data = await res.json();
-                if (res.ok) {
-                    showToast('Đã thêm sản phẩm thành công!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
-                    fetchPresets();
-                } else {
-                    showToast(data.error || 'Có lỗi xảy ra', 'error');
-                }
-            } catch (error) {
-                showToast('Có lỗi khi thêm sản phẩm', 'error');
-                console.error(error);
-            }
-        }
-
-        // Xóa sản phẩm khỏi preset
-        async function removeProduct(presetId, productId) {
-            if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi preset?')) return;
-
-            try {
-                const res = await fetch(`/pcbuild/presets/${presetId}/products/${productId}`, { 
-                    method: 'DELETE' 
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    showToast('Đã xóa sản phẩm khỏi preset!', 'success');
-                    fetchPresets();
-                } else {
-                    showToast(data.error || 'Có lỗi xảy ra', 'error');
-                }
-            } catch (error) {
-                showToast('Có lỗi khi xóa sản phẩm', 'error');
-                console.error(error);
-            }
-        }
-
-        // Tạo preset mới
-        async function createNewPreset() {
-            const name = document.getElementById('presetName').value.trim();
-            const description = document.getElementById('presetDescription').value.trim();
+        // Thêm preset
+        async function addPreset(e) {
+            e.preventDefault();
+            const name = document.getElementById('presetName').value;
             const category = document.getElementById('presetCategory').value;
-
-            if (!name || !category) {
-                showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
-                return;
-            }
-
-            try {
-                const res = await fetch('/pcbuild/presets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, description, category })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast('Đã tạo preset mới!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('createPresetModal')).hide();
-                    fetchPresets();
-                } else {
-                    showToast(data.error || 'Có lỗi xảy ra', 'error');
-                }
-            } catch (error) {
-                showToast('Có lỗi khi tạo preset', 'error');
-                console.error(error);
+            const description = document.getElementById('presetDesc').value;
+            const image = document.getElementById('presetImage').value; // lấy ảnh
+            const res = await fetch('/pcbuild/presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, category, description, image })
+            });
+            if (res.ok) {
+                closePresetModal();
+                loadPresets();
+                showToast('Đã thêm preset mới!', 'success');
             }
         }
 
         // Xóa preset
-        async function deletePreset(presetId) {
-            if (!confirm('Bạn có chắc muốn xóa preset này? Hành động này không thể hoàn tác.')) return;
-
-            try {
-                const res = await fetch(`/pcbuild/presets/${presetId}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast('Đã xóa preset thành công!', 'success');
-                    fetchPresets();
-                } else {
-                    showToast(data.error || 'Có lỗi xảy ra', 'error');
-                }
-            } catch (error) {
-                showToast('Có lỗi khi xóa preset', 'error');
-                console.error(error);
-            }
+        async function deletePreset(id) {
+            if (!confirm('Xóa preset này?')) return;
+            await fetch(`/pcbuild/presets/${id}`, { method: 'DELETE' });
+            loadPresets();
+            showToast('Đã xóa preset!', 'success');
         }
 
-        // Tạo build từ preset
-        async function createBuildFromPreset(presetId) {
-            const userId = prompt('Nhập User ID để tạo build:');
-            if (!userId) return showToast('Bạn cần nhập User ID', 'error');
-            try {
-                const res = await fetch(`/pcbuild/presets/${presetId}/create-build`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast('Đã tạo build thành công!', 'success');
-                } else {
-                    showToast(data.error || 'Có lỗi xảy ra', 'error');
-                }
-            } catch (error) {
-                showToast('Có lỗi khi tạo build', 'error');
-                console.error(error);
-            }
+        // Sửa preset (tùy chọn, bạn có thể mở modal và điền lại thông tin)
+
+        // Gán combo vào preset
+        function openAssignCombo(presetId) {
+            currentPresetId = presetId;
+            document.getElementById('comboAssignModal').classList.add('active');
+            renderComboSelect();
         }
 
-        // Áp dụng bộ lọc
-        function applyFilters() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const category = document.getElementById('categoryFilter').value;
-            const priceRange = document.getElementById('priceFilter').value;
-
-            let filtered = currentPresets.filter(preset => {
-                const matchSearch = !search || preset.name.toLowerCase().includes(search) || 
-                                  (preset.description && preset.description.toLowerCase().includes(search));
-                const matchCategory = !category || preset.category === category;
-                
-                let matchPrice = true;
-                if (priceRange) {
-                    const [min, max] = priceRange.split('-').map(Number);
-                    matchPrice = preset.estimatedPrice >= min && preset.estimatedPrice <= max;
-                }
-
-                return matchSearch && matchCategory && matchPrice;
+        function renderComboSelect() {
+            const select = document.getElementById('comboSelect');
+            select.innerHTML = '<option value="">-- Chọn combo --</option>';
+            combos.forEach(combo => {
+                select.innerHTML += `<option value="${combo._id}">${combo.name}</option>`;
             });
-
-            renderPresets(filtered);
         }
 
-        // Xuất dữ liệu
-        function exportPresets() {
-            const dataStr = JSON.stringify(currentPresets, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `preset-builds-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            URL.revokeObjectURL(url);
-            showToast('Đã xuất dữ liệu thành công!', 'success');
+        // Khi chọn combo, thêm tất cả sản phẩm vào preset
+        async function handleAssignCombo() {
+            const comboId = document.getElementById('comboSelect').value;
+            if (!comboId || !currentPresetId) return;
+            await fetch(`/pcbuild/presets/${currentPresetId}/combo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comboId })
+            });
+            closeComboAssignModal();
+            loadPresets();
+            showToast('Đã gán combo vào preset!', 'success');
         }
 
-        // Utility functions
-        function formatPrice(price) {
+        // Modal functions
+        function openPresetModal() {
+            document.getElementById('presetModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePresetModal() {
+            document.getElementById('presetModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        function closeComboAssignModal() {
+            document.getElementById('comboAssignModal').classList.remove('active');
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
             return new Intl.NumberFormat('vi-VN', {
                 style: 'currency',
                 currency: 'VND'
-            }).format(price || 0);
+            }).format(amount);
         }
 
-        function getCategoryDisplayName(category) {
-            const names = {
-                'gaming': 'Gaming',
-                'work': 'Workstation', 
-                'budget': 'Budget',
-                'N/A': 'N/A'
-            };
-            return names[category] || category;
-        }
-
-        function showToast(message, type = 'info') {
-            // Tạo toast notification đơn giản
-            const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
-            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
             toast.textContent = message;
-            
-            document.body.appendChild(toast);
+            toast.className = `toast toast-${type} show`;
             setTimeout(() => {
-                toast.remove();
+                toast.classList.remove('show');
             }, 3000);
         }
 
-        // Event listeners
-        document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
-        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
-        document.getElementById('priceFilter').addEventListener('change', applyFilters);
+        // Đóng modal khi click ngoài
+        document.getElementById('presetModal').addEventListener('click', function(e) {
+            if (e.target === this) closePresetModal();
+        });
+        document.getElementById('comboAssignModal').addEventListener('click', function(e) {
+            if (e.target === this) closeComboAssignModal();
+        });
 
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Khởi tạo
-        document.addEventListener('DOMContentLoaded', function() {
-            fetchPresets();
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePresetModal();
+                closeComboAssignModal();
+            }
         });
     </script>
+    <style>
+        /* Bạn có thể giữ lại style cũ hoặc chỉnh lại cho phù hợp */
+    </style>
 </body>
 </html>

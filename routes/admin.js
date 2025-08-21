@@ -253,4 +253,10 @@ router.get('/manage-builds', (req, res) => {
 router.get('/preset-build', (req, res) => {
   res.render('admin/preset-build', { layout: 'admin/layout' });
 });
+
+// Quản lý voucher
+router.get('/vouchers', (req, res) => {
+  res.render('admin/vouchers', { layout: 'admin/layout' });
+});
+
 module.exports = router;
