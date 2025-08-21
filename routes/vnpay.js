@@ -32,6 +32,22 @@ function toQueryString(params, encode = true) {
     .join("&");
 }
 
+function sortObject(obj) {
+  let sorted = {};
+  let str = [];
+  let key;
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      str.push(encodeURIComponent(key));
+    }
+  }
+  str.sort();
+  for (key = 0; key < str.length; key++) {
+    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+  }
+  return sorted;
+}
+
 // Build VNPAY payment URL per VNPAY specification
 function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const tmnCode = process.env.VNPAY_TMNCODE;
@@ -46,7 +62,7 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
   const createDate = vnTime.toISOString().replace(/[-:T]/g, "").slice(0, 14);
 
-  const vnp_Params = {
+  var vnp_Params = {
     vnp_Version: "2.1.0",
     vnp_Command: "pay",
     vnp_TmnCode: tmnCode,
@@ -61,6 +77,9 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
     vnp_CreateDate: createDate,
   };
 
+  vnp_Params = sortObject(vnp_Params);
+
+  console.log("parram: ", vnp_Params);
   // // Compute HMAC SHA512 on unencoded query string
   // const rawData = toQueryString(vnp_Params, false);
   // const secureHash = crypto
@@ -71,7 +90,7 @@ function buildVnpayUrl(orderId, amount, orderInfo, rawIp) {
   var signData = querystring.stringify(vnp_Params, { encode: false });
   var crypto = require("crypto");
   var hmac = crypto.createHmac("sha512", secret);
-  var signed = hmac.update(new Buffer(signData, "utf-8")).digest("hex");
+  var signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
   vnp_Params["vnp_SecureHash"] = signed;
   vnpUrl += "?" + querystring.stringify(vnp_Params, { encode: false });
 
@@ -141,30 +160,48 @@ function verifyVnpaySignature(query) {
 }
 
 // GET /vnpay/ipn – Instant Payment Notification
-router.get("/ipn", async (req, res) => {
+router.get("/vnpay_ipn", async (req, res) => {
   console.log("[VNPAY][IPN] incoming params:", req.query);
-  const { valid, calcHash, secureHash, rawData, data } = verifyVnpaySignature(
-    req.query
-  );
+  const { valid, data } = verifyVnpaySignature(req.query);
   if (!valid) {
-    console.error("[VNPAY][IPN] Signature mismatch!", {
-      secureHash,
-      calcHash,
-      rawData,
-      data,
-    });
-    return res.status(200).send("97");
+    console.error("[VNPAY][IPN] Signature mismatch");
+    return res.status(200).json({ RspCode: "97", Message: "Checksum failed" });
   }
 
-  const { vnp_TxnRef, vnp_ResponseCode } = data;
-  const status = vnp_ResponseCode === "00" ? "paid" : "payment_failed";
+  const orderId = data.vnp_TxnRef;
+  const rspCode = data.vnp_ResponseCode;
+  const amount = Number(data.vnp_Amount) / 100;
+
   try {
-    await Order.findByIdAndUpdate(vnp_TxnRef, { status });
-    console.log("[VNPAY][IPN] Order %s updated to %s", vnp_TxnRef, status);
-    res.status(200).send(vnp_ResponseCode === "00" ? "00" : "01");
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res
+        .status(200)
+        .json({ RspCode: "01", Message: "Order not found" });
+    }
+
+    if (order.total !== amount) {
+      return res.status(200).json({ RspCode: "04", Message: "Amount invalid" });
+    }
+
+    if (order.paymentStatus !== "unpaid") {
+      return res.status(200).json({
+        RspCode: "02",
+        Message: "This order has been updated to the payment status",
+      });
+    }
+
+    order.paymentStatus = rspCode === "00" ? "paid" : "failed";
+    await order.save();
+    console.log(
+      "[VNPAY][IPN] Order %s paymentStatus -> %s",
+      orderId,
+      order.paymentStatus
+    );
+    return res.status(200).json({ RspCode: "00", Message: "Success" });
   } catch (err) {
     console.error("[VNPAY][IPN] Error updating order:", err);
-    res.status(200).send("99");
+    return res.status(200).json({ RspCode: "99", Message: "Unknown error" });
   }
 });
 
@@ -188,12 +225,12 @@ router.get("/return", async (req, res) => {
     const { vnp_TxnRef, vnp_ResponseCode } = data;
     const success = vnp_ResponseCode === "00";
     await Order.findByIdAndUpdate(vnp_TxnRef, {
-      status: success ? "paid" : "payment_failed",
+      paymentStatus: success ? "paid" : "failed",
     });
     console.log(
       "[VNPAY][RETURN] Order %s set to %s",
       vnp_TxnRef,
-      success ? "paid" : "payment_failed"
+      success ? "paid" : "failed"
     );
 
     const FE = process.env.FRONTEND_URL;
@@ -214,9 +251,9 @@ router.get("/return", async (req, res) => {
 // POST /vnpay/verify_payment – Front-end callback
 router.post("/verify_payment", async (req, res) => {
   const { orderId, code } = req.body;
-  const status = code === "00" ? "paid" : "payment_failed";
+  const  paymentStatus = code === "00" ? "paid" : "failed";
   try {
-    await Order.findByIdAndUpdate(orderId, { status });
+    await Order.findByIdAndUpdate(orderId, { paymentStatus });
     res.json({ success: code === "00" });
   } catch (err) {
     console.error("[VNPAY][VERIFY] Error:", err);
