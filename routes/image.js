@@ -2,10 +2,13 @@ const express = require('express');
 const router = express.Router();
 const Image = require('../models/Image');
 
-// GET all images
+// GET all images (optionally filtered by product or category)
 router.get('/', async (req, res) => {
   try {
-    const items = await Image.find().populate('product_id').populate('category_id');
+    const filter = {};
+    if (req.query.product_id) filter.product_id = req.query.product_id;
+    if (req.query.category_id) filter.category_id = req.query.category_id;
+    const items = await Image.find(filter).populate('product_id').populate('category_id');
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
