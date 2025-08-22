@@ -10,16 +10,16 @@ function normalizeVariants(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
     .map(group => {
-      // accept both `key` and older `name` field for group name
       const key = group.key || group.name;
       if (!key) return null;
 
-      // options may be provided either as full objects or simple string arrays
       let opts = [];
       if (Array.isArray(group.options)) {
         opts = group.options.map(opt => ({
           label: opt.label ?? opt,
-          priceDiff: opt.priceDiff ?? 0
+          priceDiff: opt.priceDiff !== undefined && opt.priceDiff !== null
+            ? Number(opt.priceDiff)
+            : 0
         }));
       } else if (Array.isArray(group.values)) {
         opts = group.values.map(v => ({ label: v, priceDiff: 0 }));
