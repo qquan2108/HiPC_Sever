@@ -212,58 +212,67 @@ async function initProductForm() {
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  function addCustomVariantRow(name = '', values = '') {
-    const div = document.createElement('div');
-    div.className = 'spec-item variant-custom';
-    div.innerHTML = `
-      <input type="text" class="form-control variant-name" placeholder="Tên biến thể" value="${name}">
-      <input type="text" class="form-control variant-values" placeholder="Giá trị (cách nhau bằng dấu phẩy)" value="${values}">
-      <button type="button" class="btn btn-sm btn-danger remove-variant">&times;</button>`;
-
-    div.querySelector('.remove-variant').addEventListener('click', () => div.remove());
-    variantsContainer.appendChild(div);
+  function addVariantOption(container, label = '', priceDiff = 0) {
+    const row = document.createElement('div');
+    row.className = 'variant-option';
+    row.innerHTML = `
+      <input type="text" class="form-control variant-option-label" placeholder="Tên lựa chọn" value="${label}">
+      <input type="number" class="form-control variant-option-price" placeholder="Chênh lệch giá" value="${priceDiff}">
+      <button type="button" class="btn btn-sm btn-danger remove-option">&times;</button>`;
+    row.querySelector('.remove-option').addEventListener('click', () => row.remove());
+    container.appendChild(row);
   }
 
-  function renderVariantOptions(list, existing = {}) {
-    console.log('Rendering variant options:', list, existing);
+  function addVariantGroup(name = '', options = []) {
+    const group = document.createElement('div');
+    group.className = 'spec-item variant-group';
+    group.innerHTML = `
+      <input type="text" class="form-control variant-group-name" placeholder="Tên biến thể" value="${name}">
+      <div class="variant-options"></div>
+      <button type="button" class="btn btn-sm btn-secondary add-option">Thêm lựa chọn</button>
+      <button type="button" class="btn btn-sm btn-danger remove-group">&times;</button>`;
+
+    const optionsContainer = group.querySelector('.variant-options');
+    const addOptionBtn = group.querySelector('.add-option');
+    const removeGroupBtn = group.querySelector('.remove-group');
+
+    addOptionBtn.addEventListener('click', () => addVariantOption(optionsContainer));
+    removeGroupBtn.addEventListener('click', () => group.remove());
+
+    options.forEach(opt => addVariantOption(optionsContainer, opt.label || opt, opt.priceDiff || 0));
+
+    variantsContainer.appendChild(group);
+  }
+
+  function renderVariantOptions(templateList = [], existing = []) {
+    console.log('Rendering variant options:', templateList, existing);
     variantsContainer.innerHTML = '';
     const used = new Set();
 
-    list.forEach(opt => {
-      const div = document.createElement('div');
-      div.className = 'spec-item';
-      const label = document.createElement('label');
-      label.textContent = opt.name;
-      const select = document.createElement('select');
-      select.multiple = true;
-      select.className = 'form-select';
-      select.dataset.name = opt.name;
+    templateList.forEach(opt => {
+      const key = opt.name || opt.key;
+      const match = Array.isArray(existing)
+        ? existing.find(g => (g.key || g.name) === key)
+        : null;
+      const options = match
+        ? (match.options || []).map(o => ({ label: o.label || o, priceDiff: o.priceDiff || 0 }))
+        : (opt.options || []).map(o => ({ label: o, priceDiff: 0 }));
+      addVariantGroup(key, options);
+      used.add(key);
+    });
 
-      (opt.options || []).forEach(val => {
-        const o = document.createElement('option');
-        o.value = val;
-        o.textContent = val;
-        if (existing[opt.name] && existing[opt.name].includes(val)) {
-          o.selected = true;
+    if (Array.isArray(existing)) {
+      existing.forEach(g => {
+        const key = g.key || g.name;
+        if (!used.has(key)) {
+          const opts = (g.options || []).map(o => ({ label: o.label || o, priceDiff: o.priceDiff || 0 }));
+          addVariantGroup(key, opts);
         }
-        select.appendChild(o);
       });
-
-      div.appendChild(label);
-      div.appendChild(select);
-      variantsContainer.appendChild(div);
-      used.add(opt.name);
-    });
-
-    // Add custom variants that aren't in the predefined list
-    Object.keys(existing).forEach(k => {
-      if (!used.has(k)) {
-        addCustomVariantRow(k, existing[k].join(', '));
-      }
-    });
+    }
   }
 
-  async function loadSpecsAndVariants(catId, existingVariants = {}) {
+  async function loadSpecsAndVariants(catId, existingVariants = []) {
     console.log('Loading specs and variants for category:', catId);
 
     specContainer.innerHTML = '';
@@ -340,7 +349,7 @@ async function initProductForm() {
 
   // Add variant button
   if (addVariantBtn) {
-    addVariantBtn.addEventListener('click', () => addCustomVariantRow());
+    addVariantBtn.addEventListener('click', () => addVariantGroup());
   }
 
   // Preload form data in edit mode
@@ -377,17 +386,10 @@ async function initProductForm() {
         if (prod.category_id && prod.category_id._id) {
           categorySelect.value = prod.category_id._id;
 
-          const existingVariantMap = Array.isArray(prod.variants)
-            ? prod.variants.reduce((acc, g) => {
-                const vals = Array.isArray(g.options)
-                  ? g.options.map(o => o.label || o)
-                  : [];
-                acc[g.key || g.name] = vals;
-                return acc;
-              }, {})
-            : {};
-
-          await loadSpecsAndVariants(prod.category_id._id, existingVariantMap);
+          await loadSpecsAndVariants(
+            prod.category_id._id,
+            Array.isArray(prod.variants) ? prod.variants : []
+          );
 
           // Fill spec values
           const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
@@ -442,23 +444,19 @@ async function initProductForm() {
         }
       }
 
-      // Collect variant data
+      // Collect variant data with price differences
       const variantsArray = [];
-      variantsContainer.querySelectorAll('select').forEach(sel => {
-        const name = sel.dataset.name;
-        const vals = Array.from(sel.selectedOptions).map(o => o.value);
-        if (vals.length) variantsArray.push({ name, values: vals });
-      });
-
-      // Các row custom
-      variantsContainer.querySelectorAll('.variant-custom').forEach(div => {
-        const name = div.querySelector('.variant-name').value.trim();
-        const vals = div.querySelector('.variant-values')
-          .value
-          .split(',')
-          .map(v => v.trim())
-          .filter(v => v);
-        if (name && vals.length) variantsArray.push({ name, values: vals });
+      variantsContainer.querySelectorAll('.variant-group').forEach(group => {
+        const key = group.querySelector('.variant-group-name').value.trim();
+        const options = [];
+        group.querySelectorAll('.variant-option').forEach(opt => {
+          const label = opt.querySelector('.variant-option-label').value.trim();
+          const priceDiff = parseFloat(opt.querySelector('.variant-option-price').value) || 0;
+          if (label) options.push({ label, priceDiff });
+        });
+        if (key && options.length) {
+          variantsArray.push({ key, options });
+        }
       });
 
       variantsInput.value = JSON.stringify(variantsArray);
