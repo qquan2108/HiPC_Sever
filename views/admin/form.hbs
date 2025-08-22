@@ -13,81 +13,93 @@
       <input type="hidden" name="id" value="{{product._id}}">
     {{/ifEquals}}
 
-    <div class="form-group">
-      <label>Danh mục *</label>
-      <select name="category_id" id="categorySelect" required>
-        <option value="">-- Chọn danh mục --</option>
-        {{#each categories}}
-          <option value="{{_id}}" {{#ifEquals _id ../product.category_id._id}}selected{{/ifEquals}}>
-            {{name}}
-          </option>
-        {{/each}}
-      </select>
-    </div>
+    <div class="form-section">
+      <h3>Thông tin cơ bản</h3>
+      <div class="form-group">
+        <label>Danh mục *</label>
+        <select name="category_id" id="categorySelect" required>
+          <option value="">-- Chọn danh mục --</option>
+          {{#each categories}}
+            <option value="{{_id}}" {{#ifEquals _id ../product.category_id._id}}selected{{/ifEquals}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
 
-    <div class="form-group">
-      <label>Thông số kỹ thuật</label>
-      <div id="specContainer">
-        <!-- Specs will be loaded dynamically based on category -->
+      <div class="form-group">
+        <label>Brand *</label>
+        <select name="brand_id" id="brandSpinner" required>
+          <option value="">-- Chọn brand --</option>
+          {{#each brands}}
+            <option value="{{_id}}" {{#ifEquals _id ../product.brand_id._id}}selected{{/ifEquals}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Tên sản phẩm *</label>
+        <input type="text" name="name" value="{{product.name}}" placeholder="Nhập tên sản phẩm" required>
+      </div>
+
+      <div class="form-group">
+        <label>Giá (VNĐ) *</label>
+        <input type="text" name="price" value="{{product.price}}" placeholder="Nhập giá sản phẩm" required class="number-input">
+      </div>
+
+      <div class="form-group">
+        <label>Số lượng *</label>
+        <input type="text" name="stock" value="{{product.stock}}" placeholder="Nhập số lượng" required class="number-input">
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Biến thể</label>
-      <div id="variantsContainer">
-        <!-- Variants will be loaded dynamically based on category -->
+    <div class="form-section">
+      <h3>Thông số & Biến thể</h3>
+      <div class="form-group">
+        <label>Thông số kỹ thuật</label>
+        <div id="specContainer">
+          <!-- Specs will be loaded dynamically based on category -->
+        </div>
       </div>
-      <button type="button" class="btn btn-sm btn-secondary" id="addVariantBtn">Thêm biến thể tùy chỉnh</button>
-      <input type="hidden" id="variantsInput" name="variants" value="[]">
-    </div>
 
-    <div class="form-group">
-      <label>Brand *</label>
-      <select name="brand_id" id="brandSpinner" required>
-        <option value="">-- Chọn brand --</option>
-        {{#each brands}}
-          <option value="{{_id}}" {{#ifEquals _id ../product.brand_id._id}}selected{{/ifEquals}}>
-            {{name}}
-          </option>
-        {{/each}}
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label>Tên sản phẩm *</label>
-      <input type="text" name="name" value="{{product.name}}" placeholder="Nhập tên sản phẩm" required>
-    </div>
-
-    <div class="form-group">
-      <label>Giá (VNĐ) *</label>
-      <input type="text" name="price" value="{{product.price}}" placeholder="Nhập giá sản phẩm" required class="number-input">
-    </div>
-
-    <div class="form-group">
-      <label>Số lượng *</label>
-      <input type="text" name="stock" value="{{product.stock}}" placeholder="Nhập số lượng" required class="number-input">
-    </div>
-
-    <div class="form-group">
-      <label>Ảnh sản phẩm</label>
-      <select id="imageSourceSelect">
-        <option value="file">Tải lên file</option>
-        <option value="link">Dùng URL</option>
-      </select>
-      <div id="imageFileGroup">
-        <input type="file" id="imageFile" accept="image/*">
+      <div class="form-group">
+        <label>Biến thể</label>
+        <div id="variantsContainer">
+          <!-- Variants will be loaded dynamically based on category -->
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary" id="addVariantBtn">Thêm biến thể tùy chỉnh</button>
+        <input type="hidden" id="variantsInput" name="variants" value="[]">
       </div>
-      <div id="imageLinkGroup" style="display:none;">
-        <input type="text" id="imageLink" placeholder="Dán URL ảnh">
-      </div>
-      <img id="imagePreview" src="{{product.image}}" class="h-24 my-2 max-w-full" {{#unless product.image}}style="display:none"{{/unless}} alt="Product preview">
-      <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
     </div>
 
-    <div class="form-group">
-      <label>Mô tả</label>
-      <div id="descriptionEditor" style="height:150px; background: white;"></div>
-      <input type="hidden" name="description" id="descriptionInput">
+    <div class="form-section">
+      <h3>Ảnh sản phẩm</h3>
+      <div class="form-group">
+        <label>Ảnh sản phẩm</label>
+        <select id="imageSourceSelect">
+          <option value="file">Tải lên file</option>
+          <option value="link">Dùng URL</option>
+        </select>
+        <div id="imageFileGroup">
+          <input type="file" id="imageFile" accept="image/*">
+        </div>
+        <div id="imageLinkGroup" style="display:none;">
+          <input type="text" id="imageLink" placeholder="Dán URL ảnh">
+        </div>
+        <img id="imagePreview" src="{{product.image}}" class="h-24 my-2 max-w-full" {{#unless product.image}}style="display:none"{{/unless}} alt="Product preview">
+        <input type="hidden" name="image" id="imageUrl" value="{{product.image}}">
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Mô tả</h3>
+      <div class="form-group">
+        <label>Mô tả</label>
+        <div id="descriptionEditor" style="height:150px; background: white;"></div>
+        <input type="hidden" name="description" id="descriptionInput" value="{{product.description}}">
+      </div>
     </div>
 
     <div class="modal-footer">
