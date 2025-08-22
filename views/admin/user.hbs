@@ -76,9 +76,15 @@
           <a href="/admin/users/${u._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
             <i class="bx bx-edit text-xl"></i>
           </a>
-          <a href="#" onclick="deleteUser('${u._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-            <i class="bx bx-trash text-xl"></i>
-          </a>
+          ${
+            u.active
+              ? `<a href="#" onclick="lockUser('${u._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded" title="Khóa user">
+                  <i class="bx bx-lock text-xl"></i>
+                </a>`
+              : `<a href="#" onclick="unlockUser('${u._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded text-green-600" title="Mở khóa user">
+                  <i class="bx bx-lock-open text-xl"></i>
+                </a>`
+          }
         </td>`;
       tbody.appendChild(tr);
     });
@@ -107,14 +113,29 @@
     container.appendChild(createBtn('»', current + 1, false, current === totalPages));
   }
 
-  async function deleteUser(id) {
-    if (!confirm('Bạn có chắc muốn xóa user này?')) return;
+  async function lockUser(id) {
+    if (!confirm('Bạn có chắc muốn KHÓA user này? User sẽ không đăng nhập được vào hệ thống!')) return;
     try {
-      const res = await fetch(`/users/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`Xóa thất bại: ${res.status}`);
-      fetchUsers(userCurrentPage); // reload lại trang hiện tại
+      const res = await fetch(`/users/${id}/lock`, { method: 'PATCH' });
+      if (!res.ok) throw new Error(`Khóa thất bại: ${res.status}`);
+      showToast('Đã khóa user');
+      fetchUsers(userCurrentPage);
     } catch (err) {
-      console.error('Lỗi xóa user:', err);
+      showToast('Lỗi khóa user', 'error');
+      console.error('Lỗi khóa user:', err);
+    }
+  }
+
+  async function unlockUser(id) {
+    if (!confirm('Bạn có chắc muốn MỞ KHÓA user này?')) return;
+    try {
+      const res = await fetch(`/users/${id}/unlock`, { method: 'PATCH' });
+      if (!res.ok) throw new Error(`Mở khóa thất bại: ${res.status}`);
+      showToast('Đã mở khóa user');
+      fetchUsers(userCurrentPage);
+    } catch (err) {
+      showToast('Lỗi mở khóa user', 'error');
+      console.error('Lỗi mở khóa user:', err);
     }
   }
 
@@ -128,4 +149,13 @@
       ));
     });
   });
+</script>
+<script>
+  function showToast(msg, type = 'success') {
+    let toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.className = `fixed top-6 right-6 z-50 px-4 py-2 rounded shadow text-white transition bg-${type === 'success' ? 'green' : 'red'}-600`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
 </script>

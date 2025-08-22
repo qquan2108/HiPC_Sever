@@ -397,7 +397,7 @@ exports.createOrder = async (req, res) => {
         voucherDiscount: orderVoucherDiscount,
         shippingVoucher: shippingVoucherId, // voucher phí vận chuyển
         shippingVoucherDiscount: shippingVoucherDiscount,
-        shippingFee: finalShippingFee,
+        shippingFee: shippingFee,
         total_price: totalPrice,
         total: finalTotal,
         status: "pending",

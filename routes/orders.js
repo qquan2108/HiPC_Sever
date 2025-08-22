@@ -12,6 +12,8 @@ const {
   validateVoucherConditions,
   calculateDiscountAmount,
 } = require("../utils/voucher");
+const PDFDocument = require('pdfkit');
+const { createCanvas, loadImage } = require('canvas');
 
 // ===== SPECIFIC ROUTES FIRST (before parameterized routes) =====
 
@@ -308,6 +310,157 @@ router.get("/:id", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id/invoice-pdf', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user_id', 'full_name phone email')
+      .populate('products.productId', 'name price')
+      .lean();
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+
+    // Khởi tạo PDF
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="HoaDon_${order._id}.pdf"`);
+
+    // Header
+    doc.fontSize(20).text('HÓA ĐƠN BÁN HÀNG', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Mã đơn hàng: #${order._id}`);
+    doc.text(`Khách hàng: ${order.user_id?.full_name || ''}`);
+    doc.text(`SĐT: ${order.user_id?.phone || ''}`);
+    doc.text(`Email: ${order.user_id?.email || ''}`);
+    doc.text(`Địa chỉ: ${order.address || ''}`);
+    doc.moveDown();
+
+    // Table header
+    doc.font('Helvetica-Bold').text('Sản phẩm', 40, doc.y, { continued: true });
+    doc.text('SL', 250, doc.y, { continued: true });
+    doc.text('Đơn giá', 300, doc.y, { continued: true });
+    doc.text('Thành tiền', 400, doc.y);
+    doc.font('Helvetica');
+
+    // Table rows
+    let total = 0;
+    order.products.forEach(item => {
+      const prod = item.productId;
+      const price = (prod.price || 0) + (item.variant?.priceDiff || 0);
+      const lineTotal = price * item.quantity;
+      total += lineTotal;
+      doc.text(`${prod.name}${item.variant ? ' (' + item.variant.label + ')' : ''}`, 40, doc.y, { continued: true });
+      doc.text(item.quantity, 250, doc.y, { continued: true });
+      doc.text(price.toLocaleString('vi-VN'), 300, doc.y, { continued: true });
+      doc.text(lineTotal.toLocaleString('vi-VN'), 400, doc.y);
+    });
+
+    doc.moveDown();
+
+    // Tổng cộng và giảm giá
+    doc.text(`Tổng giá trị sản phẩm: ${total.toLocaleString('vi-VN')} VND`);
+    if (order.voucherDiscount) {
+      doc.text(`Giảm giá mã đơn hàng: -${order.voucherDiscount.toLocaleString('vi-VN')} VND`);
+    }
+    if (order.shippingVoucherDiscount) {
+      doc.text(`Giảm giá phí vận chuyển: -${order.shippingVoucherDiscount.toLocaleString('vi-VN')} VND`);
+    }
+    doc.text(`Phí vận chuyển: ${(order.shippingFee || 0).toLocaleString('vi-VN')} VND`);
+    doc.moveDown();
+    doc.font('Helvetica-Bold').text(`Tổng thanh toán: ${(order.total || 0).toLocaleString('vi-VN')} VND`, { align: 'right' });
+
+    doc.end();
+    doc.pipe(res);
+  } catch (err) {
+    console.error('Export PDF error:', err);
+    res.status(500).json({ error: 'Không thể xuất hóa đơn PDF' });
+  }
+});
+
+router.get('/:id/invoice-image', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user_id', 'full_name phone email')
+      .populate('products.productId', 'name price')
+      .lean();
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+
+    // Tạo canvas
+    const width = 800;
+    let height = 400 + order.products.length * 40;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    // Nền trắng
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+
+    // Tiêu đề
+    ctx.fillStyle = '#222';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('HÓA ĐƠN BÁN HÀNG', width / 2, 50);
+
+    ctx.textAlign = 'left';
+    ctx.font = '16px Arial';
+    let y = 90;
+    ctx.fillText(`Mã đơn hàng: #${order._id}`, 40, y);
+    ctx.fillText(`Khách hàng: ${order.user_id?.full_name || ''}`, 40, y += 28);
+    ctx.fillText(`SĐT: ${order.user_id?.phone || ''}`, 40, y += 28);
+    ctx.fillText(`Email: ${order.user_id?.email || ''}`, 40, y += 28);
+    ctx.fillText(`Địa chỉ: ${order.address || ''}`, 40, y += 28);
+
+    // Header bảng
+    y += 30;
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('Sản phẩm', 40, y);
+    ctx.fillText('SL', 350, y);
+    ctx.fillText('Đơn giá', 420, y);
+    ctx.fillText('Thành tiền', 550, y);
+
+    ctx.font = '16px Arial';
+    let total = 0;
+    order.products.forEach(item => {
+      const prod = item.productId;
+      const price = (prod.price || 0) + (item.variant?.priceDiff || 0);
+      const lineTotal = price * item.quantity;
+      total += lineTotal;
+      y += 32;
+      ctx.fillText(`${prod.name}${item.variant ? ' (' + item.variant.label + ')' : ''}`, 40, y);
+      ctx.fillText(item.quantity.toString(), 350, y);
+      ctx.fillText(price.toLocaleString('vi-VN'), 420, y);
+      ctx.fillText(lineTotal.toLocaleString('vi-VN'), 550, y);
+    });
+
+    // Tổng cộng và giảm giá
+    y += 40;
+    ctx.font = '16px Arial';
+    ctx.fillText(`Tổng giá trị sản phẩm: ${total.toLocaleString('vi-VN')} VND`, 40, y);
+    if (order.voucherDiscount) {
+      y += 28;
+      ctx.fillText(`Giảm giá mã đơn hàng: -${order.voucherDiscount.toLocaleString('vi-VN')} VND`, 40, y);
+    }
+    if (order.shippingVoucherDiscount) {
+      y += 28;
+      ctx.fillText(`Giảm giá phí vận chuyển: -${order.shippingVoucherDiscount.toLocaleString('vi-VN')} VND`, 40, y);
+    }
+    y += 28;
+    ctx.fillText(`Phí vận chuyển: ${(order.shippingFee || 0).toLocaleString('vi-VN')} VND`, 40, y);
+
+    y += 40;
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#d32f2f';
+    ctx.fillText(`Tổng thanh toán: ${(order.total || 0).toLocaleString('vi-VN')} VND`, 40, y);
+
+    // Xuất ảnh PNG
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="HoaDon_${order._id}.png"`);
+    canvas.createPNGStream().pipe(res);
+
+  } catch (err) {
+    console.error('Export image error:', err);
+    res.status(500).json({ error: 'Không thể xuất hóa đơn ảnh' });
   }
 });
 
