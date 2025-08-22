@@ -513,8 +513,13 @@
                     currency: 'VND'
                 }).format(total);
 
+                const shippingVoucherDiscount = order.shippingVoucherDiscount || 0;
+                const shippingVoucherText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(shippingVoucherDiscount);
                 // Phí vận chuyển (nếu muốn hiển thị riêng)
-                const shippingFee = order.shippingVoucherDiscount || 0;
+                const shippingFee = order.shippingFee || 0;
                 const shippingFeeText = new Intl.NumberFormat('vi-VN', {
                     style: 'currency',
                     currency: 'VND'
@@ -560,7 +565,8 @@
                     <div class="mt-6 border-t pt-4">
                         <div class="mb-2"><strong>Tổng giá trị đơn hàng (trước giảm giá):</strong> ${totalPriceText}</div>
                         <div class="mb-2"><strong>Giảm giá:</strong> ${voucherDiscountText}</div>
-                        <div class="mb-2"><strong>Giảm giá vận chuyển:</strong> ${shippingFeeText}</div>
+                        <div class="mb-2"><strong>Phi van chuyen:</strong> ${shippingFeeText}</div>
+                        <div class="mb-2"><strong>Giảm giá vận chuyển:</strong> ${shippingVoucherText}</div>
                         <div class="mb-2 text-lg font-bold"><strong>Tổng thanh toán:</strong> ${totalText}</div>
                     </div>
                     <button 
