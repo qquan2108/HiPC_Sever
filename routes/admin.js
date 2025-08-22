@@ -131,6 +131,10 @@ router.get('/orders/:id/edit', async (req, res) => {
   }
   res.render('admin/order-form', { layout: 'admin/layout', order, mode: 'edit', transitions });
 });
+router.get('/product-images', (req, res) => {
+  res.render('admin/product-images', { layout: 'admin/layout' });
+});
+
 
 router.get('/videos', async (req, res) => {
   const videos = await Video.find().populate({
