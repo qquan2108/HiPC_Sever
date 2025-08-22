@@ -96,6 +96,9 @@ function renderProducts(products, append = false) {
            <a href="/admin/products/${p._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
              <i class="bx bx-edit text-xl"></i>
            </a>
+           <a href="/admin/product-images?productId=${encodeURIComponent(p._id)}" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+             <i class="bx bx-image text-xl"></i>
+           </a>
            <a href="#" onclick="deleteProduct('${p._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
              <i class="bx bx-trash text-xl"></i>
            </a>
