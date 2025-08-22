@@ -1,0 +1,711 @@
+{{#*inline "title"}}Quản lý Hình ảnh{{/inline}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px 0 rgba(102, 126, 234, 0.6);
+    }
+    
+    .btn-secondary {
+        background: #6366f1;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: #4f46e5;
+        transform: translateY(-1px);
+    }
+    
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-1px);
+    }
+    
+    .image-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(229, 231, 235, 0.5);
+    }
+    
+    .image-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .form-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px 16px;
+        width: 100%;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+    
+    .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+    }
+    
+    .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 30px;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translateY(-50px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        z-index: 1100;
+        animation: toastSlideIn 0.3s ease-out;
+    }
+    
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+    
+    @keyframes toastSlideIn {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+</style>
+
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="glass-effect rounded-2xl p-6 mb-8 fade-in">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-images text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Quản lý Hình ảnh</h1>
+                        <p class="text-gray-600">Sản phẩm: <span id="productName" class="font-semibold text-blue-600">Đang tải...</span></p>
+                    </div>
+                </div>
+                <button onclick="openAddModal()" class="btn-primary flex items-center space-x-2">
+                    <i class="fas fa-plus"></i>
+                    <span>Thêm ảnh mới</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass-effect rounded-2xl p-6 fade-in">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-image text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Tổng số ảnh</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalImages">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-effect rounded-2xl p-6 fade-in">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Ảnh có mô tả</p>
+                        <p class="text-2xl font-bold text-gray-800" id="describedImages">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-effect rounded-2xl p-6 fade-in">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-clock text-purple-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Cập nhật gần đây</p>
+                        <p class="text-2xl font-bold text-gray-800" id="recentUpdates">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="glass-effect rounded-2xl p-6 mb-8 fade-in">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            placeholder="Tìm kiếm theo mô tả..." 
+                            class="form-input pl-12"
+                            onkeyup="filterImages()"
+                        >
+                    </div>
+                </div>
+                <select id="sortSelect" class="form-input md:w-48" onchange="sortImages()">
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="description">Theo mô tả</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Images Grid -->
+        <div class="glass-effect rounded-2xl p-6">
+            <div id="loadingState" class="text-center py-8">
+                <div class="loading mx-auto mb-4"></div>
+                <p class="text-gray-600">Đang tải hình ảnh...</p>
+            </div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-image text-gray-400 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Chưa có hình ảnh nào</h3>
+                <p class="text-gray-500 mb-6">Hãy thêm hình ảnh đầu tiên cho sản phẩm này</p>
+                <button onclick="openAddModal()" class="btn-primary">
+                    <i class="fas fa-plus mr-2"></i>
+                    Thêm ảnh mới
+                </button>
+            </div>
+            
+            <div id="imagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="imageModal" class="modal">
+    <div class="modal-content">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Thêm ảnh mới</h2>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+            <form id="imageForm">
+            <div class="mb-6">
+                <label class="block text-gray-700 font-semibold mb-2">Nguồn ảnh *</label>
+                <div class="flex space-x-4 mb-4">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="imageSource" id="sourceUrl" value="url" class="form-radio" checked>
+                        <span class="ml-2">Dùng link</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="imageSource" id="sourceFile" value="file" class="form-radio">
+                        <span class="ml-2">Tải tệp</span>
+                    </label>
+                </div>
+                <div id="urlInputContainer">
+                    <input type="text" id="imageUrlInput" class="form-input" placeholder="https://example.com/image.jpg">
+                    <p class="text-gray-500 text-sm mt-1">Nhập URL của hình ảnh</p>
+                </div>
+                <div id="fileInputContainer" style="display:none;">
+                    <input type="file" id="imageFileInput" class="form-input" accept="image/*">
+                    <p class="text-gray-500 text-sm mt-1">Chọn file ảnh để tải lên</p>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 font-semibold mb-2">Mô tả</label>
+                <textarea id="descriptionInput" class="form-input h-20" placeholder="Mô tả ngắn gọn về hình ảnh..."></textarea>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 font-semibold mb-2">Xem trước</label>
+                <div id="imagePreview" class="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                    <div class="text-center">
+                        <i class="fas fa-image text-gray-400 text-3xl mb-2"></i>
+                        <p class="text-gray-500">Nhập URL để xem trước</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeModal()" class="px-6 py-3 text-gray-600 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
+                    Hủy
+                </button>
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <i class="fas fa-save mr-2"></i>
+                    Lưu ảnh
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash text-red-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Xác nhận xóa</h3>
+            <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa hình ảnh này? Hành động này không thể hoàn tác.</p>
+            <div class="flex justify-center space-x-3">
+                <button onclick="closeConfirmModal()" class="px-6 py-3 text-gray-600 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
+                    Hủy
+                </button>
+                <button onclick="confirmDelete()" class="btn-danger">
+                    <i class="fas fa-trash mr-2"></i>
+                    Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('productId');
+    let currentImages = [];
+    let editingImageId = null;
+    let deleteImageId = null;
+    
+    if (!productId) {
+        document.body.innerHTML = '<div class="text-center py-20"><p class="text-red-500 text-xl">Thiếu ID sản phẩm</p></div>';
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check' : 'fa-exclamation-triangle'} mr-2"></i>${message}`;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'toastSlideIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Load product information
+    async function loadProduct() {
+        try {
+            const res = await fetch(`/product/${productId}`);
+            if (!res.ok) throw new Error('Product not found');
+            const product = await res.json();
+            document.getElementById('productName').textContent = product.name || `ID: ${productId}`;
+        } catch (error) {
+            document.getElementById('productName').textContent = `ID: ${productId}`;
+            console.error('Error loading product:', error);
+        }
+    }
+
+    // Load and display images
+    async function loadImages() {
+        try {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('imagesGrid').style.display = 'none';
+            
+            const res = await fetch(`/images?product_id=${encodeURIComponent(productId)}`);
+            if (!res.ok) throw new Error('Failed to fetch images');
+            
+            const images = await res.json();
+            currentImages = images;
+            
+            document.getElementById('loadingState').style.display = 'none';
+            
+            if (images.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+            } else {
+                document.getElementById('imagesGrid').style.display = 'grid';
+                renderImages(images);
+            }
+            
+            updateStatistics(images);
+        } catch (error) {
+            document.getElementById('loadingState').style.display = 'none';
+            showToast('Lỗi khi tải hình ảnh: ' + error.message, 'error');
+        }
+    }
+
+    // Render images grid
+    function renderImages(images) {
+        const grid = document.getElementById('imagesGrid');
+        grid.innerHTML = images.map(img => `
+            <div class="image-card fade-in" data-description="${(img.description || '').toLowerCase()}">
+                <div class="relative mb-4 group">
+                    <img src="${img.url}" class="w-full h-48 object-cover rounded-lg" alt="Image" 
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIxIDNWMjFIMFYzSDIxWk0yIDJWMjJIMjBWMkgyWiIgZmlsbD0iIzk5OTk5OSIvPgo8L3N2Zz4K'">
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 rounded-lg flex items-center justify-center">
+                        <div class="opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <button onclick="viewImage('${img.url}')" class="bg-white text-gray-800 p-2 rounded-lg mr-2 hover:bg-gray-100">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-gray-600 text-sm line-clamp-2 min-h-[2.5rem]">
+                        ${img.description || '<em class="text-gray-400">Chưa có mô tả</em>'}
+                    </p>
+                </div>
+                
+                <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+                    <div class="text-xs text-gray-500">
+                        <i class="fas fa-calendar mr-1"></i>
+                        ${new Date(img.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editImage('${img._id}')" class="btn-secondary text-sm px-3 py-1">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="openConfirmModal('${img._id}')" class="btn-danger text-sm px-3 py-1">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Update statistics
+    function updateStatistics(images) {
+        document.getElementById('totalImages').textContent = images.length;
+        document.getElementById('describedImages').textContent = images.filter(img => img.description && img.description.trim()).length;
+        document.getElementById('recentUpdates').textContent = images.filter(img => {
+            const date = new Date(img.createdAt || img.updatedAt || Date.now());
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return date > weekAgo;
+        }).length;
+    }
+
+    // Filter images
+    function filterImages() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.image-card');
+        
+        cards.forEach(card => {
+            const description = card.getAttribute('data-description') || '';
+            card.style.display = description.includes(searchTerm) ? 'block' : 'none';
+        });
+    }
+
+    // Sort images
+    function sortImages() {
+        const sortBy = document.getElementById('sortSelect').value;
+        const sortedImages = [...currentImages];
+        
+        switch (sortBy) {
+            case 'newest':
+                sortedImages.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                break;
+            case 'oldest':
+                sortedImages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+                break;
+            case 'description':
+                sortedImages.sort((a, b) => (a.description || '').localeCompare(b.description || ''));
+                break;
+        }
+        
+        renderImages(sortedImages);
+    }
+
+    // Modal functions
+    function openAddModal() {
+        editingImageId = null;
+        document.getElementById('modalTitle').textContent = 'Thêm ảnh mới';
+        document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save mr-2"></i>Lưu ảnh';
+        document.getElementById('imageForm').reset();
+        document.getElementById('sourceUrl').checked = true;
+        document.getElementById('sourceFile').checked = false;
+        updateSourceDisplay();
+        document.getElementById('imageModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+
+    function openConfirmModal(imageId) {
+        deleteImageId = imageId;
+        document.getElementById('confirmModal').style.display = 'block';
+    }
+
+    function closeConfirmModal() {
+        deleteImageId = null;
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+    function updateSourceDisplay() {
+        const useUrl = document.getElementById('sourceUrl').checked;
+        document.getElementById('urlInputContainer').style.display = useUrl ? 'block' : 'none';
+        document.getElementById('fileInputContainer').style.display = useUrl ? 'none' : 'block';
+        document.getElementById('imagePreview').innerHTML = `
+            <div class="text-center">
+                <i class="fas fa-image text-gray-400 text-3xl mb-2"></i>
+                <p class="text-gray-500">${useUrl ? 'Nhập URL để xem trước' : 'Chọn file để xem trước'}</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('sourceUrl').addEventListener('change', updateSourceDisplay);
+    document.getElementById('sourceFile').addEventListener('change', updateSourceDisplay);
+
+    // Image preview for URL
+    document.getElementById('imageUrlInput').addEventListener('input', function() {
+        const url = this.value.trim();
+        const preview = document.getElementById('imagePreview');
+
+        if (url) {
+            preview.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                               <div style="display:none;" class="text-center"><i class=\"fas fa-exclamation-triangle text-red-400 text-2xl mb-2\"></i><p class=\"text-red-500\">URL không hợp lệ</p></div>`;
+        } else {
+            updateSourceDisplay();
+        }
+    });
+
+    // Image preview for file
+    document.getElementById('imageFileInput').addEventListener('change', function() {
+        const file = this.files[0];
+        const preview = document.getElementById('imagePreview');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-lg">`;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            updateSourceDisplay();
+        }
+    });
+
+    // Form submission
+    document.getElementById('imageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const useUrl = document.getElementById('sourceUrl').checked;
+        let url = '';
+        const description = document.getElementById('descriptionInput').value.trim();
+
+        if (useUrl) {
+            url = document.getElementById('imageUrlInput').value.trim();
+            if (!url) {
+                showToast('Vui lòng nhập URL ảnh', 'error');
+                return;
+            }
+        } else {
+            const fileInput = document.getElementById('imageFileInput');
+            if (!fileInput.files[0]) {
+                showToast('Vui lòng chọn file ảnh', 'error');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            const uploadRes = await fetch('/images/upload', { method: 'POST', body: formData });
+            if (!uploadRes.ok) {
+                showToast('Lỗi khi tải file ảnh', 'error');
+                return;
+            }
+            const data = await uploadRes.json();
+            url = data.url;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        const originalContent = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<div class="loading mr-2"></div>Đang lưu...';
+        submitBtn.disabled = true;
+
+        try {
+            const method = editingImageId ? 'PUT' : 'POST';
+            const endpoint = editingImageId ? `/images/${editingImageId}` : '/images';
+            const body = editingImageId ?
+                JSON.stringify({ url, description }) :
+                JSON.stringify({ url, product_id: productId, description });
+
+            const res = await fetch(endpoint, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body
+            });
+
+            if (!res.ok) throw new Error('Failed to save image');
+
+            closeModal();
+            showToast(editingImageId ? 'Cập nhật ảnh thành công!' : 'Thêm ảnh thành công!');
+            loadImages();
+        } catch (error) {
+            showToast('Lỗi khi lưu ảnh: ' + error.message, 'error');
+        } finally {
+            submitBtn.innerHTML = originalContent;
+            submitBtn.disabled = false;
+        }
+    });
+
+    // Edit image
+    async function editImage(id) {
+        try {
+            const res = await fetch(`/images/${id}`);
+            if (!res.ok) throw new Error('Failed to fetch image details');
+
+            const image = await res.json();
+            editingImageId = id;
+
+            document.getElementById('modalTitle').textContent = 'Chỉnh sửa ảnh';
+            document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save mr-2"></i>Cập nhật';
+            document.getElementById('imageForm').reset();
+            document.getElementById('sourceUrl').checked = true;
+            document.getElementById('sourceFile').checked = false;
+            updateSourceDisplay();
+            document.getElementById('imageUrlInput').value = image.url;
+            document.getElementById('descriptionInput').value = image.description || '';
+
+            // Trigger preview update
+            document.getElementById('imageUrlInput').dispatchEvent(new Event('input'));
+
+            document.getElementById('imageModal').style.display = 'block';
+        } catch (error) {
+            showToast('Lỗi khi tải thông tin ảnh: ' + error.message, 'error');
+        }
+    }
+
+    // Delete image
+    async function confirmDelete() {
+        if (!deleteImageId) return;
+        
+        try {
+            const res = await fetch(`/images/${deleteImageId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete image');
+            
+            closeConfirmModal();
+            showToast('Xóa ảnh thành công!');
+            loadImages();
+        } catch (error) {
+            showToast('Lỗi khi xóa ảnh: ' + error.message, 'error');
+        }
+    }
+
+    // View image in new tab
+    function viewImage(url) {
+        window.open(url, '_blank');
+    }
+
+    // Close modals when clicking outside
+    window.addEventListener('click', function(event) {
+        const imageModal = document.getElementById('imageModal');
+        const confirmModal = document.getElementById('confirmModal');
+        
+        if (event.target === imageModal) {
+            closeModal();
+        }
+        if (event.target === confirmModal) {
+            closeConfirmModal();
+        }
+    });
+
+    // Initialize
+    if (productId) {
+        loadProduct();
+        loadImages();
+    }
+</script>
+
