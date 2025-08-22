@@ -397,7 +397,7 @@ exports.createOrder = async (req, res) => {
         voucherDiscount: orderVoucherDiscount,
         shippingVoucher: shippingVoucherId, // voucher phí vận chuyển
         shippingVoucherDiscount: shippingVoucherDiscount,
-        shippingFee: finalShippingFee,
+        shippingFee: shippingFee,
         total_price: totalPrice,
         total: finalTotal,
         status: "pending",
@@ -604,7 +604,7 @@ exports.createOrder = async (req, res) => {
     console.log("orderVoucherDiscount:", orderVoucherDiscount);
     console.log("shippingFee (original):", shippingFee);
     console.log("shippingVoucherDiscount:", shippingVoucherDiscount);
-    console.log("finalShippingFee:", finalShippingFee);
+    console.log("finalShippingFee:", shippingFee);
     console.log("finalTotal:", finalTotal);
 
     // Tạo đơn hàng
@@ -619,7 +619,7 @@ exports.createOrder = async (req, res) => {
       voucherDiscount: orderVoucherDiscount,
       shippingVoucher: shippingVoucherId, // Shipping voucher ID
       shippingVoucherDiscount: shippingVoucherDiscount,
-      shippingFee: finalShippingFee, // Already discounted
+      shippingFee: shippingFee, // Already discounted
       total_price: totalPrice,
       total: finalTotal,
       status: "pending",

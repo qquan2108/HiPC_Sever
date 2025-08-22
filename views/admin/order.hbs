@@ -166,10 +166,6 @@
                     Quản lý Đơn hàng
                 </h1>
             </div>
-            {{!-- <a href="/admin/orders/create" class="btn-primary text-white font-semibold shadow-lg">
-                <i class="fas fa-plus"></i>
-                Tạo đơn hàng
-            </a> --}}
         </div>
     </header>
 
@@ -486,10 +482,45 @@
             try {
                 const res = await fetch(`/orders/${id}`);
                 const order = await res.json();
-                const total = new Intl.NumberFormat('vi-VN', {
+
+                // Tổng giá trị đơn hàng trước khi trừ mã giảm giá
+                const totalPrice = order.total_price || 0;
+                const totalPriceText = new Intl.NumberFormat('vi-VN', {
                     style: 'currency',
                     currency: 'VND'
-                }).format(order.total || 0);
+                }).format(totalPrice);
+
+                // Tổng giá trị đơn hàng sau khi trừ mã giảm giá (chưa cộng phí ship)
+                const voucherDiscount = order.voucherDiscount || 0;
+                const voucherDiscountText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(voucherDiscount);
+                const afterVoucher = totalPrice - voucherDiscount;
+                const afterVoucherText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(afterVoucher);
+
+                // Tổng tiền phải thanh toán (đã trừ mã giảm giá + phí vận chuyển)
+                const total = order.total || 0;
+                const totalText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(total);
+
+                const shippingVoucherDiscount = order.shippingVoucherDiscount || 0;
+                const shippingVoucherText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(shippingVoucherDiscount);
+                // Phí vận chuyển (nếu muốn hiển thị riêng)
+                const shippingFee = order.shippingFee || 0;
+                const shippingFeeText = new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                }).format(shippingFee);
+
                 let productsHtml = '';
                 if (Array.isArray(order.products)) {
                     productsHtml = order.products.map(p => {
@@ -522,12 +553,25 @@
                         <div class="mb-2"><strong>SĐT:</strong> ${receiverPhone}</div>
                         <div class="mb-2"><strong>Địa chỉ:</strong> ${receiverAddress}</div>
                         <div class="mb-2"><strong>Phương thức thanh toán:</strong> ${order.paymentMethod || ''}</div>
-                        <div class="mb-2"><strong>Tổng giá trị:</strong> ${total}</div>
                     </div>
                     <div>
                         <h3 class="text-lg font-semibold mb-2">Sản phẩm</h3>
                         ${productsHtml}
                     </div>
+                    <div class="mt-6 border-t pt-4">
+                        <div class="mb-2"><strong>Tổng giá trị đơn hàng (trước giảm giá):</strong> ${totalPriceText}</div>
+                        <div class="mb-2"><strong>Giảm giá:</strong> ${voucherDiscountText}</div>
+                        <div class="mb-2"><strong>Phi van chuyen:</strong> ${shippingFeeText}</div>
+                        <div class="mb-2"><strong>Giảm giá vận chuyển:</strong> ${shippingVoucherText}</div>
+                        <div class="mb-2 text-lg font-bold"><strong>Tổng thanh toán:</strong> ${totalText}</div>
+                    </div>
+                    <button 
+                        onclick="exportInvoiceImage('${order._id}')" 
+                        class="btn-primary mb-4 flex items-center gap-2"
+                        style="float:right"
+                    >
+                        <i class="fas fa-file-image"></i> Xuất hóa đơn hình ảnh
+                    </button>
                 `;
             } catch (err) {
                 container.innerHTML = '<div class="text-center text-red-500 py-8">Không thể tải chi tiết đơn hàng</div>';
@@ -639,4 +683,24 @@
                 renderOrders(currentOrders);
             });
         });
+
+        async function exportInvoiceImage(orderId) {
+    try {
+        const res = await fetch(`/orders/${orderId}/invoice-image`, {
+            method: 'GET'
+        });
+        if (!res.ok) throw new Error('Không thể xuất hóa đơn hình ảnh');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `HoaDon_${orderId}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        showNotification('Không thể xuất hóa đơn hình ảnh!', 'error');
+    }
+}
     </script>

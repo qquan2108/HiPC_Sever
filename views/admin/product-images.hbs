@@ -1,0 +1,92 @@
+{{#*inline "title"}}Quản lý Hình ảnh Sản phẩm{{/inline}}
+
+<div class="max-w-4xl mx-auto py-8">
+  <h1 class="text-2xl font-bold mb-6">Quản lý Hình ảnh: <span id="productName"></span></h1>
+
+  <form id="imageForm" class="mb-6 space-x-2">
+    <input type="text" id="imageUrlInput" placeholder="URL ảnh" class="border p-2 rounded" required>
+    <input type="text" id="descriptionInput" placeholder="Mô tả" class="border p-2 rounded">
+    <button type="submit" class="btn-primary">Thêm ảnh</button>
+  </form>
+
+  <table class="min-w-full bg-white rounded shadow">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="px-4 py-2 text-left">Ảnh</th>
+        <th class="px-4 py-2 text-left">Mô tả</th>
+        <th class="px-4 py-2">Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="imageBody"></tbody>
+  </table>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const productId = params.get('productId');
+if (!productId) {
+  document.body.innerHTML = '<p class="text-center text-red-500">Thiếu ID sản phẩm</p>';
+}
+
+async function loadProduct() {
+  const res = await fetch(`/product/${productId}`);
+  const product = await res.json();
+  document.getElementById('productName').textContent = product.name || productId;
+}
+
+async function loadImages() {
+  const res = await fetch(`/images?product_id=${encodeURIComponent(productId)}`);
+  const data = await res.json();
+  const tbody = document.getElementById('imageBody');
+  tbody.innerHTML = data.map(img => `
+    <tr class="border-b">
+      <td class="px-4 py-2"><img src="${img.url}" class="w-16 h-16 object-cover rounded" alt="img"></td>
+      <td class="px-4 py-2">${img.description || ''}</td>
+      <td class="px-4 py-2 space-x-2">
+        <button onclick="editImage('${img._id}')" class="btn-secondary btn-sm">Sửa</button>
+        <button onclick="deleteImage('${img._id}')" class="btn-danger btn-sm">Xóa</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+const form = document.getElementById('imageForm');
+if (form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = document.getElementById('imageUrlInput').value.trim();
+    const description = document.getElementById('descriptionInput').value.trim();
+    await fetch('/images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, product_id: productId, description })
+    });
+    e.target.reset();
+    loadImages();
+  });
+}
+
+async function editImage(id) {
+  const url = prompt('URL ảnh mới:');
+  if (!url) return;
+  const description = prompt('Mô tả:', '');
+  await fetch(`/images/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, description })
+  });
+  loadImages();
+}
+
+async function deleteImage(id) {
+  if (!confirm('Xóa ảnh này?')) return;
+  await fetch(`/images/${id}`, { method: 'DELETE' });
+  loadImages();
+}
+
+if (productId) {
+  loadProduct();
+  loadImages();
+}
+</script>
+

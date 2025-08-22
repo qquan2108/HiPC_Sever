@@ -10,16 +10,16 @@ function normalizeVariants(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
     .map(group => {
-      // accept both `key` and older `name` field for group name
       const key = group.key || group.name;
       if (!key) return null;
 
-      // options may be provided either as full objects or simple string arrays
       let opts = [];
       if (Array.isArray(group.options)) {
         opts = group.options.map(opt => ({
           label: opt.label ?? opt,
-          priceDiff: opt.priceDiff ?? 0
+          priceDiff: opt.priceDiff !== undefined && opt.priceDiff !== null
+            ? Number(opt.priceDiff)
+            : 0
         }));
       } else if (Array.isArray(group.values)) {
         opts = group.values.map(v => ({ label: v, priceDiff: 0 }));
@@ -44,6 +44,17 @@ exports.createProduct = async (req, res) => {
       variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
+    // Validate required fields
+    if (!name || !category_id || !brand_id || price === undefined || stock === undefined) {
+      return res.status(400).json({ error: 'Thiếu trường bắt buộc' });
+    }
+
+    const priceNum = Number(price);
+    const stockNum = Number(stock);
+    if (Number.isNaN(priceNum) || Number.isNaN(stockNum)) {
+      return res.status(400).json({ error: 'Giá và số lượng phải là số' });
+    }
+
     // Validate specifications
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
@@ -64,9 +75,9 @@ exports.createProduct = async (req, res) => {
       name,
       category_id,
       brand_id,
-      price,
+      price: priceNum,
       description,
-      stock,
+      stock: stockNum,
       specifications,
       variants: parsedVariants    // Gán mảng nhóm biến thể
     });
@@ -254,7 +265,20 @@ exports.getProductById = async (req, res) => {
       }));
     }
 
-    res.json({ ...item, image: primaryImage, images: urls, tskt });
+    // Ensure variant price differences are included in the response
+    const variants = Array.isArray(item.variants)
+      ? item.variants.map(group => ({
+          key: group.key,
+          options: Array.isArray(group.options)
+            ? group.options.map(opt => ({
+                label: opt.label,
+                priceDiff: opt.priceDiff ?? 0,
+              }))
+            : [],
+        }))
+      : [];
+
+    res.json({ ...item, variants, image: primaryImage, images: urls, tskt });
   } catch (err) {
     console.error('Error in getProductById:', err);
     res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
