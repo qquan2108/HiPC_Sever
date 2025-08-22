@@ -1,11 +1,11 @@
 const express = require('express');
-const router  = express.Router();
-const path    = require('path');
-const fs      = require('fs');
-const multer  = require('multer');
+const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const productCtrl = require('../controllers/productCtrl');
-const Order = require('../models/Order'); // Đường dẫn tới model Order
-const Product = require('../models/Product'); // Đường dẫn tới model Product
+const Order = require('../models/Order');
+const Product = require('../models/Product');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads/products');
@@ -21,9 +21,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // IMPORTANT: Specific routes must come BEFORE parameterized routes
-router.get('/',    productCtrl.getProducts);
+router.get('/', productCtrl.getProducts);
 
-// Filter route - MUST come before /:id route
+// Filter routes - MUST come before /:id route
 router.get('/filter', productCtrl.filterProducts); // filter nâng cao
 router.get('/filter-keyword', productCtrl.filterProductsByKeyword); // filter đơn giản cho chatbox
 
@@ -42,7 +42,13 @@ router.post('/upload-excel', upload.single('file'), productCtrl.uploadProductsFr
 // Export products to Excel file
 router.get('/export-excel', productCtrl.exportProductsToExcel);
 
-// Lấy 5 sản phẩm được khách hàng mua gần nhất
+// Get best sellers - MUST come before /:id route
+router.get('/best-sellers', productCtrl.getBestSellers);
+
+// Get all products without pagination - MUST come before /:id route
+router.get('/all', productCtrl.getAllProducts);
+
+// Lấy 5 sản phẩm được khách hàng mua gần nhất - MUST come before /:id route
 router.get('/recently-bought', async (req, res) => {
   try {
     // Lấy 20 đơn hàng gần nhất (có thể điều chỉnh số lượng nếu muốn)
@@ -68,7 +74,9 @@ router.get('/recently-bought', async (req, res) => {
     const products = await Product.find({ _id: { $in: uniqueProductIds } }).lean();
 
     // Đảm bảo trả về đúng thứ tự gần nhất
-    const orderedProducts = uniqueProductIds.map(id => products.find(p => p._id.toString() === id)).filter(Boolean);
+    const orderedProducts = uniqueProductIds
+      .map(id => products.find(p => p._id.toString() === id))
+      .filter(Boolean);
 
     res.json(orderedProducts);
   } catch (err) {
@@ -77,13 +85,15 @@ router.get('/recently-bought', async (req, res) => {
   }
 });
 
-// Parameterized route - MUST come after all specific routes
+// ✅ FIX: Route to retrieve products by category - MUST come before /:id route
+router.get('/by-category/:categoryId', productCtrl.getProductsByCategory);
+
+// ✅ IMPORTANT: Parameterized route - MUST come after all specific routes
 router.get('/:id', productCtrl.getProductById);
-router.post('/',   productCtrl.createProduct);
+
+// POST, PUT, DELETE routes
+router.post('/', productCtrl.createProduct);
 router.put('/:id', productCtrl.updateProduct);
 router.delete('/:id', productCtrl.deleteProduct);
-router.get('/best-sellers', productCtrl.getBestSellers);
-// Route to retrieve all products without pagination
-router.get('/all', productCtrl.getAllProducts);
 
 module.exports = router;

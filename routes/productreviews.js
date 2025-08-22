@@ -33,7 +33,7 @@ router.get('/products-with-review', async (req, res) => {
           return {
             ...product,
             image: image ? image.url : null,
-            avgRating: avgRating.toFixed(1),
+            rating: avgRating, // Đổi từ avgRating sang rating (kiểu số)
             reviewCount
           };
         } catch (error) {
@@ -263,9 +263,34 @@ router.get('/by-product/:product_id', async (req, res) => {
       return res.status(400).json({ error: 'product_id không hợp lệ' });
     }
 
+    // Lấy đánh giá, populate user và order
     const reviews = await ProductReview.find({ product_id })
       .populate('user_id', 'full_name avatarUrl')
-      .sort({ created_at: -1 });
+      .populate('order_id')
+      .sort({ created_at: -1 })
+      .lean();
+
+    // Lấy thông tin biến thể đã mua từ đơn hàng (nếu có)
+    // ...existing code...
+for (const review of reviews) {
+  if (review.order_id && review.order_id.products) {
+    const prod = review.order_id.products.find(
+      p => p.productId?.toString() === product_id
+    );
+    if (prod) {
+      if (prod.variant) {
+        review.variant = prod.variant; // Gắn biến thể đã mua vào review
+      }
+      // Gắn ảnh sản phẩm đã mua (ưu tiên ảnh biến thể nếu có, không thì ảnh sản phẩm)
+      if (prod.image) {
+        review.boughtImage = prod.image; // Nếu đơn hàng lưu ảnh biến thể
+      } else if (prod.productId && prod.productId.image) {
+        review.boughtImage = prod.productId.image; // Nếu populate productId
+      }
+    }
+  }
+}
+
 
     res.json(reviews);
   } catch (err) {

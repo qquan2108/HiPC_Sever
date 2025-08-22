@@ -426,7 +426,9 @@ images.forEach(img => {
 
 const productsWithImages = products.map(p => ({
   ...p,
-  image: imageMap[p._id.toString()] || null
+  image: imageMap[p._id.toString()] || null,
+  rating: p.rating || 0,         // Thêm dòng này
+  reviewCount: p.reviewCount || 0 // Thêm dòng này
 }));
 
 
@@ -732,6 +734,40 @@ exports.filterProductsByKeyword = async (req, res) => {
       hasMore: skip + productsWithImages.length < total,
       totalPages: Math.ceil(total / limitNum)
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({ error: 'ID danh mục không hợp lệ' });
+    }
+
+    const products = await Product.find({ category_id: categoryId })
+      .populate('category_id', 'name')
+      .populate('brand_id', 'name')
+      .lean();
+
+    const productIds = products.map(p => p._id);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const productsWithImages = products.map(p => ({
+      ...p,
+      image: imageMap[p._id.toString()] || null,
+      rating: p.rating || 0,
+      reviewCount: p.reviewCount || 0
+    }));
+
+    res.json({ products: productsWithImages });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
