@@ -609,7 +609,6 @@
             const data = await uploadRes.json();
             url = data.url;
         }
-
         const submitBtn = document.getElementById('submitBtn');
         const originalContent = submitBtn.innerHTML;
         submitBtn.innerHTML = '<div class="loading mr-2"></div>Đang lưu...';
@@ -627,9 +626,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body
             });
-
+            
             if (!res.ok) throw new Error('Failed to save image');
-
             closeModal();
             showToast(editingImageId ? 'Cập nhật ảnh thành công!' : 'Thêm ảnh thành công!');
             loadImages();
@@ -661,7 +659,6 @@
 
             // Trigger preview update
             document.getElementById('imageUrlInput').dispatchEvent(new Event('input'));
-
             document.getElementById('imageModal').style.display = 'block';
         } catch (error) {
             showToast('Lỗi khi tải thông tin ảnh: ' + error.message, 'error');
