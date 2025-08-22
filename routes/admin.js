@@ -49,7 +49,13 @@ router.get('/products/create', async (req, res) => {
     Category.find().lean(),
     Brand.find().lean()
   ]);
-  res.render('admin/form', { layout: 'admin/layout', categories, brands, product: {} });
+  res.render('admin/form', {
+    layout: 'admin/layout',
+    categories,
+    brands,
+    product: {},
+    mode: 'create'
+  });
 });
 router.get('/products/:id/edit', async (req, res) => {
   const [product, categories, brands] = await Promise.all([
@@ -58,7 +64,14 @@ router.get('/products/:id/edit', async (req, res) => {
     Brand.find().lean()
   ]);
   const tsktTemplates = await TsktProduct.find({ category_id: product.category_id }).lean();
-  res.render('admin/form', { layout: 'admin/layout', product, categories, brands, tsktTemplates });
+  res.render('admin/form', {
+    layout: 'admin/layout',
+    product,
+    categories,
+    brands,
+    tsktTemplates,
+    mode: 'edit'
+  });
 });
 
 // Quản lý Danh mục

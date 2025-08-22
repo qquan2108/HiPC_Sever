@@ -11,6 +11,18 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* Form sections */
+.form-section {
+  margin-bottom: 24px;
+}
+.form-section h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #4a90e2;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 4px;
+}
+
 /* Form Groups & Inputs (nếu chưa có) */
 .form-group {
   margin-bottom: 16px;

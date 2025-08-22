@@ -44,6 +44,17 @@ exports.createProduct = async (req, res) => {
       variants = '[]'          // Mặc định là chuỗi JSON mảng
     } = req.body;
 
+    // Validate required fields
+    if (!name || !category_id || !brand_id || price === undefined || stock === undefined) {
+      return res.status(400).json({ error: 'Thiếu trường bắt buộc' });
+    }
+
+    const priceNum = Number(price);
+    const stockNum = Number(stock);
+    if (Number.isNaN(priceNum) || Number.isNaN(stockNum)) {
+      return res.status(400).json({ error: 'Giá và số lượng phải là số' });
+    }
+
     // Validate specifications
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
@@ -64,9 +75,9 @@ exports.createProduct = async (req, res) => {
       name,
       category_id,
       brand_id,
-      price,
+      price: priceNum,
       description,
-      stock,
+      stock: stockNum,
       specifications,
       variants: parsedVariants    // Gán mảng nhóm biến thể
     });
