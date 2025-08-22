@@ -265,7 +265,20 @@ exports.getProductById = async (req, res) => {
       }));
     }
 
-    res.json({ ...item, image: primaryImage, images: urls, tskt });
+    // Ensure variant price differences are included in the response
+    const variants = Array.isArray(item.variants)
+      ? item.variants.map(group => ({
+          key: group.key,
+          options: Array.isArray(group.options)
+            ? group.options.map(opt => ({
+                label: opt.label,
+                priceDiff: opt.priceDiff ?? 0,
+              }))
+            : [],
+        }))
+      : [];
+
+    res.json({ ...item, variants, image: primaryImage, images: urls, tskt });
   } catch (err) {
     console.error('Error in getProductById:', err);
     res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
