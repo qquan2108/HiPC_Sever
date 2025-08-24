@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const revenue = await revRes.json();
       animateSummary(summary);
       renderRevenueChart(revenue);
+      setTableHeader('Thời gian', 'Doanh thu');
       fillTable(revenue);
     } else {
       console.error('Fetch error', sumRes.status, revRes.status);
@@ -41,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   populateMonthSelectors();
   initInputs();
   document.getElementById('periodSelect')?.addEventListener('change', updateInputs);
+  document.getElementById('reportType')?.addEventListener('change', updateInputs);
   document.getElementById('loadRevenue')?.addEventListener('click', loadRevenueData);
   document.getElementById('compareBtn')?.addEventListener('click', compareMonths);
 });
@@ -89,6 +91,29 @@ function renderLineChart(labels, datasets) {
   });
 }
 
+function renderBarChart(labels, label, data, currency = false) {
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  if (revenueChart) revenueChart.destroy();
+  revenueChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label,
+      data,
+      backgroundColor: hexToRgba(chartColors[1], 0.6)
+    }] },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: currency ? { callback: fmtCur } : {}
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
 function renderRevenueChart(data) {
   renderLineChart(data.labels, [{
     label: 'Doanh thu',
@@ -103,20 +128,42 @@ function renderRevenueChart(data) {
 }
 
 // -------- Bảng chi tiết --------
-function fillTable(data) {
+function setTableHeader(c1, c2) {
+  const tr = document.querySelector('#tableModal thead tr');
+  if (tr) tr.innerHTML = `<th>${c1}</th><th class="text-end">${c2}</th>`;
+}
+
+function fillTable(data, currency = true) {
   const tbody = document.getElementById('revenueTable');
   if (!tbody) return;
   tbody.innerHTML = '';
   data.labels.forEach((lbl, idx) => {
+    const val = currency ? fmtCur(data.data[idx]) : data.data[idx];
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><strong>${lbl}</strong></td>` +
-                   `<td class="text-end"><strong>${fmtCur(data.data[idx])}</strong></td>`;
+                   `<td class="text-end"><strong>${val}</strong></td>`;
     tbody.appendChild(tr);
   });
 }
 
 // -------- Bộ lọc --------
 function updateInputs() {
+  const reportType = document.getElementById('reportType')?.value;
+  const periodRow = document.getElementById('periodRow');
+  const timeRow = document.getElementById('timeRow');
+  const compareSection = document.getElementById('compareSection');
+
+  if (reportType !== 'revenue') {
+    periodRow?.classList.add('d-none');
+    timeRow?.classList.add('d-none');
+    compareSection?.classList.add('d-none');
+    return;
+  }
+
+  periodRow?.classList.remove('d-none');
+  timeRow?.classList.remove('d-none');
+  compareSection?.classList.remove('d-none');
+
   const period = document.getElementById('periodSelect')?.value;
   const monthInput = document.getElementById('monthInput');
   const weekInput  = document.getElementById('weekInput');
@@ -155,27 +202,53 @@ async function loadRevenueData() {
   const spinner = document.getElementById('loadingSpinner');
   if (spinner) spinner.style.display = 'flex';
 
-  const period = document.getElementById('periodSelect')?.value;
-  let query = '';
-  if (period === 'month') {
-    const m = document.getElementById('monthInput').value;
-    if (!m) return;
-    query = `period=month&month=${m}`;
-  } else if (period === 'week') {
-    const w = document.getElementById('weekInput').value;
-    if (!w) return;
-    query = `period=week&week=${w}`;
-  } else {
-    const y = document.getElementById('yearInput').value;
-    if (!y) return;
-    query = `period=year&year=${y}`;
-  }
+  const reportType = document.getElementById('reportType')?.value || 'revenue';
+
   try {
-    const res = await fetch(`/reports/revenue?${query}`);
-    if (!res.ok) return console.error('fetch revenue error', res.status);
-    const data = await res.json();
-    renderRevenueChart(data);
-    fillTable(data);
+    if (reportType === 'revenue') {
+      const period = document.getElementById('periodSelect')?.value;
+      let query = '';
+      if (period === 'month') {
+        const m = document.getElementById('monthInput').value;
+        if (!m) return;
+        query = `period=month&month=${m}`;
+      } else if (period === 'week') {
+        const w = document.getElementById('weekInput').value;
+        if (!w) return;
+        query = `period=week&week=${w}`;
+      } else {
+        const y = document.getElementById('yearInput').value;
+        if (!y) return;
+        query = `period=year&year=${y}`;
+      }
+      const res = await fetch(`/reports/revenue?${query}`);
+      if (!res.ok) return console.error('fetch revenue error', res.status);
+      const data = await res.json();
+      renderRevenueChart(data);
+      setTableHeader('Thời gian', 'Doanh thu');
+      fillTable(data, true);
+    } else if (reportType === 'category') {
+      const res = await fetch('/reports/category');
+      if (!res.ok) return console.error('fetch category error', res.status);
+      const data = await res.json();
+      renderBarChart(data.labels, 'Số lượng', data.data);
+      setTableHeader('Danh mục', 'Số lượng');
+      fillTable(data, false);
+    } else if (reportType === 'best-sellers') {
+      const res = await fetch('/reports/best-sellers');
+      if (!res.ok) return console.error('fetch best sellers error', res.status);
+      const data = await res.json();
+      renderBarChart(data.labels, 'Số lượng', data.data);
+      setTableHeader('Sản phẩm', 'Số lượng');
+      fillTable(data, false);
+    } else if (reportType === 'top-buyers') {
+      const res = await fetch('/reports/top-buyers');
+      if (!res.ok) return console.error('fetch top buyers error', res.status);
+      const data = await res.json();
+      renderBarChart(data.labels, 'Doanh thu', data.data, true);
+      setTableHeader('Người mua', 'Doanh thu');
+      fillTable(data, true);
+    }
   } catch (err) {
     console.error('loadRevenueData error', err);
   } finally {

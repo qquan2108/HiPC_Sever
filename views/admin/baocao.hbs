@@ -302,6 +302,15 @@
                 </h3>
                 <div class="row g-3 align-items-end controls-row">
                     <div class="col-md-12">
+                        <label class="form-label fw-semibold">Tùy chọn báo cáo</label>
+                        <select id="reportType" class="form-select">
+                            <option value="revenue" selected>Doanh thu</option>
+                            <option value="category">Thống kê sản phẩm theo danh mục</option>
+                            <option value="best-sellers">Sản phẩm bán chạy</option>
+                            <option value="top-buyers">Người mua nhiều nhất</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12" id="periodRow">
                         <label class="form-label fw-semibold">Loại thống kê</label>
                         <select id="periodSelect" class="form-select">
                             <option value="month" selected>Theo tháng</option>
@@ -309,7 +318,7 @@
                             <option value="year">Theo năm</option>
                         </select>
                     </div>
-                    <div class="col-md-12">
+                    <div class="col-md-12" id="timeRow">
                         <label class="form-label fw-semibold">Chọn thời gian</label>
                         <input type="month" id="monthInput" class="form-control" />
                         <input type="week" id="weekInput" class="form-control d-none" />
@@ -325,10 +334,10 @@
                     Xem bảng chi tiết
                 </button>
                     </div>
-                    
+
                 </div>
             </section>
-            <section class="controls-section mt-3" data-aos="fade-up" data-aos-delay="200">
+            <section id="compareSection" class="controls-section mt-3" data-aos="fade-up" data-aos-delay="200">
                 <h3 class="controls-title">
                     <i class="fas fa-balance-scale"></i>
                     So sánh doanh thu
