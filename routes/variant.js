@@ -45,7 +45,9 @@ router.get('/by-product/:productId', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ error: 'productId không hợp lệ' });
     }
-    const variants = await VariantProduct.find({ product_id: productId });
+    const variants = await VariantProduct.find({ product_id: productId })
+      .populate('product_id', 'name')
+      .lean();
     res.json(variants);
   } catch (err) {
     res.status(500).json({ error: err.message });

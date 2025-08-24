@@ -34,9 +34,11 @@
 
 <script>
   let allVariants = [];
+  let currentProductId = null;
 
   async function fetchVariants(productId) {
     try {
+      currentProductId = productId || null;
       const url = productId ? `/variants/by-product/${productId}` : '/variants';
       const res = await fetch(url);
       if (!res.ok) throw new Error('Lỗi tải dữ liệu');
@@ -52,11 +54,12 @@
     tbody.innerHTML = '';
     list.forEach(v => {
       const tr = document.createElement('tr');
+      const price = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.price || 0);
       tr.innerHTML = `
         <td class="px-6 py-4">${v.product_id ? v.product_id.name : ''}</td>
         <td class="px-6 py-4">${v.name}</td>
-        <td class="px-6 py-4">${v.price}</td>
-        <td class="px-6 py-4">${v.stock}</td>
+        <td class="px-6 py-4">${price}</td>
+        <td class="px-6 py-4">${v.stock ?? 0}</td>
         <td class="px-6 py-4 text-center">
           <a href="/admin/variants/${v._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
             <i class="bx bx-edit text-xl"></i>
@@ -74,7 +77,7 @@
     try {
       const res = await fetch('/variants/' + id, { method: 'DELETE' });
       if (!res.ok) throw new Error('Xóa thất bại');
-      fetchVariants();
+      fetchVariants(currentProductId);
     } catch (err) {
       alert('Lỗi: ' + err.message);
     }

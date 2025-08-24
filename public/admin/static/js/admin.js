@@ -87,11 +87,15 @@ function renderProducts(products, append = false) {
 
   products.forEach(p => {
     const tr = document.createElement("tr");
+    const price = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(p.price || 0);
+    const stock = p.stock ?? 0;
+    const variantCount = Array.isArray(p.variants) ? p.variants.length : 0;
     tr.innerHTML = `
       <td><img src="${p.image}" class="product-img" alt="${p.name}"></td>
       <td>${p.name}</td>
-      <td>${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(p.price)}</td>
-      <td>${p.stock}</td>
+      <td>${price}</td>
+      <td>${stock}</td>
+      <td>${variantCount}</td>
        <td class="actions text-center">
            <a href="/admin/products/${p._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
              <i class="bx bx-edit text-xl"></i>
