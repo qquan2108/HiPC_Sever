@@ -187,27 +187,39 @@ exports.getProductsByCategory = async (req, res) => {
       { $match: { status: 'delivered' } },
       { $unwind: '$products' },
       {
+        $group: {
+          _id: '$products.productId',
+          qty: { $sum: '$products.quantity' }
+        }
+      },
+      {
         $lookup: {
           from: 'products',
-          localField: 'products.productId',
+          localField: '_id',
           foreignField: '_id',
           as: 'prod'
         }
       },
       { $unwind: '$prod' },
       {
+        $group: {
+          _id: '$prod.category_id',
+          total: { $sum: '$qty' }
+        }
+      },
+      {
         $lookup: {
           from: 'categories',
-          localField: 'prod.category_id',
+          localField: '_id',
           foreignField: '_id',
           as: 'cat'
         }
       },
       { $unwind: '$cat' },
       {
-        $group: {
+        $project: {
           _id: '$cat.name',
-          total: { $sum: '$products.quantity' }
+          total: 1
         }
       },
       { $sort: { total: -1 } }
