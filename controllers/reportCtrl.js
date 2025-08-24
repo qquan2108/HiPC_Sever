@@ -1,5 +1,7 @@
 // controllers/reportCtrl.js
 const Order = require('../models/Order');  // đúng đường dẫn đến model
+// Thêm các model khác nếu cần thiết cho việc thống kê
+// (sử dụng tên collection trong pipeline $lookup nên không bắt buộc import)
 
 // 1. Tổng hợp doanh thu, số đơn, doanh thu trung bình
 exports.getSummary = async (req, res) => {
@@ -174,6 +176,121 @@ exports.getRevenue = async (req, res) => {
     res.json({ labels, data });
   } catch (err) {
     console.error('Error in getRevenue:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Thống kê sản phẩm theo danh mục
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const agg = await Order.aggregate([
+      { $match: { status: 'delivered' } },
+      { $unwind: '$products' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'products.productId',
+          foreignField: '_id',
+          as: 'prod'
+        }
+      },
+      { $unwind: '$prod' },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'prod.category_id',
+          foreignField: '_id',
+          as: 'cat'
+        }
+      },
+      { $unwind: '$cat' },
+      {
+        $group: {
+          _id: '$cat.name',
+          total: { $sum: '$products.quantity' }
+        }
+      },
+      { $sort: { total: -1 } }
+    ]);
+
+    const labels = agg.map(a => a._id);
+    const data = agg.map(a => a.total);
+    res.json({ labels, data });
+  } catch (err) {
+    console.error('Error in getProductsByCategory:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Sản phẩm bán chạy
+exports.getBestSellers = async (req, res) => {
+  try {
+    const agg = await Order.aggregate([
+      { $match: { status: 'delivered' } },
+      { $unwind: '$products' },
+      {
+        $group: {
+          _id: '$products.productId',
+          total: { $sum: '$products.quantity' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'prod'
+        }
+      },
+      { $unwind: '$prod' },
+      { $sort: { total: -1 } },
+      { $limit: 5 }
+    ]);
+
+    const labels = agg.map(a => a.prod.name);
+    const data = agg.map(a => a.total);
+    res.json({ labels, data });
+  } catch (err) {
+    console.error('Error in getBestSellers:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Người mua nhiều nhất
+exports.getTopBuyers = async (req, res) => {
+  try {
+    const agg = await Order.aggregate([
+      { $match: { status: 'delivered', user_id: { $ne: null } } },
+      {
+        $group: {
+          _id: '$user_id',
+          total: { $sum: '$total' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: '$user' },
+      { $sort: { total: -1 } },
+      { $limit: 5 },
+      {
+        $project: {
+          name: '$user.full_name',
+          total: 1
+        }
+      }
+    ]);
+
+    const labels = agg.map(a => a.name);
+    const data = agg.map(a => a.total);
+    res.json({ labels, data });
+  } catch (err) {
+    console.error('Error in getTopBuyers:', err);
     res.status(500).json({ error: err.message });
   }
 };
