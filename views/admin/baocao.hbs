@@ -202,6 +202,12 @@
         flex: 1 1 45%;
         min-width: 140px;
     }
+    .comparison-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
     .modal-content {
         border-radius: 1.5rem;
         box-shadow: 0 8px 32px 0 rgba(161,140,209,0.13);
@@ -302,6 +308,15 @@
                 </h3>
                 <div class="row g-3 align-items-end controls-row">
                     <div class="col-md-12">
+                        <label class="form-label fw-semibold">Tùy chọn báo cáo</label>
+                        <select id="reportType" class="form-select">
+                            <option value="revenue" selected>Doanh thu</option>
+                            <option value="category">Thống kê sản phẩm theo danh mục</option>
+                            <option value="best-sellers">Sản phẩm bán chạy</option>
+                            <option value="top-buyers">Người mua nhiều nhất</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12" id="periodRow">
                         <label class="form-label fw-semibold">Loại thống kê</label>
                         <select id="periodSelect" class="form-select">
                             <option value="month" selected>Theo tháng</option>
@@ -309,7 +324,7 @@
                             <option value="year">Theo năm</option>
                         </select>
                     </div>
-                    <div class="col-md-12">
+                    <div class="col-md-12" id="timeRow">
                         <label class="form-label fw-semibold">Chọn thời gian</label>
                         <input type="month" id="monthInput" class="form-control" />
                         <input type="week" id="weekInput" class="form-control d-none" />
@@ -320,37 +335,42 @@
                             <i class="fas fa-search me-2"></i>
                             Xem báo cáo
                         </button>
-                        <button type="button" class="btn btn-primary w-100 mt-3 animate__animated animate__pulse" data-bs-toggle="modal" data-bs-target="#tableModal">
+                        <button id="detailBtn" type="button" class="btn btn-primary w-100 mt-3 animate__animated animate__pulse" data-bs-toggle="modal" data-bs-target="#tableModal">
                     <i class="fas fa-table me-2"></i>
                     Xem bảng chi tiết
                 </button>
                     </div>
-                    
+
                 </div>
             </section>
-            <section class="controls-section mt-3" data-aos="fade-up" data-aos-delay="200">
-                <h3 class="controls-title">
-                    <i class="fas fa-balance-scale"></i>
-                    So sánh doanh thu
-                </h3>
-                <div class="comparison-controls">
-                    <div>
-                        <label class="form-label fw-semibold">Tháng thứ nhất</label>
-                        <select id="month1" class="form-select" aria-label="Tháng so sánh 1">
-                            <option value="">Chọn tháng...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label fw-semibold">Tháng thứ hai</label>
-                        <select id="month2" class="form-select" aria-label="Tháng so sánh 2">
-                            <option value="">Chọn tháng...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button id="compareBtn" class="btn btn-primary w-100 animate__animated animate__pulse">
-                            <i class="fas fa-chart-line me-2"></i>
-                            So sánh
-                        </button>
+            <section id="compareSection" class="controls-section mt-3" data-aos="fade-up" data-aos-delay="200">
+                <div class="comparison-header" data-bs-toggle="collapse" data-bs-target="#compareContent" aria-expanded="false" aria-controls="compareContent">
+                    <h3 class="controls-title mb-0">
+                        <i class="fas fa-balance-scale"></i>
+                        So sánh doanh thu
+                    </h3>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div id="compareContent" class="collapse">
+                    <div class="comparison-controls">
+                        <div>
+                            <label class="form-label fw-semibold">Tháng thứ nhất</label>
+                            <select id="month1" class="form-select" aria-label="Tháng so sánh 1">
+                                <option value="">Chọn tháng...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold">Tháng thứ hai</label>
+                            <select id="month2" class="form-select" aria-label="Tháng so sánh 2">
+                                <option value="">Chọn tháng...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button id="compareBtn" class="btn btn-primary w-100 animate__animated animate__pulse">
+                                <i class="fas fa-chart-line me-2"></i>
+                                So sánh
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
