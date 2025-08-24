@@ -35,6 +35,7 @@ var comboRoutes = require('./routes/comboRoutes');
 var videoRoutes = require('./routes/videoRoutes');
 var pcbuilderRouter = require('./routes/pcbuilder');
 var chatRouter = require('./routes/chat');
+var VariantRouter = require('./routes/variant');
 const { default: mongoose } = require('mongoose');
 var cors = require('cors');
 
@@ -117,8 +118,7 @@ app.use('/notifications', notificationsRouter);
 app.use('/banners', bannerRoutes);
 app.use('/pcbuild', pcbuilderRouter);
 app.use('/ai', chatRouter);
-
-
+app.use('/variants', VariantRouter);
 
 app.use('/admin/static', express.static(path.join(__dirname, 'public/admin/static')));
 

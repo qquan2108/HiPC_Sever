@@ -90,6 +90,7 @@ router.post('/register', async (req, res) => {
         {
           label,
           address,
+          phoneNum,
           provinceId,
           districtId,
           wardCode,
@@ -493,6 +494,7 @@ router.get('/:id/addresses', async (req, res) => {
       id: "default",
       label: "Địa chỉ mặc định",
       address: user.address,
+      phoneNum: user.phone || null,
       latitude: user.latitude || null,
       longitude: user.longitude || null,
       provinceId: user.provinceId || null,
@@ -508,12 +510,12 @@ router.get('/:id/addresses', async (req, res) => {
 // Thêm địa chỉ giao hàng
 // Thêm địa chỉ giao hàng
 router.post('/:id/addresses', async (req, res) => {
-  const { label, address, latitude, longitude, provinceId, districtId, wardCode } = req.body;
+  const { label, address, phoneNum, provinceId, districtId, wardCode } = req.body;
   const user = await User.findById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
   const newAddr = {
     id: new Date().getTime().toString(),
-    label, address, latitude, longitude, provinceId, districtId, wardCode,
+    label, address, phoneNum, provinceId, districtId, wardCode,
     isDefault: user.addresses.length === 0
   };
   user.addresses.push(newAddr);

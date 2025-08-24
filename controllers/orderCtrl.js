@@ -4,6 +4,7 @@ const Image = require("../models/Image");
 const Cart = require("../models/Cart");
 const Voucher = require("../models/Voucher");
 const Combo = require("../models/Combo");
+const VariantProduct = require('../models/Variantproduct'); // Thêm dòng này ở đầu file nếu chưa có
 const {
   validateVoucherConditions,
   calculateDiscountAmount,
@@ -291,6 +292,7 @@ exports.createOrder = async (req, res) => {
     let {
       user_id,
       address,
+      phoneNumber,
       paymentMethod,
       shippingMethod,
       selectedOrderVoucher,
@@ -391,6 +393,7 @@ exports.createOrder = async (req, res) => {
         user_id,
         products: orderProducts,
         address,
+        phoneNumber,
         paymentMethod,
         shippingMethod,
         voucher: orderVoucherId, // voucher đơn hàng
@@ -477,18 +480,41 @@ exports.createOrder = async (req, res) => {
           itemTotal,
         });
 
-        if (prod.stock < item.quantity) {
-          return res
-            .status(400)
-            .json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+        // Nếu có biến thể thì kiểm tra và trừ tồn kho của biến thể
+        if (item.variant && item.variant.label) {
+          const variantDoc = await VariantProduct.findOne({
+            product_id: prod._id,
+            name: item.variant.label
+          });
+          if (!variantDoc) {
+            return res.status(400).json({ error: `Không tìm thấy biến thể ${item.variant.label}` });
+          }
+          if (variantDoc.stock < item.quantity) {
+            return res.status(400).json({
+              error: `Số lượng tồn kho không đủ`,
+              detail: {
+                type: 'variant',
+                name: variantDoc.name,
+                stock: variantDoc.stock
+              }
+            });
+          }
+          await VariantProduct.updateOne(
+            { _id: variantDoc._id },
+            { $inc: { stock: -item.quantity } }
+          );
+        } else {
+          // Nếu không có biến thể thì trừ vào sản phẩm gốc
+          if (prod.stock < item.quantity) {
+            return res.status(400).json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
+          }
+          await Product.updateOne(
+            { _id: prod._id },
+            { $inc: { stock: -item.quantity } }
+          );
         }
+
         totalPrice += itemTotal;
-
-        await Product.updateOne(
-          { _id: prod._id },
-          { $inc: { stock: -item.quantity } }
-        );
-
         orderProducts.push({
           productId: prod._id,
           quantity: item.quantity,
@@ -613,6 +639,7 @@ exports.createOrder = async (req, res) => {
       products: orderProducts,
       combos: orderCombos,
       address,
+      phoneNumber,
       paymentMethod,
       shippingMethod,
       voucher: orderVoucherId, // Order voucher ID

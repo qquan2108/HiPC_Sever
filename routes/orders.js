@@ -96,7 +96,7 @@ router.post("/checkout", orderCtrl.createOrder);
 
 router.post('/buy-now', async (req, res) => {
   try {
-    const { user_id, productId, quantity = 1, variant, address, paymentMethod, shippingMethod, voucher, shippingFee } = req.body;
+    const { user_id, productId, quantity = 1, variant, address, phoneNumber, paymentMethod, shippingMethod, voucher, shippingFee } = req.body;
     
     // 1. Validation đầu vào
     if (!user_id || !productId || !quantity) {
@@ -173,6 +173,7 @@ router.post('/buy-now', async (req, res) => {
             variant: variant || {}
           }],
           address,
+          phoneNumber: phoneNumber || '',
           paymentMethod,
           shippingMethod,
           voucher,

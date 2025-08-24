@@ -2,6 +2,7 @@ const Product     = require('../models/Product');
 const Image       = require('../models/Image');
 const TsktProduct = require('../models/TsktProduct');
 const Order = require('../models/Order'); // Thêm dòng này ở đầu file nếu chưa có
+const VariantProduct = require('../models/Variantproduct'); // Thêm dòng này ở đầu file
 const mongoose    = require('mongoose');
 // controllers/productCtrl.js
 
@@ -199,16 +200,18 @@ exports.getProducts = async (req, res) => {
     ]);
 
     const productsWithImage = await Promise.all(
-     products.map(async p => {
-    const img = await Image.findOne({ product_id: p._id }).lean();
-    return {
-      ...p,
-      image: img ? img.url : null,
-      category: p.category_id?.name || '', // Thêm dòng này
-      brand: p.brand_id?.name || '',       // Có thể thêm brand nếu cần
-    };
-  })
-);
+      products.map(async p => {
+        const img = await Image.findOne({ product_id: p._id }).lean();
+        const variants = await VariantProduct.find({ product_id: p._id }).lean();
+        return {
+          ...p,
+          image: img ? img.url : null,
+          category: p.category_id?.name || '',
+          brand: p.brand_id?.name || '',
+          variants, // Trả về mảng biến thể từ bảng riêng
+        };
+      })
+    );
 
     res.json({
       products: productsWithImage,
@@ -234,10 +237,13 @@ exports.getProductById = async (req, res) => {
       .populate('category_id', 'name')
       .populate('brand_id', 'name')
       .lean();
-    
+
     if (!item) {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
+
+    // Lấy biến thể từ bảng VariantProduct
+    const variants = await VariantProduct.find({ product_id: item._id }).lean();
 
     // images
     const imgs = await Image.find({ product_id: item._id }).lean();
@@ -266,19 +272,13 @@ exports.getProductById = async (req, res) => {
     }
 
     // Ensure variant price differences are included in the response
-    const variants = Array.isArray(item.variants)
-      ? item.variants.map(group => ({
-          key: group.key,
-          options: Array.isArray(group.options)
-            ? group.options.map(opt => ({
-                label: opt.label,
-                priceDiff: opt.priceDiff ?? 0,
-              }))
-            : [],
-        }))
-      : [];
-
-    res.json({ ...item, variants, image: primaryImage, images: urls, tskt });
+    res.json({
+      ...item,
+      variants, // Trả về mảng biến thể
+      image: primaryImage,
+      images: urls,
+      tskt
+    });
   } catch (err) {
     console.error('Error in getProductById:', err);
     res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
@@ -430,7 +430,6 @@ const productsWithImages = products.map(p => ({
   rating: p.rating || 0,         // Thêm dòng này
   reviewCount: p.reviewCount || 0 // Thêm dòng này
 }));
-
 
     // ------------------------
     // Response
@@ -760,13 +759,16 @@ exports.getProductsByCategory = async (req, res) => {
       }
     });
 
-    const productsWithImages = products.map(p => ({
-      ...p,
-      image: imageMap[p._id.toString()] || null,
-      rating: p.rating || 0,
-      reviewCount: p.reviewCount || 0
+    const productsWithImages = await Promise.all(products.map(async p => {
+      const variants = await VariantProduct.find({ product_id: p._id }).lean();
+      return {
+        ...p,
+        image: imageMap[p._id.toString()] || null,
+        rating: p.rating || 0,
+        reviewCount: p.reviewCount || 0,
+        variants, // Trả về mảng biến thể từ bảng riêng
+      };
     }));
-
     res.json({ products: productsWithImages });
   } catch (err) {
     res.status(500).json({ error: err.message });

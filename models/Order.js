@@ -57,7 +57,7 @@ const orderSchema = new mongoose.Schema(
       enum: ["unpaid", "paid", "failed", "refunded"],
       default: "unpaid",
     },
-    qrCodeUrl: { type: String, default: null },
+    phoneNumber: { type: Number, default: " " },
 
     statusHistory: [statusHistorySchema],
     total_price: Number,

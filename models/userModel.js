@@ -72,8 +72,7 @@ const userSchema = new mongoose.Schema({
       id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
       label: String, // Ví dụ: "Nhà riêng", "Công ty"
       address: String,
-      latitude: Number,
-      longitude: Number,
+      phoneNum: Number ,
       provinceId: String,
       districtId: String,
       wardCode: String,

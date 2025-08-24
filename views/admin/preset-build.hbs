@@ -573,6 +573,7 @@
             <select id="comboSelect" class="form-select" style="margin-bottom: 1rem;">
                 <option value="">-- Chọn combo --</option>
             </select>
+            <div id="comboDetail" style="margin-bottom: 1rem;"></div>
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <button id="assignComboBtn" class="btn btn-primary">Gán combo</button>
                 <button type="button" class="btn btn-outline" onclick="closeComboAssignModal()">Đóng</button>
@@ -694,6 +695,33 @@
             combos.forEach(combo => {
                 select.innerHTML += `<option value="${combo._id}">${combo.name}</option>`;
             });
+            select.onchange = showComboDetail;
+        }
+
+        function showComboDetail() {
+            const comboId = document.getElementById('comboSelect').value;
+            const combo = combos.find(c => c._id === comboId);
+            const detailDiv = document.getElementById('comboDetail');
+            if (!combo) {
+                detailDiv.innerHTML = '';
+                return;
+            }
+            let html = `<strong>Sản phẩm trong combo:</strong><ul style="margin-top:8px;">`;
+            combo.productIds.forEach(product => {
+                let variantText = '';
+                if (product.variants && product.variants.length > 0) {
+                    const group = product.variants[0];
+                    if (group.options && group.options.length > 0) {
+                        variantText = ` <span style="color:#667eea;">(${group.key}: ${group.options[0].label})</span>`;
+                    }
+                }
+                html += `<li>
+                    <img src="${product.image || ''}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;margin-right:8px;">
+                    <strong>${product.name}</strong>${variantText}
+                </li>`;
+            });
+            html += '</ul>';
+            detailDiv.innerHTML = html;
         }
 
         // Khi chọn combo, thêm tất cả sản phẩm vào preset

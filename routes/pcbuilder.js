@@ -7,73 +7,145 @@ const { calculateTotalPrice, estimatePerformance, checkCompatibility } = require
 const mongoose = require('mongoose');
 const Preset = require('../models/Preset');
 const Combo = require('../models/Combo');
+const Image = require('../models/Image');
+const VariantProduct = require('../models/Variantproduct'); // Thêm nếu chưa có
 
 // Preset builds với khả năng chỉnh sửa
-let PRESET_BUILDS = [
-  { 
-    id: 'gaming', 
-    name: 'Gaming PC', 
-    description: 'Cấu hình chơi game mạnh mẽ', 
-    components: [],
-    estimatedPrice: 0,
-    category: 'gaming'
-  },
-  { 
-    id: 'workstation', 
-    name: 'Workstation', 
-    description: 'Cấu hình làm việc chuyên nghiệp', 
-    components: [],
-    estimatedPrice: 0,
-    category: 'work'
-  },
-  { 
-    id: 'budget', 
-    name: 'Budget PC', 
-    description: 'Tiết kiệm chi phí, hiệu quả cao', 
-    components: [],
-    estimatedPrice: 0,
-    category: 'budget'
-  }
-];
+
 
 // Lấy danh sách preset builds (MongoDB)
+// Lấy tất cả combos
+router.get('/combos', async (req, res) => {
+  try {
+    const combos = await Combo.find()
+      .populate({
+        path: 'productIds',
+        populate: [
+          { path: 'category_id', select: 'name' },
+          { path: 'brand_id', select: 'name' }
+        ]
+      })
+      .lean();
+
+    // Lấy ảnh cho products trong combo (nếu cần)
+    const allProductIds = combos.flatMap(combo =>
+      combo.productIds.map(p => p._id.toString())
+    );
+
+    const images = await Image.find({
+      product_id: { $in: allProductIds }
+    }).lean();
+
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    const combosWithImages = combos.map(combo => ({
+      ...combo,
+      productIds: combo.productIds.map(p => ({
+        ...p,
+        image: imageMap[p._id.toString()] || ''
+      }))
+    }));
+
+    res.json(combosWithImages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Lấy danh sách preset builds (MongoDB) - PHẦN CẦN SỬA
 router.get('/presets', async (req, res) => {
   try {
-    const presets = await Preset.find().populate('comboIds');
-    // Tính số sản phẩm và giá ước tính cho mỗi preset
+    const presets = await Preset.find()
+      .populate({
+        path: 'comboIds',
+        populate: {
+          path: 'productIds',
+          populate: [
+            { path: 'category_id', select: 'name _id' },
+            { path: 'brand_id', select: 'name' }
+          ]
+        }
+      });
+
     const result = [];
+
     for (const preset of presets) {
-      let components = [];
+      let componentsByCategory = {};
       let estimatedPrice = 0;
+
       for (const combo of preset.comboIds) {
-        await combo.populate('productIds');
-        for (const prod of combo.productIds) {
-          if (!components.some(c => c.productId === prod._id.toString())) {
-            components.push({
-              productId: prod._id.toString(),
-              name: prod.name,
-              price: prod.price,
-              quantity: 1
-            });
-            estimatedPrice += prod.price;
+        for (const product of combo.productIds) {
+          if (!product.category_id) continue;
+          const categoryId = product.category_id._id.toString();
+
+          // Lấy tất cả biến thể của sản phẩm
+          const variants = await VariantProduct.find({ product_id: product._id }).lean();
+
+          // Nếu có biến thể, lấy biến thể đầu tiên làm mặc định
+          let variant = undefined;
+          if (variants.length > 0) {
+            const v = variants[0];
+            variant = {
+              key: 'Phiên bản',
+              label: v.name,
+              _id: v._id,
+              stock: v.stock,
+              price: v.price
+            };
           }
+
+          // Nếu không có biến thể, lấy stock và price từ product
+          const stock = variant ? variant.stock : (product.stock || 0);
+          const price = variant ? variant.price : (product.price || 0);
+
+          const productWithCategory = {
+            _id: product._id,
+            name: product.name,
+            price,
+            image: product.image,
+            brand_id: product.brand_id,
+            category_id: product.category_id,
+            variant,
+            stock,
+            categoryName: product.category_id.name,
+            variants // 🆕 Trả về toàn bộ danh sách biến thể cho UI chọn nếu cần
+          };
+
+          if (!componentsByCategory[categoryId]) {
+            componentsByCategory[categoryId] = [];
+          }
+          componentsByCategory[categoryId].push(productWithCategory);
+
+          estimatedPrice += price;
         }
       }
+
+      const components = Object.entries(componentsByCategory).map(([categoryId, products]) => ({
+        categoryId,
+        categoryName: products[0].categoryName,
+        products
+      }));
+
       result.push({
         _id: preset._id,
         name: preset.name,
         description: preset.description,
         category: preset.category,
-        comboIds: preset.comboIds.map(c => c._id),
-        comboNames: preset.comboIds.map(c => c.name),
         components,
         estimatedPrice,
-        image: preset.image, // <-- Thêm dòng này để trả về ảnh đại diện
+        price: estimatedPrice,
+        image: preset.image,
         createdAt: preset.createdAt
       });
     }
+
     res.json(result);
   } catch (err) {
+    console.error('Error fetching presets:', err);
     res.status(500).json({ error: err.message });
   }
 });

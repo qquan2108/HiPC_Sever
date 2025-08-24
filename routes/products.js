@@ -6,6 +6,7 @@ const multer = require('multer');
 const productCtrl = require('../controllers/productCtrl');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const VariantProduct = require('../models/Variantproduct'); // Đảm bảo đúng tên file/model
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads/products');
@@ -89,7 +90,39 @@ router.get('/recently-bought', async (req, res) => {
 router.get('/by-category/:categoryId', productCtrl.getProductsByCategory);
 
 // ✅ IMPORTANT: Parameterized route - MUST come after all specific routes
-router.get('/:id', productCtrl.getProductById);
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate('category_id')
+      .populate('brand_id')
+      .lean();
+
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    }
+
+    // Lấy các variant từ bảng VariantProduct
+    const variants = await VariantProduct.find({ product_id: product._id }).lean();
+
+    // Format về dạng group cho UI
+    product.variants = [
+      {
+        key: 'Phiên bản',
+        options: variants.map(v => ({
+          label: v.name,
+          priceDiff: (v.price || 0) - (product.price || 0), // Chênh lệch giá so với gốc
+          price: v.price,
+          stock: v.stock,
+          _id: v._id,
+        }))
+      }
+    ];
+
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // POST, PUT, DELETE routes
 router.post('/', productCtrl.createProduct);
