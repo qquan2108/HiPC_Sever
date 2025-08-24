@@ -152,20 +152,17 @@ function updateInputs() {
   const periodRow = document.getElementById('periodRow');
   const timeRow = document.getElementById('timeRow');
   const compareSection = document.getElementById('compareSection');
-  const detailBtn = document.getElementById('detailBtn');
 
   if (reportType !== 'revenue') {
     periodRow?.classList.add('d-none');
     timeRow?.classList.add('d-none');
     compareSection?.classList.add('d-none');
-    detailBtn?.classList.add('d-none');
     return;
   }
 
   periodRow?.classList.remove('d-none');
   timeRow?.classList.remove('d-none');
   compareSection?.classList.remove('d-none');
-  detailBtn?.classList.remove('d-none');
 
   const period = document.getElementById('periodSelect')?.value;
   const monthInput = document.getElementById('monthInput');
