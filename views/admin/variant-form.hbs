@@ -48,33 +48,41 @@
 </div>
 
 <script>
-  document.getElementById('variantForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const fd = new FormData(this);
-    const id = fd.get('id');
-    const payload = {
-      product_id: fd.get('product_id'),
-      name: fd.get('name'),
-      price: Number(fd.get('price')),
-      stock: Number(fd.get('stock'))
-    };
-    const url = id ? `/variants/${id}` : '/variants/create';
-    const method = id ? 'PUT' : 'POST';
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Có lỗi xảy ra');
-        return;
-      }
-      window.location.href = '/admin/variants';
-    } catch (err) {
-      alert('Lỗi: ' + err.message);
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('productId');
+    if (productId) {
+      const select = document.querySelector('select[name="product_id"]');
+      if (select && !select.value) select.value = productId;
     }
+    document.getElementById('variantForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const fd = new FormData(this);
+      const id = fd.get('id');
+      const payload = {
+        product_id: fd.get('product_id'),
+        name: fd.get('name'),
+        price: Number(fd.get('price')),
+        stock: Number(fd.get('stock'))
+      };
+      const url = id ? `/variants/${id}` : '/variants/create';
+      const method = id ? 'PUT' : 'POST';
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          alert(data.error || 'Có lỗi xảy ra');
+          return;
+        }
+        window.location.href = productId ? `/admin/variants?productId=${productId}` : '/admin/variants';
+      } catch (err) {
+        alert('Lỗi: ' + err.message);
+      }
+    });
   });
 </script>
 

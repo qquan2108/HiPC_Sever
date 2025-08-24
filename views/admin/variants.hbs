@@ -4,7 +4,7 @@
 
 <div class="container glass-card rounded-2xl p-6 fade-in">
   <div class="header-actions mb-4 flex justify-between items-center">
-    <a href="/admin/variants/create" class="btn-add-user">
+    <a id="addVariantLink" href="/admin/variants/create" class="btn-add-user">
       <span class="icon"><i class="bx bx-plus"></i></span>
       <span>Thêm Biến thể</span>
     </a>
@@ -35,9 +35,10 @@
 <script>
   let allVariants = [];
 
-  async function fetchVariants() {
+  async function fetchVariants(productId) {
     try {
-      const res = await fetch('/variants');
+      const url = productId ? `/variants/by-product/${productId}` : '/variants';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Lỗi tải dữ liệu');
       allVariants = await res.json();
       renderVariants(allVariants);
@@ -80,7 +81,13 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    fetchVariants();
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('productId');
+    if (productId) {
+      const link = document.getElementById('addVariantLink');
+      if (link) link.href = `/admin/variants/create?productId=${productId}`;
+    }
+    fetchVariants(productId);
     document.getElementById('variantSearch').addEventListener('input', e => {
       const q = e.target.value.toLowerCase();
       renderVariants(allVariants.filter(v => v.name.toLowerCase().includes(q)));
