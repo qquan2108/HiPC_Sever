@@ -10,6 +10,7 @@ const Video = require('../models/Video');
 const Combo = require('../models/Combo');
 const Image = require('../models/Image');
 const Order = require('../models/Order');
+const VariantProduct = require('../models/Variantproduct');
 
 // Dashboard
 router.get('/dashboard', async (req, res) => {
@@ -274,6 +275,32 @@ router.get('/preset-build', (req, res) => {
 // Quản lý voucher
 router.get('/vouchers', (req, res) => {
   res.render('admin/vouchers', { layout: 'admin/layout' });
+});
+
+// Quản lý biến thể sản phẩm
+router.get('/variants', (req, res) => {
+  res.render('admin/variants', { layout: 'admin/layout' });
+});
+
+router.get('/variants/create', async (req, res) => {
+  const products = await Product.find().select('name').lean();
+  res.render('admin/variant-form', {
+    layout: 'admin/layout',
+    variant: {},
+    products
+  });
+});
+
+router.get('/variants/:id/edit', async (req, res) => {
+  const [variant, products] = await Promise.all([
+    VariantProduct.findById(req.params.id).lean(),
+    Product.find().select('name').lean()
+  ]);
+  res.render('admin/variant-form', {
+    layout: 'admin/layout',
+    variant,
+    products
+  });
 });
 
 module.exports = router;

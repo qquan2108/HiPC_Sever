@@ -1,0 +1,80 @@
+{{#*inline "title"}}
+  {{#if variant._id}}Chỉnh sửa Biến thể{{else}}Tạo Biến thể{{/if}}
+{{/inline}}
+
+<link rel="stylesheet" href="/admin/static/css/form.css" />
+
+<div class="form-scroll-container">
+  <form id="variantForm" {{#if variant._id}}data-id="{{variant._id}}"{{/if}}>
+    {{#if variant._id}}
+      <input type="hidden" name="id" value="{{variant._id}}" />
+    {{/if}}
+
+    <div class="form-section">
+      <h3>Thông tin biến thể</h3>
+
+      <div class="form-group">
+        <label>Sản phẩm *</label>
+        <select name="product_id" required>
+          <option value="">-- Chọn sản phẩm --</option>
+          {{#each products}}
+            <option value="{{_id}}" {{#ifEquals _id ../variant.product_id}}selected{{/ifEquals}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Tên biến thể *</label>
+        <input type="text" name="name" value="{{variant.name}}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Giá (VNĐ) *</label>
+        <input type="number" name="price" value="{{variant.price}}" min="0" required />
+      </div>
+
+      <div class="form-group">
+        <label>Số lượng tồn kho *</label>
+        <input type="number" name="stock" value="{{variant.stock}}" min="0" required />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Lưu</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.getElementById('variantForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    const id = fd.get('id');
+    const payload = {
+      product_id: fd.get('product_id'),
+      name: fd.get('name'),
+      price: Number(fd.get('price')),
+      stock: Number(fd.get('stock'))
+    };
+    const url = id ? `/variants/${id}` : '/variants/create';
+    const method = id ? 'PUT' : 'POST';
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Có lỗi xảy ra');
+        return;
+      }
+      window.location.href = '/admin/variants';
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  });
+</script>
+
