@@ -73,23 +73,6 @@ input[type="text"]:focus, select:focus, input[type="number"]:focus, textarea:foc
   flex: 1;
 }
 
-/* Variant styles */
-#variantsContainer .spec-item select {
-  flex: 1;
-}
-.variant-custom input {
-  flex: 1;
-}
-.variant-custom .variant-name {
-  max-width: 140px;
-}
-#addVariantBtn {
-  margin-top: 10px;
-  background: #f3f4f6;
-  color: #222;
-  border: 1px solid #d1d5db;
-}
-
 /* Footer Buttons */
 .modal-footer {
   display: flex;

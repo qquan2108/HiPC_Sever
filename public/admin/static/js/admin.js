@@ -143,9 +143,6 @@ async function initProductForm() {
   const form = document.getElementById("productForm");
   const categorySelect = document.getElementById("categorySelect");
   const specContainer = document.getElementById("specContainer");
-  const variantsContainer = document.getElementById("variantsContainer");
-  const addVariantBtn = document.getElementById("addVariantBtn");
-  const variantsInput = document.getElementById("variantsInput");
   const descInput = document.getElementById("descriptionInput");
   const descEditorEl = document.getElementById("descriptionEditor");
   const imageFile = document.getElementById("imageFile");
@@ -156,7 +153,6 @@ async function initProductForm() {
   const imageFileGroup = document.getElementById("imageFileGroup");
   const imageLinkGroup = document.getElementById("imageLinkGroup");
   const priceInput = form.querySelector('input[name="price"]');
-  const stockInput = form.querySelector('input[name="stock"]');
 
   const getSpecInputs = () =>
     Array.from(specContainer.querySelectorAll(".spec-item input")).filter(
@@ -171,7 +167,6 @@ async function initProductForm() {
   }
 
   setupNumberInput(priceInput);
-  setupNumberInput(stockInput);
 
   // Initialize CKEditor
   try {
@@ -221,71 +216,10 @@ async function initProductForm() {
     if (hiddenId) form.dataset.id = hiddenId.value;
   }
 
-  function addVariantOption(container, label = '', priceDiff = 0) {
-    const row = document.createElement('div');
-    row.className = 'variant-option';
-    row.innerHTML = `
-      <input type="text" class="form-control variant-option-label" placeholder="Tên lựa chọn" value="${label}">
-      <input type="number" class="form-control variant-option-price" placeholder="Chênh lệch giá" value="${priceDiff}">
-      <button type="button" class="btn btn-sm btn-danger remove-option">&times;</button>`;
-    row.querySelector('.remove-option').addEventListener('click', () => row.remove());
-    container.appendChild(row);
-  }
-
-  function addVariantGroup(name = '', options = []) {
-    const group = document.createElement('div');
-    group.className = 'spec-item variant-group';
-    group.innerHTML = `
-      <input type="text" class="form-control variant-group-name" placeholder="Tên biến thể" value="${name}">
-      <div class="variant-options"></div>
-      <button type="button" class="btn btn-sm btn-secondary add-option">Thêm lựa chọn</button>
-      <button type="button" class="btn btn-sm btn-danger remove-group">&times;</button>`;
-
-    const optionsContainer = group.querySelector('.variant-options');
-    const addOptionBtn = group.querySelector('.add-option');
-    const removeGroupBtn = group.querySelector('.remove-group');
-
-    addOptionBtn.addEventListener('click', () => addVariantOption(optionsContainer));
-    removeGroupBtn.addEventListener('click', () => group.remove());
-
-    options.forEach(opt => addVariantOption(optionsContainer, opt.label || opt, opt.priceDiff || 0));
-
-    variantsContainer.appendChild(group);
-  }
-
-  function renderVariantOptions(templateList = [], existing = []) {
-    console.log('Rendering variant options:', templateList, existing);
-    variantsContainer.innerHTML = '';
-    const used = new Set();
-
-    templateList.forEach(opt => {
-      const key = opt.name || opt.key;
-      const match = Array.isArray(existing)
-        ? existing.find(g => (g.key || g.name) === key)
-        : null;
-      const options = match
-        ? (match.options || []).map(o => ({ label: o.label || o, priceDiff: o.priceDiff || 0 }))
-        : (opt.options || []).map(o => ({ label: o, priceDiff: 0 }));
-      addVariantGroup(key, options);
-      used.add(key);
-    });
-
-    if (Array.isArray(existing)) {
-      existing.forEach(g => {
-        const key = g.key || g.name;
-        if (!used.has(key)) {
-          const opts = (g.options || []).map(o => ({ label: o.label || o, priceDiff: o.priceDiff || 0 }));
-          addVariantGroup(key, opts);
-        }
-      });
-    }
-  }
-
-  async function loadSpecsAndVariants(catId, existingVariants = []) {
-    console.log('Loading specs and variants for category:', catId);
+  async function loadSpecs(catId) {
+    console.log('Loading specs for category:', catId);
 
     specContainer.innerHTML = '';
-    variantsContainer.innerHTML = '';
 
     if (!catId) {
       console.log('No category selected');
@@ -308,12 +242,10 @@ async function initProductForm() {
       console.log('Received data:', data);
 
       let specs = [];
-      let variantOpts = [];
 
       // Parse response data
       if (Array.isArray(data.specs)) {
         specs = data.specs;
-        variantOpts = Array.isArray(data.variantOptions) ? data.variantOptions : [];
       } else if (Array.isArray(data.fields)) {
         specs = data.fields; // ← Thêm dòng này để hỗ trợ `fields` thay vì `specs`
       } else if (Array.isArray(data)) {
@@ -323,12 +255,8 @@ async function initProductForm() {
         } else if (Array.isArray(first.value)) {
           specs = first.value;
         }
-        if (Array.isArray(first.variantOptions)) {
-          variantOpts = first.variantOptions;
-        }
       }
       console.log('Parsed specs:', specs);
-      console.log('Parsed variants:', variantOpts);
 
       // Render specification fields
       specs.forEach(fieldName => {
@@ -341,11 +269,8 @@ async function initProductForm() {
         specContainer.appendChild(div);
       });
 
-      // Render variant options
-      renderVariantOptions(variantOpts, existingVariants);
-
     } catch (err) {
-      console.error('Load specs/variants error:', err);
+      console.error('Load specs error:', err);
       showToast('Lỗi tải thông số kỹ thuật', 'error');
     }
   }
@@ -353,13 +278,8 @@ async function initProductForm() {
   // Category change event handler
   categorySelect.addEventListener('change', async (e) => {
     console.log('Category changed to:', e.target.value);
-    await loadSpecsAndVariants(e.target.value);
+    await loadSpecs(e.target.value);
   });
-
-  // Add variant button
-  if (addVariantBtn) {
-    addVariantBtn.addEventListener('click', () => addVariantGroup());
-  }
 
   // Preload form data in edit mode
   if (form.dataset.mode === "edit") {
@@ -376,7 +296,6 @@ async function initProductForm() {
         // Fill basic fields
         form.querySelector('input[name="name"]').value = prod.name || '';
         if (priceInput) { priceInput.value = prod.price || ''; priceInput.dispatchEvent(new Event('input')); }
-        if (stockInput) { stockInput.value = prod.stock || ''; stockInput.dispatchEvent(new Event('input')); }
         if (editor) editor.setData(prod.description || "");
         if (descInput) descInput.value = prod.description || '';
 
@@ -395,10 +314,7 @@ async function initProductForm() {
         if (prod.category_id && prod.category_id._id) {
           categorySelect.value = prod.category_id._id;
 
-          await loadSpecsAndVariants(
-            prod.category_id._id,
-            Array.isArray(prod.variants) ? prod.variants : []
-          );
+          await loadSpecs(prod.category_id._id);
 
           // Fill spec values
           const specList = Array.isArray(prod.tskt) ? prod.tskt : prod.specifications || [];
@@ -418,7 +334,7 @@ async function initProductForm() {
   } else if (categorySelect.value) {
     // Load specs for initially selected category in create mode
     console.log('Loading specs for initial category:', categorySelect.value);
-    await loadSpecsAndVariants(categorySelect.value);
+    await loadSpecs(categorySelect.value);
   }
 
   // Form submit handler
@@ -453,32 +369,13 @@ async function initProductForm() {
         }
       }
 
-      // Collect variant data with price differences
-      const variantsArray = [];
-      variantsContainer.querySelectorAll('.variant-group').forEach(group => {
-        const key = group.querySelector('.variant-group-name').value.trim();
-        const options = [];
-        group.querySelectorAll('.variant-option').forEach(opt => {
-          const label = opt.querySelector('.variant-option-label').value.trim();
-          const priceDiff = parseFloat(opt.querySelector('.variant-option-price').value) || 0;
-          if (label) options.push({ label, priceDiff });
-        });
-        if (key && options.length) {
-          variantsArray.push({ key, options });
-        }
-      });
-
-      variantsInput.value = JSON.stringify(variantsArray);
-
-      
-
       // Prepare payload
       const payload = {
         name: fd.get("name"),
         category_id: fd.get("category_id"),
         brand_id: fd.get("brand_id"),
         price: Number(String(fd.get("price")).replace(/[^0-9]/g, '')),
-        stock: Number(String(fd.get("stock")).replace(/[^0-9]/g, '')),
+        stock: 0,
         image: imageUrl,
         description: fd.get("description"),
         specifications: getSpecInputs()
@@ -487,8 +384,7 @@ async function initProductForm() {
             value: inp.value
           }))
           .filter(item => item.key && item.value.trim()),
-        // Mặc định gửi '[]' nếu không có variants
-        variants: variantsInput.value
+        variants: []
       };
 
       const url = fd.get("id") ? `${apiProduct}/${fd.get("id")}` : apiProduct;
