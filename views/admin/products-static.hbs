@@ -3,6 +3,19 @@
 <!-- 1. CSS riêng cho products -->
 <link rel="stylesheet" href="/admin/static/css/products.css">
 
+<header class="floating-header sticky top-0 z-50 py-4 px-6 mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                    <i class="fas fa-box-open text-white text-xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Quản lý Sản phẩm
+                </h1>
+            </div>
+        </div>
+    </header>
+
 <div class="container">
   <!-- 2. Header Actions: Thêm + Search -->
   <div class="header-actions">
@@ -32,10 +45,10 @@
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hình</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giá</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Biến thể</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hình</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tên</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Giá</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Số biến thể</th>
           <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Hành động</th>
         </tr>
       </thead>

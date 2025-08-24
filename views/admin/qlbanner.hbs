@@ -72,10 +72,20 @@
     border-radius: 8px;
   }
 </style>
-
+<header class="floating-header sticky top-0 z-50 py-4 px-6 mb-8" style="background: white;">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                    <i class="fas fa-images text-white text-xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Quản lý Banner
+                </h1>
+            </div>
+        </div>
+    </header>
 <div class="container mt-4">
   <div class="glass-card rounded-2xl p-4 fade-in">
-    <h1 class="text-center mb-4">Quản Lý Banner</h1>
 
     <div class="d-flex justify-content-end mb-3">
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBannerModal">
