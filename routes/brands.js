@@ -1,6 +1,38 @@
 const express = require('express');
 const router = express.Router();
 const Brand = require('../models/Brand');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+// Tạo thư mục lưu nếu chưa có
+const uploadDir = path.join(__dirname, '../public/uploads/brands');
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const safe = file.originalname.replace(/\s+/g, '_').replace(/[^\w.\-]/g, '');
+    cb(null, Date.now() + '-' + safe);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    if (!/^image\//.test(file.mimetype)) return cb(new Error('Chỉ nhận file ảnh'));
+    cb(null, true);
+  }
+});
+
+// POST /brands/upload -> { url }
+router.post('/upload', upload.single('file'), (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'No file' });
+  // URL public: nhớ serve static thư mục /public
+  const url = `/uploads/brands/${file.filename}`;
+  res.json({ url });
+});
 
 // GET all brands
 router.get('/', async (req, res) => {

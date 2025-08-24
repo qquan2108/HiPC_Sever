@@ -40,35 +40,22 @@ exports.createProduct = async (req, res) => {
       brand_id,
       price,
       description = '',
-      stock = 0,
-      specifications = [],
-      variants = '[]'          // Mặc định là chuỗi JSON mảng
+      specifications = [],      // Mặc định là chuỗi JSON mảng
     } = req.body;
 
     // Validate required fields
-    if (!name || !category_id || !brand_id || price === undefined || stock === undefined) {
+    if (!name || !category_id || !brand_id || price === undefined) {
       return res.status(400).json({ error: 'Thiếu trường bắt buộc' });
     }
 
     const priceNum = Number(price);
-    const stockNum = Number(stock);
-    if (Number.isNaN(priceNum) || Number.isNaN(stockNum)) {
-      return res.status(400).json({ error: 'Giá và số lượng phải là số' });
+    if (Number.isNaN(priceNum)) {
+      return res.status(400).json({ error: 'Giá phải là số' });
     }
 
     // Validate specifications
     if (!Array.isArray(specifications)) {
       return res.status(400).json({ error: 'specifications phải là mảng' });
-    }
-
-    // Parse và validate variants
-    let parsedVariants = [];
-    try {
-      const raw = JSON.parse(variants);
-      if (!Array.isArray(raw)) throw new Error();
-      parsedVariants = normalizeVariants(raw);
-    } catch (e) {
-      return res.status(400).json({ error: 'variants phải là JSON mảng hợp lệ' });
     }
 
     // Tạo product mới
@@ -78,9 +65,7 @@ exports.createProduct = async (req, res) => {
       brand_id,
       price: priceNum,
       description,
-      stock: stockNum,
-      specifications,
-      variants: parsedVariants    // Gán mảng nhóm biến thể
+      specifications    // Gán mảng nhóm biến thể
     });
 
     await newItem.save();

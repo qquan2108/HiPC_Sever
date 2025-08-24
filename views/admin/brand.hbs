@@ -1,75 +1,691 @@
-{{#*inline "title"}}Quản lý thương hiệu{{/inline}}
+{{!-- views/brands.hbs --}}
+{{!-- NOTE: Layout ngoài đã lo <html>, <head>, tailwind, font-awesome... --}}
+{{!-- Add Brand Modal --}}
+<div id="addBrandModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/40">
+  <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+    <div class="px-6 py-4 border-b flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-hipc-dark">Thêm thương hiệu</h3>
+      <button id="closeAddBrandModalBtn" class="text-hipc-gray hover:text-hipc-dark">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+    </div>
 
-<div class="max-w-4xl mx-auto p-6">
-  <h1 class="text-2xl font-bold mb-4">Quản lý thương hiệu</h1>
-  <form id="createForm" class="mb-6 flex flex-col md:flex-row gap-2">
-    <input id="brandName" type="text" placeholder="Tên thương hiệu" class="border p-2 rounded flex-1" required>
-    <input id="brandLogo" type="text" placeholder="Logo URL" class="border p-2 rounded flex-1">
-    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Thêm</button>
-  </form>
-  <table class="min-w-full bg-white rounded shadow">
-    <thead>
-      <tr>
-        <th class="py-2 px-4 border-b">Tên</th>
-        <th class="py-2 px-4 border-b">Logo</th>
-        <th class="py-2 px-4 border-b text-center">Hành động</th>
-      </tr>
-    </thead>
-    <tbody id="brandsTable"></tbody>
-  </table>
+    <div class="p-6 space-y-5">
+      {{!-- Tên thương hiệu --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-1">Tên thương hiệu *</label>
+        <input id="addBrandName"
+               type="text"
+               placeholder="VD: ASUS, Intel, AMD..."
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hipc-blue focus:border-transparent"
+               required />
+      </div>
+
+      {{!-- Chọn cách nhập ảnh --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-2">Ảnh logo</label>
+        <div class="flex items-center gap-4 mb-3">
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="logoMode" value="link" class="logo-mode"
+                   checked />
+            <span>Dán link ảnh</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="logoMode" value="file" class="logo-mode" />
+            <span>Tải file lên</span>
+          </label>
+        </div>
+
+        {{!-- Nhập link --}}
+        <div id="logoUrlWrap" class="space-y-2">
+          <input id="logoUrlInput"
+                 type="url"
+                 placeholder="https://example.com/logo.png"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hipc-blue focus:border-transparent" />
+        </div>
+
+        {{!-- Tải file --}}
+        <div id="logoFileWrap" class="space-y-2 hidden">
+          <input id="logoFileInput"
+                 type="file"
+                 accept="image/*"
+                 class="block w-full text-sm text-hipc-gray file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-hipc-light-blue file:text-white hover:file:bg-blue-600" />
+          <p class="text-xs text-hipc-gray">Tối đa 2MB. Định dạng: JPG, PNG, WEBP…</p>
+        </div>
+      </div>
+
+      {{!-- Xem trước --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-2">Xem trước</label>
+        <div class="border rounded-lg p-4 flex items-center justify-center min-h-[140px]">
+          <img id="logoPreview"
+               alt="Xem trước logo"
+               class="max-h-24 object-contain hidden" />
+          <div id="logoPreviewPlaceholder" class="text-hipc-gray text-sm">
+            Chưa có ảnh xem trước
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t flex items-center justify-end gap-3">
+      <button id="cancelAddBrandBtn"
+              class="px-4 py-2 rounded-lg border border-gray-300 text-hipc-dark hover:bg-gray-50">
+        Hủy
+      </button>
+      <button id="submitAddBrandBtn"
+              class="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200">
+        <i class="fas fa-save mr-2"></i>Lưu
+      </button>
+    </div>
+  </div>
 </div>
 
+{{!-- Edit Brand Modal --}}
+<div id="editBrandModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/40">
+  <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+    <div class="px-6 py-4 border-b flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-hipc-dark">Chỉnh sửa thương hiệu</h3>
+      <button id="closeEditBrandModalBtn" class="text-hipc-gray hover:text-hipc-dark">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+    </div>
+
+    <div class="p-6 space-y-5">
+      {{!-- Tên thương hiệu --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-1">Tên thương hiệu *</label>
+        <input id="editBrandName"
+               type="text"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hipc-blue focus:border-transparent"
+               required />
+      </div>
+
+      {{!-- Chọn cách nhập ảnh --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-2">Ảnh logo</label>
+        <div class="flex items-center gap-4 mb-3">
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="editLogoMode" value="link" class="edit-logo-mode" checked />
+            <span>Dán link ảnh</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="editLogoMode" value="file" class="edit-logo-mode" />
+            <span>Tải file lên</span>
+          </label>
+        </div>
+
+        {{!-- Nhập link --}}
+        <div id="editLogoUrlWrap" class="space-y-2">
+          <input id="editLogoUrlInput"
+                 type="url"
+                 placeholder="https://example.com/logo.png"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hipc-blue focus:border-transparent" />
+        </div>
+
+        {{!-- Tải file --}}
+        <div id="editLogoFileWrap" class="space-y-2 hidden">
+          <input id="editLogoFileInput"
+                 type="file"
+                 accept="image/*"
+                 class="block w-full text-sm text-hipc-gray file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-hipc-light-blue file:text-white hover:file:bg-blue-600" />
+          <p class="text-xs text-hipc-gray">Tối đa 2MB. Định dạng: JPG, PNG, WEBP…</p>
+        </div>
+      </div>
+
+      {{!-- Xem trước --}}
+      <div>
+        <label class="block text-sm font-medium text-hipc-gray mb-2">Xem trước</label>
+        <div class="border rounded-lg p-4 flex items-center justify-center min-h-[140px]">
+          <img id="editLogoPreview" alt="Xem trước logo" class="max-h-24 object-contain hidden" />
+          <div id="editLogoPreviewPlaceholder" class="text-hipc-gray text-sm">
+            Chưa có ảnh xem trước
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t flex items-center justify-end gap-3">
+      <button id="cancelEditBrandBtn"
+              class="px-4 py-2 rounded-lg border border-gray-300 text-hipc-dark hover:bg-gray-50">
+        Hủy
+      </button>
+      <button id="submitEditBrandBtn"
+              class="px-4 py-2 rounded-lg bg-hipc-light-blue hover:bg-blue-500 text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+        <i class="fas fa-save mr-2"></i>Lưu thay đổi
+      </button>
+    </div>
+  </div>
+</div>
+
+<header class="floating-header sticky top-0 z-50 py-4 px-6 mb-8" style="background: white;">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                    <i class="fas fa-industry text-white text-xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Quản lý Thương hiệu
+                </h1>
+            </div>
+        </div>
+    </header>
+
+
+{{!-- Add Brand (trigger) --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center">
+      <i class="fas fa-plus-circle text-hipc-blue text-xl mr-3"></i>
+      <h3 class="text-lg font-semibold text-hipc-dark">Thêm thương hiệu mới</h3>
+    </div>
+    <button
+  id="openAddBrandModalBtn"
+  type="button"
+  class="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200"
+>
+  <i class="fas fa-plus mr-2"></i>Thêm thương hiệu
+</button>
+
+  </div>
+</div>
+
+<div class="mb-8">
+    <div class="flex items-center space-x-2 text-sm text-hipc-gray">
+      <i class="fas fa-tags"></i>
+      <span id="brandCount">{{#if brands}}{{brands.length}}{{else}}0{{/if}} thương hiệu</span>
+    </div>
+</div>
+
+{{!-- Search and Filter --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+  <div class="flex flex-col sm:flex-row gap-4">
+    <div class="flex-1">
+      <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-hipc-gray"></i>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Tìm kiếm thương hiệu..."
+          class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hipc-blue focus:border-transparent"
+        >
+      </div>
+    </div>
+    <button
+      id="refreshBtn"
+      class="px-4 py-2 text-hipc-blue hover:bg-hipc-blue hover:text-white border border-hipc-blue rounded-lg transition-all duration-200"
+    >
+      <i class="fas fa-sync-alt mr-2"></i>
+      Làm mới
+    </button>
+  </div>
+</div>
+
+{{!-- Brands Table --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold text-hipc-dark flex items-center">
+      <i class="fas fa-list mr-3"></i>
+      Danh sách thương hiệu
+    </h3>
+  </div>
+
+  <div class="overflow-x-auto {{#unless brands.length}}hidden{{/unless}}" id="tableWrapper">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-hipc-gray uppercase tracking-wider">
+            <i class="fas fa-tag mr-2"></i>Thương hiệu
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-hipc-gray uppercase tracking-wider">
+            <i class="fas fa-image mr-2"></i>Logo
+          </th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-hipc-gray uppercase tracking-wider">
+            <i class="fas fa-cog mr-2"></i>Thao tác
+          </th>
+        </tr>
+      </thead>
+      <tbody id="brandsTable" class="bg-white divide-y divide-gray-200">
+        {{#each brands}}
+          <tr class="hover:bg-gray-50 transition-colors duration-150" data-id="{{_id}}">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-hipc-dark">{{name}}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              {{#if logo}}
+                <img src="{{logo}}" alt="{{name}}" class="h-10 w-auto object-contain rounded border" onerror="this.style.display='none'">
+              {{else}}
+                <span class="text-gray-400 text-sm">Không có logo</span>
+              {{/if}}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <div class="flex items-center justify-center space-x-3">
+                <button
+                  class="btn-edit text-hipc-blue hover:text-blue-700 transition-colors duration-150"
+                  title="Sửa"
+                  data-id="{{_id}}"
+                  data-name="{{name}}"
+                  data-logo="{{logo}}"
+                >
+                  <i class="fas fa-edit text-lg"></i>
+                </button>
+                <button
+                  class="btn-delete text-red-500 hover:text-red-700 transition-colors duration-150"
+                  title="Xóa"
+                  data-id="{{_id}}"
+                  data-name="{{name}}"
+                >
+                  <i class="fas fa-trash text-lg"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+
+  {{!-- Empty State --}}
+  <div id="emptyState" class="text-center py-12 {{#if brands.length}}hidden{{/if}}">
+    <i class="fas fa-tags text-gray-300 text-4xl mb-4"></i>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">Chưa có thương hiệu nào</h3>
+    <p class="text-gray-500 mb-4">Thêm thương hiệu đầu tiên để bắt đầu quản lý</p>
+  </div>
+
+  {{!-- Loading State (ẩn mặc định, dùng khi gọi API) --}}
+  <div id="loadingState" class="text-center py-12 hidden">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-hipc-blue"></div>
+    <p class="mt-2 text-hipc-gray">Đang tải...</p>
+  </div>
+</div>
+
+{{!-- Toast Notification --}}
+<div id="toast" class="fixed top-4 right-4 z-50 hidden">
+  <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm">
+    <div class="flex items-center">
+      <div id="toastIcon" class="flex-shrink-0 mr-3"></div>
+      <div id="toastMessage" class="text-sm font-medium"></div>
+    </div>
+  </div>
+</div>
+
+{{!-- Dữ liệu JSON từ server để JS sử dụng (tránh cần helper json) --}}
 <script>
-  async function fetchBrands() {
-    const res = await fetch('/brands');
-    const data = await res.json();
+  // ===== Toast =====
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+    const icons = {
+      success: '<i class="fas fa-check-circle text-green-500"></i>',
+      error:   '<i class="fas fa-exclamation-circle text-red-500"></i>',
+      info:    '<i class="fas fa-info-circle text-blue-500"></i>'
+    };
+    toastIcon.innerHTML = icons[type] || icons.info;
+    toastMessage.textContent = message;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+  }
+
+  function updateBrandCount() {
+    const rows = document.querySelectorAll('#brandsTable tr');
+    document.getElementById('brandCount').textContent = rows.length + ' thương hiệu';
+  }
+
+  function toggleEmptyTable(hasRows) {
+    document.getElementById('tableWrapper').classList.toggle('hidden', !hasRows);
+    document.getElementById('emptyState').classList.toggle('hidden', hasRows);
+  }
+
+  // ===== Render =====
+  function renderTable(brands = []) {
     const tbody = document.getElementById('brandsTable');
     tbody.innerHTML = '';
-    data.forEach(b => {
+    brands.forEach(b => {
       const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50 transition-colors duration-150';
+      tr.dataset.id = b._id;
       tr.innerHTML = `
-        <td class="border-b px-4 py-2">${b.name}</td>
-        <td class="border-b px-4 py-2">${b.logo ? `<img src="${b.logo}" class="h-8">` : ''}</td>
-        <td class="border-b px-4 py-2 text-center space-x-2">
-          <button onclick="editBrand('${b._id}', '${b.name}', '${b.logo || ''}')" class="text-blue-500"><i class="fas fa-edit"></i></button>
-          <button onclick="deleteBrand('${b._id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm font-medium text-hipc-dark">${b.name}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          ${b.logo
+            ? `<img src="${b.logo}" alt="${b.name}" class="h-10 w-auto object-contain rounded border" onerror="this.style.display='none'">`
+            : `<span class="text-gray-400 text-sm">Không có logo</span>`}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-center">
+          <div class="flex items-center justify-center space-x-3">
+            <button class="btn-edit text-hipc-blue hover:text-blue-700 transition-colors duration-150"
+                    title="Sửa" data-id="${b._id}" data-name="${b.name}" data-logo="${b.logo || ''}">
+              <i class="fas fa-edit text-lg"></i>
+            </button>
+            <button class="btn-delete text-red-500 hover:text-red-700 transition-colors duration-150"
+                    title="Xóa" data-id="${b._id}" data-name="${b.name}">
+              <i class="fas fa-trash text-lg"></i>
+            </button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
     });
+    toggleEmptyTable(brands.length > 0);
+    updateBrandCount();
   }
 
-  document.getElementById('createForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('brandName').value.trim();
-    const logo = document.getElementById('brandLogo').value.trim();
-    if(!name) return;
-    await fetch('/brands', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name, logo })
+  // ===== API base =====
+  const API_BASE = '/brands';
+
+  async function fetchJSON(url, options = {}) {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
     });
-    e.target.reset();
-    fetchBrands();
+    if (!res.ok) {
+      const msg = await res.text().catch(() => '');
+      throw new Error(msg || `HTTP ${res.status}`);
+    }
+    // No content
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ===== CRUD via API =====
+  async function apiListBrands() {
+    return fetchJSON(API_BASE, { method: 'GET' });
+  }
+
+  async function apiCreateBrand(payload) {
+    return fetchJSON(API_BASE, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async function apiUpdateBrand(id, payload) {
+    return fetchJSON(`${API_BASE}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async function apiDeleteBrand(id) {
+    return fetchJSON(`${API_BASE}/${id}`, { method: 'DELETE' });
+  }
+
+  // ===== Page behaviors =====
+  let currentBrands = [];
+
+  async function loadAndRender() {
+    const loading = document.getElementById('loadingState');
+    const empty = document.getElementById('emptyState');
+    loading.classList.remove('hidden');
+    empty.classList.add('hidden');
+    try {
+      currentBrands = await apiListBrands();  // GET /brands
+      renderTable(currentBrands);
+    } catch (err) {
+      console.error(err);
+      showToast('Không tải được danh sách thương hiệu', 'error');
+      renderTable([]);
+    } finally {
+      loading.classList.add('hidden');
+    }
+  }
+
+  // ===== init =====
+  document.addEventListener('DOMContentLoaded', () => {
+    // 1) Load lần đầu từ API
+    loadAndRender();
+
+    // 2) Tạo mới
+    document.getElementById('createForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('brandName').value.trim();
+      const logo = document.getElementById('brandLogo').value.trim();
+      if (!name) { showToast('Vui lòng nhập tên thương hiệu', 'error'); return; }
+      if (currentBrands.find(b => b.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Thương hiệu đã tồn tại', 'error'); return;
+      }
+      try {
+        await apiCreateBrand({ name, logo: logo || null });   // POST /brands
+        await loadAndRender();
+        e.target.reset();
+        showToast('Thêm thương hiệu thành công', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Không thể tạo thương hiệu', 'error');
+      }
+    });
+
+    // 3) Sửa/Xóa bằng event delegation
+    document.getElementById('brandsTable').addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('.btn-edit');
+      const delBtn  = e.target.closest('.btn-delete');
+
+      if (editBtn) {
+        const id   = editBtn.dataset.id;
+        const name = editBtn.dataset.name;
+        const logo = editBtn.dataset.logo || '';
+        const newName = prompt('Tên thương hiệu:', name);
+        if (newName === null) return;
+        const trimmedName = newName.trim();
+        if (!trimmedName) { showToast('Tên thương hiệu không được để trống', 'error'); return; }
+        if (currentBrands.some(b => b._id !== id && b.name.toLowerCase() === trimmedName.toLowerCase())) {
+          showToast('Tên thương hiệu đã tồn tại', 'error'); return;
+        }
+        const newLogo = prompt('Logo URL:', logo) ?? '';
+        try {
+          await apiUpdateBrand(id, { name: trimmedName, logo: newLogo.trim() || null }); // PUT /brands/:id
+          await loadAndRender();
+          showToast('Cập nhật thương hiệu thành công', 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('Không thể cập nhật thương hiệu', 'error');
+        }
+      }
+
+      if (delBtn) {
+        const id = delBtn.dataset.id;
+        const brandName = delBtn.dataset.name;
+        if (!confirm(`Bạn có chắc chắn muốn xóa thương hiệu "${brandName}"?`)) return;
+        try {
+          await apiDeleteBrand(id); // DELETE /brands/:id
+          await loadAndRender();
+          showToast('Xóa thương hiệu thành công', 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('Không thể xóa thương hiệu', 'error');
+        }
+      }
+    });
+
+    // 4) Search
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = currentBrands.filter(b => (b.name || '').toLowerCase().includes(term));
+      renderTable(filtered);
+    });
+
+    // 5) Refresh
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      document.getElementById('searchInput').value = '';
+      await loadAndRender();
+      showToast('Dữ liệu đã được làm mới', 'info');
+    });
+  });
+</script>
+
+<script>
+  // ====== Modal helpers ======
+  const addBrandModal = document.getElementById('addBrandModal');
+  const openAddBrandModalBtn = document.getElementById('openAddBrandModalBtn');
+  const closeAddBrandModalBtn = document.getElementById('closeAddBrandModalBtn');
+  const cancelAddBrandBtn = document.getElementById('cancelAddBrandBtn');
+  const submitAddBrandBtn = document.getElementById('submitAddBrandBtn');
+
+  const addBrandName = document.getElementById('addBrandName');
+  const logoUrlWrap = document.getElementById('logoUrlWrap');
+  const logoFileWrap = document.getElementById('logoFileWrap');
+  const logoUrlInput = document.getElementById('logoUrlInput');
+  const logoFileInput = document.getElementById('logoFileInput');
+  const logoPreview = document.getElementById('logoPreview');
+  const logoPreviewPlaceholder = document.getElementById('logoPreviewPlaceholder');
+
+  let logoMode = 'link'; // 'link' | 'file'
+  let uploading = false;
+
+  function openAddBrandModal() {
+    resetAddBrandForm();
+    addBrandModal.classList.remove('hidden');
+    addBrandModal.classList.add('flex');
+    addBrandName.focus();
+  }
+
+  function closeAddBrandModal() {
+    addBrandModal.classList.add('hidden');
+    addBrandModal.classList.remove('flex');
+  }
+
+  function resetAddBrandForm() {
+    addBrandName.value = '';
+    logoUrlInput.value = '';
+    logoFileInput.value = '';
+    logoMode = 'link';
+    document.querySelectorAll('.logo-mode').forEach(r => {
+      r.checked = (r.value === 'link');
+    });
+    logoUrlWrap.classList.remove('hidden');
+    logoFileWrap.classList.add('hidden');
+    hidePreview();
+    setSubmitting(false);
+  }
+
+  function setSubmitting(isSubmitting) {
+    uploading = isSubmitting;
+    submitAddBrandBtn.disabled = isSubmitting;
+    submitAddBrandBtn.innerHTML = isSubmitting
+      ? '<i class="fas fa-spinner fa-spin mr-2"></i>Đang lưu...'
+      : '<i class="fas fa-save mr-2"></i>Lưu';
+  }
+
+  function showPreview(src) {
+    if (src) {
+      logoPreview.src = src;
+      logoPreview.classList.remove('hidden');
+      logoPreviewPlaceholder.classList.add('hidden');
+    } else {
+      hidePreview();
+    }
+  }
+
+  function hidePreview() {
+    logoPreview.src = '';
+    logoPreview.classList.add('hidden');
+    logoPreviewPlaceholder.classList.remove('hidden');
+  }
+
+  // Toggle mode
+  document.querySelectorAll('.logo-mode').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      logoMode = e.target.value;
+      if (logoMode === 'link') {
+        logoUrlWrap.classList.remove('hidden');
+        logoFileWrap.classList.add('hidden');
+        // cập nhật preview theo URL hiện có
+        showPreview(logoUrlInput.value.trim() || null);
+      } else {
+        logoUrlWrap.classList.add('hidden');
+        logoFileWrap.classList.remove('hidden');
+        // xóa preview, đợi người dùng chọn file
+        hidePreview();
+      }
+    });
   });
 
-  async function editBrand(id, name, logo) {
-    const newName = prompt('Tên thương hiệu', name);
-    if(newName === null) return;
-    const newLogo = prompt('Logo URL', logo);
-    await fetch('/brands/' + id, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name:newName, logo:newLogo })
-    });
-    fetchBrands();
-  }
+  // Preview khi nhập URL
+  logoUrlInput.addEventListener('input', () => {
+    if (logoMode === 'link') {
+      const url = logoUrlInput.value.trim();
+      showPreview(url || null);
+    }
+  });
 
-  async function deleteBrand(id) {
-    if(!confirm('Xóa thương hiệu này?')) return;
-    await fetch('/brands/' + id, { method:'DELETE' });
-    fetchBrands();
-  }
+  // Preview khi chọn file
+  logoFileInput.addEventListener('change', () => {
+    if (logoMode !== 'file') return;
+    const file = logoFileInput.files?.[0];
+    if (!file) { hidePreview(); return; }
+    if (!file.type.startsWith('image/')) {
+      showToast('Vui lòng chọn đúng file ảnh', 'error');
+      logoFileInput.value = '';
+      hidePreview();
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Kích thước ảnh tối đa 2MB', 'error');
+      logoFileInput.value = '';
+      hidePreview();
+      return;
+    }
+    const src = URL.createObjectURL(file);
+    showPreview(src);
+  });
 
-  document.addEventListener('DOMContentLoaded', fetchBrands);
+  // Open/close
+  openAddBrandModalBtn.addEventListener('click', openAddBrandModal);
+  closeAddBrandModalBtn.addEventListener('click', closeAddBrandModal);
+  cancelAddBrandBtn.addEventListener('click', closeAddBrandModal);
+  addBrandModal.addEventListener('click', (e) => {
+    if (e.target === addBrandModal) closeAddBrandModal(); // click outside
+  });
+
+  // Submit
+  submitAddBrandBtn.addEventListener('click', async () => {
+    if (uploading) return;
+    const name = addBrandName.value.trim();
+    if (!name) {
+      showToast('Vui lòng nhập tên thương hiệu', 'error');
+      addBrandName.focus();
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      let logoUrl = null;
+
+      if (logoMode === 'link') {
+        const raw = (logoUrlInput.value || '').trim();
+        logoUrl = raw || null;
+      } else {
+        const file = logoFileInput.files?.[0];
+        if (!file) {
+          showToast('Vui lòng chọn file ảnh', 'error');
+          setSubmitting(false);
+          return;
+        }
+        // Upload file -> nhận về URL
+        const fd = new FormData();
+        fd.append('file', file);
+        const upRes = await fetch('/brands/upload', { method: 'POST', body: fd });
+        if (!upRes.ok) throw new Error('Upload thất bại');
+        const upJson = await upRes.json();
+        logoUrl = upJson.url; // server trả { url: '/uploads/brands/xxx.png' }
+      }
+
+      // Tạo brand
+      await apiCreateBrand({ name, logo: logoUrl });
+      await loadAndRender();
+      showToast('Thêm thương hiệu thành công', 'success');
+      closeAddBrandModal();
+    } catch (err) {
+      console.error(err);
+      showToast('Không thể thêm thương hiệu', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  });
 </script>

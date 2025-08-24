@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   populateMonthSelectors();
   initInputs();
+  AOS.refresh();
   document.getElementById('periodSelect')?.addEventListener('change', updateInputs);
   document.getElementById('reportType')?.addEventListener('change', updateInputs);
   document.getElementById('loadRevenue')?.addEventListener('click', loadRevenueData);
