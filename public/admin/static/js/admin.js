@@ -94,7 +94,6 @@ function renderProducts(products, append = false) {
       <td><img src="${p.image}" class="product-img" alt="${p.name}"></td>
       <td>${p.name}</td>
       <td>${price}</td>
-      <td>${stock}</td>
       <td>${variantCount}</td>
        <td class="actions text-center">
            <a href="/admin/products/${p._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
