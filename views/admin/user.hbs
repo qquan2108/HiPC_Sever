@@ -5,10 +5,6 @@
 <div class="container glass-card rounded-2xl p-6 fade-in">
   <!-- Header actions: Thêm & Search -->
   <div class="header-actions mb-4 flex justify-between items-center">
-    <a href="/admin/users/create" class="btn-add-user">
-      <span class="icon"><i class="bx bx-user-plus"></i></span>
-      <span>Thêm Người dùng</span>
-    </a>
     <input
       type="text"
       id="userSearch"
@@ -73,9 +69,6 @@
         <td class="px-6 py-4">${u.role}</td>
         <td class="px-6 py-4">${u.active ? 'Hoạt động' : 'Khoá'}</td>
         <td class="px-6 py-4 text-center">
-          <a href="/admin/users/${u._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-            <i class="bx bx-edit text-xl"></i>
-          </a>
           ${
             u.active
               ? `<a href="#" onclick="lockUser('${u._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded" title="Khóa user">

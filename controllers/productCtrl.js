@@ -747,7 +747,6 @@ exports.getProductsByCategory = async (req, res) => {
 
     const products = await Product.find({ category_id: categoryId })
       .populate('category_id', 'name')
-      .populate('brand_id', 'name')
       .lean();
 
     const productIds = products.map(p => p._id);
