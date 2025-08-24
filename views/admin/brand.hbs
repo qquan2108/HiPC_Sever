@@ -1,0 +1,75 @@
+{{#*inline "title"}}Quản lý thương hiệu{{/inline}}
+
+<div class="max-w-4xl mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-4">Quản lý thương hiệu</h1>
+  <form id="createForm" class="mb-6 flex flex-col md:flex-row gap-2">
+    <input id="brandName" type="text" placeholder="Tên thương hiệu" class="border p-2 rounded flex-1" required>
+    <input id="brandLogo" type="text" placeholder="Logo URL" class="border p-2 rounded flex-1">
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Thêm</button>
+  </form>
+  <table class="min-w-full bg-white rounded shadow">
+    <thead>
+      <tr>
+        <th class="py-2 px-4 border-b">Tên</th>
+        <th class="py-2 px-4 border-b">Logo</th>
+        <th class="py-2 px-4 border-b text-center">Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="brandsTable"></tbody>
+  </table>
+</div>
+
+<script>
+  async function fetchBrands() {
+    const res = await fetch('/brands');
+    const data = await res.json();
+    const tbody = document.getElementById('brandsTable');
+    tbody.innerHTML = '';
+    data.forEach(b => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="border-b px-4 py-2">${b.name}</td>
+        <td class="border-b px-4 py-2">${b.logo ? `<img src="${b.logo}" class="h-8">` : ''}</td>
+        <td class="border-b px-4 py-2 text-center space-x-2">
+          <button onclick="editBrand('${b._id}', '${b.name}', '${b.logo || ''}')" class="text-blue-500"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteBrand('${b._id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('createForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('brandName').value.trim();
+    const logo = document.getElementById('brandLogo').value.trim();
+    if(!name) return;
+    await fetch('/brands', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, logo })
+    });
+    e.target.reset();
+    fetchBrands();
+  });
+
+  async function editBrand(id, name, logo) {
+    const newName = prompt('Tên thương hiệu', name);
+    if(newName === null) return;
+    const newLogo = prompt('Logo URL', logo);
+    await fetch('/brands/' + id, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name:newName, logo:newLogo })
+    });
+    fetchBrands();
+  }
+
+  async function deleteBrand(id) {
+    if(!confirm('Xóa thương hiệu này?')) return;
+    await fetch('/brands/' + id, { method:'DELETE' });
+    fetchBrands();
+  }
+
+  document.addEventListener('DOMContentLoaded', fetchBrands);
+</script>

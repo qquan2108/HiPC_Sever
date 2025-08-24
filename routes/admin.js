@@ -90,6 +90,11 @@ router.get('/categories/edit/:id', async (req, res) => {
   res.render('admin/category-form', { category });
 });
 
+// Quản lý thương hiệu
+router.get('/brands', (req, res) => {
+  res.render('admin/brand', { layout: 'admin/layout' });
+});
+
 // bao cao
 router.get('/reports', (req, res) => {
   res.render('admin/baocao', { layout: 'admin/layout' });
