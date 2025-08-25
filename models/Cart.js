@@ -4,20 +4,19 @@ const { Schema } = mongoose;
 
 const cartSchema = new Schema({
   user_id: {
-    type: String, // Keep as String for compatibility
-    required: true,
-    index: true
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
   },
   products: [{
-    // Single product
+    // Single product fields
     productId: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: false
     },
-    // Combo
+    // Combo fields
     comboId: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'Combo',
       required: false
     },
@@ -27,46 +26,39 @@ const cartSchema = new Schema({
       min: 1,
       default: 1
     },
-    price: {
-      type: Number,
-      required: false // Will be calculated from product/combo price
-    },
-    // Variant only applies to single products
+    // For single products
     variant: {
-      key: {
-        type: String,
-        required: function() {
-          return this.productId && !this.comboId;
-        }
-      },
-      label: {
-        type: String,
-        required: function() {
-          return this.productId && !this.comboId;
-        }
-      },
-      priceDiff: {
-        type: Number,
-        required: function() {
-          return this.productId && !this.comboId;
-        },
-        default: 0
-      }
+      key: String,
+      label: String,
+      price: Number,
+      stock: Number,
+      _id: mongoose.Schema.Types.ObjectId
     },
-    addedAt: {
-      type: Date,
-      default: Date.now
-    }
+    // For combos
+    type: {
+      type: String,
+      enum: ['product', 'combo'],
+      required: false
+    },
+    price: Number,
+    selectedVariants: [{
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      variantId: { type: mongoose.Schema.Types.ObjectId, ref: 'VariantProduct' }
+    }],
+    productDetails: [{
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      name: String,
+      image: String,
+      price: Number,
+      variant: {
+        _id: mongoose.Schema.Types.ObjectId,
+        name: String,
+        price: Number,
+        stock: Number
+      }
+    }]
   }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+}, { timestamps: true });
 
 // Pre-save middleware
 cartSchema.pre('save', function(next) {

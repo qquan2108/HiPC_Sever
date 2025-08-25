@@ -93,8 +93,11 @@ router.post('/add-to-cart', async (req, res) => {
       cart = new Cart({ user_id, products: [] });
     }
 
+    // Tạo unique key bằng cách kết hợp productId và variantId
     const existing = cart.products.find(
-      p => String(p.productId) === String(productId) && p.variant && String(p.variant.label) === String(variant.name)
+      p => String(p.productId) === String(productId) && 
+          p.variant && 
+          String(p.variant._id) === String(variant._id)
     );
 
     if (existing) {
@@ -107,6 +110,7 @@ router.post('/add-to-cart', async (req, res) => {
       }
       existing.quantity += quantity;
     } else {
+      // Thêm mới item với unique _id cho variant
       cart.products.push({
         productId,
         quantity,
@@ -115,13 +119,19 @@ router.post('/add-to-cart', async (req, res) => {
           label: variant.name,
           stock: variant.stock,
           price: variant.price,
-          _id: variant._id
+          _id: variant._id // Đảm bảo lưu variantId
         }
       });
     }
 
     await cart.save();
-    res.json({ success: true, cart });
+
+    // Populate đầy đủ thông tin trả về
+    const populated = await Cart.findById(cart._id)
+      .populate('products.productId')
+      .lean();
+
+    res.json({ success: true, cart: populated });
   } catch (err) {
     console.error('Error in add-to-cart:', err);
     res.status(500).json({ error: err.message });
@@ -454,6 +464,92 @@ router.put('/update-variant', async (req, res) => {
     res.status(200).json(populated);
   } catch (err) {
     console.error('Error in update-variant:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🆕 Add combo to cart
+router.post('/add-combo', async (req, res) => {
+  try {
+    const { user_id, comboId, variants = [], quantity = 1 } = req.body;
+
+    if (!user_id || !comboId) {
+      return res.status(400).json({ error: 'Thiếu user_id hoặc comboId' });
+    }
+
+    // Kiểm tra combo tồn tại
+    const combo = await Combo.findById(comboId)
+      .populate('productIds')
+      .populate('variants');
+    
+    if (!combo) {
+      return res.status(404).json({ error: 'Không tìm thấy combo' });
+    }
+
+    // Kiểm tra variants hợp lệ
+    for (const variantId of variants) {
+      const variant = await VariantProduct.findById(variantId);
+      if (!variant) {
+        return res.status(404).json({ error: `Không tìm thấy biến thể ${variantId}` });
+      }
+      // Kiểm tra tồn kho của biến thể
+      if (variant.stock < quantity) {
+        return res.status(400).json({ 
+          error: 'Số lượng vượt quá tồn kho',
+          maxStock: variant.stock,
+          variantName: variant.name
+        });
+      }
+    }
+
+    // Tìm hoặc tạo giỏ hàng
+    let cart = await Cart.findOne({ user_id });
+    if (!cart) {
+      cart = new Cart({ user_id, products: [] });
+    }
+
+    // Kiểm tra combo đã có trong giỏ với cùng variants chưa
+    const existing = cart.products.find(p => 
+      p.comboId?.toString() === comboId.toString() && 
+      JSON.stringify(p.variants?.sort()) === JSON.stringify(variants.sort())
+    );
+
+    if (existing) {
+      // Cập nhật số lượng nếu đã có
+      existing.quantity += quantity;
+    } else {
+      // Thêm mới nếu chưa có
+      cart.products.push({
+        comboId,
+        quantity,
+        variants, // Lưu mảng variant ids
+        price: combo.price // Giá combo
+      });
+    }
+
+    await cart.save();
+
+    // Populate đầy đủ thông tin trả về
+    const populated = await Cart.findById(cart._id)
+      .populate('products.productId')
+      .populate({
+        path: 'products.comboId',
+        populate: [
+          { 
+            path: 'productIds',
+            populate: [
+              { path: 'category_id' },
+              { path: 'brand_id' }
+            ]
+          },
+          { path: 'variants' }
+        ]
+      });
+
+    res.json({ success: true, cart: populated });
+
+  } catch (err) {
+    console.error('Error in add-combo:', err);
     res.status(500).json({ error: err.message });
   }
 });

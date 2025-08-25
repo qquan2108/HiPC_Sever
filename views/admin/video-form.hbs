@@ -154,6 +154,23 @@
             background: white;
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
+        .variant-option {
+    transition: all 0.2s ease;
+}
+
+.variant-option:hover {
+    border-color: #3498db !important;
+    background: #f8f9fa;
+}
+
+.product-preview {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
 
         .file-upload {
             position: relative;
@@ -800,10 +817,42 @@
         <span id="notificationText"></span>
     </div>
 
+    <!-- Variant Selection Modal -->
+    <div id="variantModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Chọn biến thể sản phẩm</h3>
+                <button class="close-btn" onclick="closeVariantModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="variantContent">
+                <div class="product-preview" style="margin-bottom: 20px;">
+                    <img id="variantProductImage" src="" alt="" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                    <div style="margin-left: 12px;">
+                        <h4 id="variantProductName" style="margin: 0 0 4px 0;"></h4>
+                        <div id="variantProductPrice" style="color: #e74c3c; font-weight: 600;"></div>
+                    </div>
+                </div>
+                <div class="variants-list" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Variants will be inserted here -->
+                </div>
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="closeVariantModal()">Hủy</button>
+                    <button class="btn btn-primary" onclick="confirmVariantSelection()">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
      <script>
        // Thay thế phần JavaScript trong video-form.hbs
 let selectedProducts = [];
 let uploadedFile = null;
+
+// Thêm biến global để lưu trữ thông tin biến thể đang chọn
+let currentProductForVariant = null;
+let selectedVariant = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
     // Move preview modal outside transformed container
@@ -995,27 +1044,123 @@ function simulateUpload() {
     }, 200);
 }
 
-function toggleProduct(card, productId) {
+async function toggleProduct(card, productId) {
     const checkbox = card.querySelector('.product-checkbox');
     const productInfo = card.querySelector('.product-info');
-    const productName = productInfo.querySelector('h4').textContent;
-    const productPrice = productInfo.querySelector('.product-price').textContent;
     
-    checkbox.checked = !checkbox.checked;
-    
+    // Nếu đang bỏ chọn
     if (checkbox.checked) {
-        card.classList.add('selected');
-        selectedProducts.push({
-            id: productId,
-            name: productName,
-            price: productPrice
-        });
-    } else {
+        checkbox.checked = false;
         card.classList.remove('selected');
         selectedProducts = selectedProducts.filter(p => p.id !== productId);
+        updateComboSummary();
+        return;
     }
+
+    // Lấy thông tin biến thể của sản phẩm
+    try {
+        const response = await fetch(`/variants/by-product/${productId}`);
+        if (!response.ok) throw new Error('Failed to fetch variants');
+        const variants = await response.json();
+
+        if (variants && variants.length > 0) {
+            // Lưu thông tin sản phẩm hiện tại
+            currentProductForVariant = {
+                id: productId,
+                name: productInfo.querySelector('h4').textContent,
+                price: productInfo.querySelector('.product-price').textContent,
+                image: card.querySelector('img').src,
+                card: card,
+                checkbox: checkbox
+            };
+
+            // Hiển thị modal chọn biến thể
+            showVariantModal(variants);
+        } else {
+            // Nếu không có biến thể, xử lý như bình thường
+            checkbox.checked = true;
+            card.classList.add('selected');
+            selectedProducts.push({
+                id: productId,
+                name: productInfo.querySelector('h4').textContent,
+                price: productInfo.querySelector('.product-price').textContent
+            });
+            updateComboSummary();
+        }
+    } catch (error) {
+        console.error('Error fetching variants:', error);
+        showNotification('Không thể tải biến thể sản phẩm', 'error');
+    }
+}
+
+function showVariantModal(variants) {
+    const modal = document.getElementById('variantModal');
+    const content = document.getElementById('variantContent');
+    const productImage = document.getElementById('variantProductImage');
+    const productName = document.getElementById('variantProductName');
+    const productPrice = document.getElementById('variantProductPrice');
+
+    // Hiển thị thông tin sản phẩm
+    productImage.src = currentProductForVariant.image;
+    productName.textContent = currentProductForVariant.name;
+    productPrice.textContent = currentProductForVariant.price;
+
+    // Render danh sách biến thể
+    const variantsList = document.querySelector('.variants-list');
+    variantsList.innerHTML = variants.map(variant => `
+        <div class="variant-option" onclick="selectVariant(this, ${JSON.stringify(variant).replace(/"/g, '&quot;')})"
+             style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">
+            <div style="font-weight: 600;">${variant.name}</div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                <span style="color: #666;">Còn ${variant.stock} sản phẩm</span>
+                <span style="color: #e74c3c; font-weight: 600;">${formatPrice(variant.price)}</span>
+            </div>
+        </div>
+    `).join('');
+
+    modal.classList.add('show');
+}
+
+function selectVariant(element, variant) {
+    // Xóa selection cũ
+    document.querySelectorAll('.variant-option').forEach(opt => {
+        opt.style.borderColor = '#e0e0e0';
+        opt.style.background = 'white';
+    });
+
+    // Highlight option được chọn
+    element.style.borderColor = '#3498db';
+    element.style.background = '#f0f7ff';
     
+    selectedVariant = variant;
+}
+
+function closeVariantModal() {
+    document.getElementById('variantModal').classList.remove('show');
+    currentProductForVariant = null;
+    selectedVariant = null;
+}
+
+function confirmVariantSelection() {
+    if (!selectedVariant || !currentProductForVariant) {
+        showNotification('Vui lòng chọn biến thể', 'error');
+        return;
+    }
+
+    // Thêm sản phẩm với biến thể đã chọn
+    currentProductForVariant.checkbox.checked = true;
+    currentProductForVariant.card.classList.add('selected');
+    
+    selectedProducts.push({
+        id: currentProductForVariant.id,
+        name: currentProductForVariant.name,
+        price: formatPrice(selectedVariant.price),
+        variantId: selectedVariant._id,
+        variantName: selectedVariant.name
+    });
+
     updateComboSummary();
+    closeVariantModal();
 }
 
 function updateComboSummary() {
@@ -1152,13 +1297,14 @@ async function createCombo() {
     }
     
     try {
-        showNotification('Đang tạo combo...', 'info');
-        
         const comboData = {
             name: comboName,
             price: parseInt(comboPrice),
             image: comboImage || null,
-            productIds: selectedProducts.map(p => p.id)
+            products: selectedProducts.map(p => ({
+                productId: p.id,
+                variantId: p.variantId // Thêm variantId vào request
+            }))
         };
         
         const response = await fetch('/combo', {

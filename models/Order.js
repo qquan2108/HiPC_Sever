@@ -22,9 +22,12 @@ const orderSchema = new mongoose.Schema(
         },
         quantity: { type: Number, default: 1 },
         variant: {
-          key: { type: String, required: true },
-          label: { type: String, required: true },
-          priceDiff: { type: Number, required: true },
+          _id: { type: mongoose.Schema.Types.ObjectId, ref: "VariantProduct" },
+          key: String,
+          label: String,
+          price: Number,
+          stock: Number,
+          
         },
       },
     ],
