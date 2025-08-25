@@ -153,7 +153,7 @@
         Hủy
       </button>
       <button id="submitEditBrandBtn"
-              class="px-4 py-2 rounded-lg bg-hipc-light-blue hover:bg-blue-500 text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+              class="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200">
         <i class="fas fa-save mr-2"></i>Lưu thay đổi
       </button>
     </div>
@@ -441,7 +441,7 @@
     loadAndRender();
 
     // 2) Tạo mới
-    document.getElementById('createForm').addEventListener('submit', async (e) => {
+    {{!-- document.getElementById('createForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('brandName').value.trim();
       const logo = document.getElementById('brandLogo').value.trim();
@@ -458,34 +458,11 @@
         console.error(err);
         showToast('Không thể tạo thương hiệu', 'error');
       }
-    });
+    }); --}}
 
     // 3) Sửa/Xóa bằng event delegation
     document.getElementById('brandsTable').addEventListener('click', async (e) => {
-      const editBtn = e.target.closest('.btn-edit');
       const delBtn  = e.target.closest('.btn-delete');
-
-      if (editBtn) {
-        const id   = editBtn.dataset.id;
-        const name = editBtn.dataset.name;
-        const logo = editBtn.dataset.logo || '';
-        const newName = prompt('Tên thương hiệu:', name);
-        if (newName === null) return;
-        const trimmedName = newName.trim();
-        if (!trimmedName) { showToast('Tên thương hiệu không được để trống', 'error'); return; }
-        if (currentBrands.some(b => b._id !== id && b.name.toLowerCase() === trimmedName.toLowerCase())) {
-          showToast('Tên thương hiệu đã tồn tại', 'error'); return;
-        }
-        const newLogo = prompt('Logo URL:', logo) ?? '';
-        try {
-          await apiUpdateBrand(id, { name: trimmedName, logo: newLogo.trim() || null }); // PUT /brands/:id
-          await loadAndRender();
-          showToast('Cập nhật thương hiệu thành công', 'success');
-        } catch (err) {
-          console.error(err);
-          showToast('Không thể cập nhật thương hiệu', 'error');
-        }
-      }
 
       if (delBtn) {
         const id = delBtn.dataset.id;
@@ -501,6 +478,160 @@
         }
       }
     });
+    // Lấy modal & input edit
+const editBrandModal = document.getElementById('editBrandModal');
+const editBrandName = document.getElementById('editBrandName');
+const editLogoUrlInput = document.getElementById('editLogoUrlInput');
+const editLogoPreview = document.getElementById('editLogoPreview');
+const editLogoPreviewPlaceholder = document.getElementById('editLogoPreviewPlaceholder');
+
+let currentEditId = null;
+let editLogoMode = 'link';
+
+// Hàm mở modal edit
+function openEditBrandModal({ id, name, logo }) {
+  currentEditId = id;
+  editBrandName.value = name || '';
+  editLogoUrlInput.value = logo || '';
+
+  if (logo) {
+    editLogoPreview.src = logo;
+    editLogoPreview.classList.remove('hidden');
+    editLogoPreviewPlaceholder.classList.add('hidden');
+  } else {
+    editLogoPreview.src = '';
+    editLogoPreview.classList.add('hidden');
+    editLogoPreviewPlaceholder.classList.remove('hidden');
+  }
+
+  editBrandModal.classList.remove('hidden');
+  editBrandModal.classList.add('flex');
+  editBrandName.focus();
+}
+
+// Hàm đóng modal edit
+function closeEditBrandModal() {
+  editBrandModal.classList.add('hidden');
+  editBrandModal.classList.remove('flex');
+  currentEditId = null;
+}
+
+function setEditSubmitting(b){
+  const btn = document.getElementById('submitEditBrandBtn');
+  btn.disabled = b;
+  btn.innerHTML = b
+    ? '<i class="fas fa-spinner fa-spin mr-2"></i>Đang lưu...'
+    : '<i class="fas fa-save mr-2"></i>Lưu thay đổi';
+}
+
+
+// Gắn sự kiện cho nút Sửa trên bảng
+document.getElementById('brandsTable').addEventListener('click', (e) => {
+  const editBtn = e.target.closest('.btn-edit');
+  if (!editBtn) return;
+
+  const id   = editBtn.dataset.id;
+  const name = editBtn.dataset.name || '';
+  const logo = editBtn.dataset.logo || '';
+
+  openEditBrandModal({ id, name, logo });
+});
+
+// Đóng modal khi bấm nút X hoặc Hủy
+document.getElementById('closeEditBrandModalBtn').addEventListener('click', closeEditBrandModal);
+document.getElementById('cancelEditBrandBtn').addEventListener('click', closeEditBrandModal);
+
+// ===== Submit Edit (PUT /api/brands/:id) =====
+const submitEditBrandBtn = document.getElementById('submitEditBrandBtn');
+
+submitEditBrandBtn.addEventListener('click', async () => {
+  if (!currentEditId) {
+    showToast('Thiếu ID thương hiệu cần sửa', 'error');
+    return;
+  }
+
+  const name = (editBrandName.value || '').trim();
+  if (!name) {
+    showToast('Tên thương hiệu không được để trống', 'error');
+    editBrandName.focus();
+    return;
+  }
+
+  // Chống trùng tên (loại trừ chính nó)
+  if (Array.isArray(currentBrands) && currentBrands.some(
+    b => b._id !== currentEditId && (b.name || '').toLowerCase() === name.toLowerCase()
+  )) {
+    showToast('Tên thương hiệu đã tồn tại', 'error');
+    return;
+  }
+
+  try {
+    setEditSubmitting?.(true);  // nếu bạn đã có helper này
+
+    // Xác định logoUrl theo mode
+    let logoUrl = null;
+
+    if (editLogoMode === 'link') {
+      const raw = (editLogoUrlInput.value || '').trim();
+      logoUrl = raw || null;
+    } else {
+      // mode = 'file'
+      const file = editLogoFileInput.files?.[0];
+      if (!file) {
+        showToast('Vui lòng chọn file ảnh', 'error');
+        setEditSubmitting?.(false);
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        showToast('Vui lòng chọn đúng file ảnh', 'error');
+        setEditSubmitting?.(false);
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Kích thước ảnh tối đa 2MB', 'error');
+        setEditSubmitting?.(false);
+        return;
+      }
+
+      // Upload file để lấy URL (server: POST /api/brands/upload -> { url })
+      const fd = new FormData();
+      fd.append('file', file);
+      const upRes = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd });
+      if (!upRes.ok) throw new Error('Upload thất bại');
+      const upJson = await upRes.json();
+      logoUrl = upJson.url || null;
+    }
+
+    // Gửi PUT cập nhật
+    const res = await fetch(`${API_BASE}/${currentEditId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, logo: logoUrl })
+    });
+
+    if (!res.ok) {
+      const msg = await res.text().catch(() => '');
+      throw new Error(msg || `HTTP ${res.status}`);
+    }
+
+    // Refresh bảng
+    await loadAndRender();
+    showToast('Cập nhật thương hiệu thành công', 'success');
+
+    // Đóng modal
+    (function closeEdit() {
+      const modal = document.getElementById('editBrandModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      currentEditId = null;
+    })();
+  } catch (err) {
+    console.error(err);
+    showToast('Không thể cập nhật thương hiệu', 'error');
+  } finally {
+    setEditSubmitting?.(false);
+  }
+});
 
     // 4) Search
     document.getElementById('searchInput').addEventListener('input', (e) => {

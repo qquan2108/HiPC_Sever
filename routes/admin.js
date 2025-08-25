@@ -91,7 +91,7 @@ router.get('/categories/edit/:id', async (req, res) => {
 });
 
 // Quản lý thương hiệu
-router.get('/brands', (req, res) => {
+router.get('/brand', (req, res) => {
   res.render('admin/brand', { layout: 'admin/layout' });
 });
 
