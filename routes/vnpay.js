@@ -11,6 +11,9 @@ const crypto = require("crypto");
 const router = express.Router();
 const Order = require("../models/Order");
 const querystring = require("qs");
+const mongoose = require("mongoose");
+
+const vnp_HashSecret = process.env.VNP_HASH_SECRET;
 
 // Normalize IP address
 function normalizeIp(rawIp) {
@@ -251,13 +254,126 @@ router.get("/return", async (req, res) => {
 // POST /vnpay/verify_payment – Front-end callback
 router.post("/verify_payment", async (req, res) => {
   const { orderId, code } = req.body;
-  const  paymentStatus = code === "00" ? "paid" : "failed";
+  const paymentStatus = code === "00" ? "paid" : "failed";
   try {
     await Order.findByIdAndUpdate(orderId, { paymentStatus });
     res.json({ success: code === "00" });
+    console.log(
+      "[VNPAY][VERIFY] Order %s paymentStatus -> %s",
+      orderId,
+      paymentStatus
+    );
   } catch (err) {
     console.error("[VNPAY][VERIFY] Error:", err);
     res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+});
+
+router.get("/vnpay_return", async (req, res) => {
+  try {
+    let vnp_Params = { ...req.query };
+    const secureHash = vnp_Params["vnp_SecureHash"];
+
+    // Xoá các trường hash trước khi ký
+    delete vnp_Params["vnp_SecureHash"];
+    delete vnp_Params["vnp_SecureHashType"];
+
+    // Sắp xếp và ký lại
+    vnp_Params = sortObject(vnp_Params);
+    const signData = querystring.stringify(vnp_Params, { encode: false });
+    const signed = crypto
+      .createHmac("sha512", vnp_HashSecret)
+      .update(Buffer.from(signData, "utf-8"))
+      .digest("hex");
+
+    // Chuẩn hoá lower-case để tránh sai khác hoa/thường
+    const isValidSignature =
+      (secureHash || "").toLowerCase() === signed.toLowerCase();
+
+    let result;
+
+    if (isValidSignature && vnp_Params["vnp_ResponseCode"] === "00") {
+      // ✅ Thanh toán hợp lệ
+      const txnRef = vnp_Params["vnp_TxnRef"];
+      const amount = Number(vnp_Params["vnp_Amount"] || 0) / 100;
+
+      // Cập nhật DB (nếu txnRef là _id)
+      try {
+        let order = null;
+        if (mongoose.Types.ObjectId.isValid(txnRef)) {
+          order = await Order.findById(txnRef).populate("paymentID");
+        } else {
+          // Nếu bạn dùng mã khác làm vnp_TxnRef, thay truy vấn phù hợp ở đây
+          order = await Order.findOne({ code: txnRef }).populate("paymentID");
+        }
+
+        if (order) {
+          order.orderStatus = "paid";
+          await order.save();
+
+          if (order.paymentID) {
+            order.paymentID.status = "paid";
+            order.paymentID.isPaid = true;
+            await order.paymentID.save();
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi update order:", err);
+      }
+
+      result = {
+        status: "success",
+        code: vnp_Params["vnp_ResponseCode"],
+        message: "Thanh toán thành công",
+        orderId: vnp_Params["vnp_TxnRef"],
+        amount,
+      };
+    } else {
+      result = {
+        status: "error",
+        code: isValidSignature ? vnp_Params["vnp_ResponseCode"] || "99" : "97",
+        message: isValidSignature ? "Thanh toán thất bại" : "Sai chữ ký",
+      };
+    }
+
+    // Trả HTML cho WebView + postMessage về RN
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kết quả thanh toán</title>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .card { text-align: center; padding: 20px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .success { color: #27ae60; }
+    .error { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="${result.status}">${
+      result.status === "success"
+        ? "✅ Thanh toán thành công"
+        : "❌ Thanh toán thất bại"
+    }</h2>
+    <p>${result.message}</p>
+    <p>Mã đơn hàng: ${result.orderId || "-"}</p>
+    <p>Số tiền: ${result.amount || 0} VND</p>
+  </div>
+  <script>
+    setTimeout(() => {
+      const data = ${JSON.stringify(result)};
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(data));
+      }
+    }, 500);
+  </script>
+</body>
+</html>`);
+  } catch (e) {
+    console.error("vnpay_return error:", e);
+    res.status(500).send("Internal Server Error");
   }
 });
 
