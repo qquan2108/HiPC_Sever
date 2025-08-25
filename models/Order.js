@@ -27,7 +27,7 @@ const orderSchema = new mongoose.Schema(
           label: String,
           price: Number,
           stock: Number,
-          
+          priceDiff: Number,
         },
       },
     ],
@@ -38,8 +38,24 @@ const orderSchema = new mongoose.Schema(
           ref: "Combo",
           required: true,
         },
-        quantity: { type: Number, default: 1 },
+        quantity: { type: Number, required: true, min: 1 },
         price: { type: Number, required: true },
+        products: [
+          {
+            productId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Product",
+              required: true,
+            },
+            name: { type: String, required: false }, // Make these optional since we can get from productId
+            variant: {
+              _id: { type: mongoose.Schema.Types.ObjectId, ref: "VariantProduct" },
+              name: { type: String, required: false }, // Make variant fields optional
+              price: Number,
+              priceDiff: { type: Number, default: 0 },
+            },
+          },
+        ],
       },
     ],
     status: {

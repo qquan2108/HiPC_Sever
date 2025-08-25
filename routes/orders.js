@@ -8,6 +8,7 @@ const Product = require("../models/Product");
 const Cart = require("../models/Cart");
 const Combo = require("../models/Combo");
 const Voucher = require("../models/Voucher");
+const VariantProduct = require('../models/Variantproduct');
 const {
   validateVoucherConditions,
   calculateDiscountAmount,
@@ -226,19 +227,115 @@ router.post('/buy-now', async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.params.userId })
-      .populate("products.productId")
-      .populate("combos.comboId");
-    // Gắn URL ảnh cho từng sản phẩm
-    for (const order of orders) {
-      for (const item of order.products) {
-        if (item.productId?._id) {
-          const img = await Image.findOne({ product_id: item.productId._id });
-          item.productId.image = img ? img.url : null;
+      .populate({
+        path: 'products.productId',
+        populate: [
+          { path: 'category_id' },
+          { path: 'brand_id' }
+        ]
+      })
+      .populate({
+        path: 'combos.comboId',
+        populate: {
+          path: 'productIds',
+          populate: [
+            { path: 'category_id' },
+            { path: 'brand_id' }
+          ]
+        }
+      })
+      .populate('combos.products.productId')
+      .populate('combos.products.variant._id')
+      .sort({ createdAt: -1 });
+
+    // Process each order
+    const processedOrders = await Promise.all(orders.map(async (order) => {
+      // Handle regular products
+      if (order.products?.length > 0) {
+        for (const item of order.products) {
+          if (item.productId?._id) {
+            const image = await Image.findOne({ product_id: item.productId._id });
+            if (item.productId) {
+              item.productId.image = image?.url || null;
+            }
+          }
         }
       }
-    }
-    res.json(orders);
+
+      // Handle combo orders
+      if (order.combos?.length > 0) {
+        for (const combo of order.combos) {
+          if (combo.comboId) {
+            // Get combo details
+            const comboDetails = await Combo.findById(combo.comboId)
+              .populate({
+                path: 'productIds',
+                populate: [
+                  { path: 'category_id' },
+                  { path: 'brand_id' }
+                ]
+              });
+
+            // Process each product in combo
+            const comboProducts = await Promise.all(
+              combo.products.map(async (product) => {
+                const productDoc = await Product.findById(product.productId)
+                  .populate('category_id')
+                  .populate('brand_id');
+
+                // Get product image
+                const image = await Image.findOne({ product_id: product.productId });
+                
+                // Get variant details if exists
+                let variantInfo = null;
+                if (product.variant?._id) {
+                  const variant = await VariantProduct.findById(product.variant._id);
+                  if (variant) {
+                    variantInfo = {
+                      _id: variant._id,
+                      name: variant.name,
+                      price: variant.price,
+                      priceDiff: variant.price - productDoc.price
+                    };
+                  }
+                }
+
+                return {
+                  ...productDoc.toObject(),
+                  image: image?.url || null,
+                  variant: variantInfo
+                };
+              })
+            );
+
+            // Update combo with processed products
+            combo.comboDetails = {
+              _id: combo.comboId._id,
+              name: combo.comboId.name,
+              price: combo.price,
+              image: combo.comboId.image,
+              products: comboProducts,
+              description: `Combo ${combo.comboId.name} gồm: ${comboProducts
+                .map(p => `${p.name}${p.variant ? ` - ${p.variant.name}` : ''}`)
+                .join(', ')}`
+            };
+          }
+        }
+      }
+
+      return {
+        ...order.toObject(),
+        itemCount: (order.products?.length || 0) + (order.combos?.length || 0),
+        hasCombo: order.combos?.length > 0,
+        totalItems: (order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || 0) +
+                   (order.combos?.reduce((sum, c) => sum + (c.quantity || 0), 0) || 0)
+      };
+    }));
+
+    res.json(processedOrders);
+
   } catch (err) {
+    console.error('Error fetching user orders:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -299,17 +396,136 @@ router.get("/:id", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("user_id", "full_name phone email")
-      .populate("products.productId", "name price image")
-      .populate("combos.comboId")
+      .populate({
+        path: "products.productId",
+        select: "name price image brand_id category_id",
+        populate: [
+          { path: "brand_id", select: "name" },
+          { path: "category_id", select: "name" }
+        ]
+      })
+      .populate({
+        path: "combos.comboId",
+        populate: {
+          path: "productIds",
+          populate: [
+            { path: "brand_id", select: "name" },
+            { path: "category_id", select: "name" }
+          ]
+        }
+      })
       .lean();
 
     if (!order) {
       return res.status(404).json({ error: "Không tìm thấy đơn hàng" });
     }
 
-    res.json(order);
+    // Process regular products
+    if (order.products?.length > 0) {
+      for (const item of order.products) {
+        if (item.productId) {
+          // Get product image
+          const image = await Image.findOne({ product_id: item.productId._id });
+          item.productId.image = image?.url || null;
+
+          // Get variant details if exists
+          if (item.variant?._id) {
+            const variantDoc = await VariantProduct.findById(item.variant._id);
+            if (variantDoc) {
+              item.variant = {
+                ...item.variant,
+                name: variantDoc.name,
+                price: variantDoc.price,
+                stock: variantDoc.stock
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // Process combo products
+    if (order.combos?.length > 0) {
+      for (const combo of order.combos) {
+        if (combo.comboId) {
+          // Get combo product details
+          const comboProducts = await Promise.all(
+            combo.products.map(async (product) => {
+              // Get base product info
+              const productDoc = await Product.findById(product.productId)
+                .populate("brand_id", "name")
+                .populate("category_id", "name")
+                .lean();
+
+              if (!productDoc) return null;
+
+              // Get product image
+              const image = await Image.findOne({ product_id: product.productId });
+
+              // Get all variants
+              const variants = await VariantProduct.find({
+                product_id: product.productId
+              }).lean();
+
+              // Get selected variant
+              let selectedVariant = null;
+              if (product.variant?._id) {
+                selectedVariant = await VariantProduct.findById(product.variant._id);
+              }
+
+              return {
+                ...productDoc,
+                image: image?.url || null,
+                variants: variants.map(v => ({
+                  _id: v._id,
+                  name: v.name,
+                  price: v.price,
+                  stock: v.stock,
+                  priceDiff: v.price - productDoc.price
+                })),
+                selectedVariant: selectedVariant ? {
+                  _id: selectedVariant._id,
+                  name: selectedVariant.name,
+                  price: selectedVariant.price,
+                  stock: selectedVariant.stock,
+                  priceDiff: selectedVariant.price - productDoc.price
+                } : null
+              };
+            })
+          );
+
+          // Filter out null products
+          const validProducts = comboProducts.filter(p => p);
+
+          // Update combo details
+          combo.comboDetails = {
+            _id: combo.comboId._id,
+            name: combo.comboId.name,
+            price: combo.price,
+            image: combo.comboId.image,
+            products: validProducts,
+            productCount: validProducts.length,
+            description: `Combo ${combo.comboId.name} gồm: ${validProducts
+              .map(p => `${p.name}${p.selectedVariant ? ` - ${p.selectedVariant.name}` : ''}`)
+              .join(', ')}`
+          };
+        }
+      }
+    }
+
+    // Add summary information
+    const processedOrder = {
+      ...order,
+      itemCount: (order.products?.length || 0) + (order.combos?.length || 0),
+      hasCombo: order.combos?.length > 0,
+      totalItems: (order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || 0) +
+                 (order.combos?.reduce((sum, c) => sum + (c.quantity || 0), 0) || 0)
+    };
+
+    res.json(processedOrder);
+
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching order details:", err);
     res.status(500).json({ error: err.message });
   }
 });
