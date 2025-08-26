@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const softDelete = require('./plugins/softDelete');
 
 const productSchema = new mongoose.Schema({
   name:           { type: String, required: true, trim: true },
@@ -10,6 +11,9 @@ const productSchema = new mongoose.Schema({
   specifications: { type: [{ key: String, value: String }], default: [] },
   rating:         { type: Number, default: 0 },        // Thêm dòng này
   reviewCount:    { type: Number, default: 0 }         // Thêm dòng này
+
 }, { timestamps: true });
+
+productSchema.plugin(softDelete);
 
 module.exports = mongoose.model('Product', productSchema);
