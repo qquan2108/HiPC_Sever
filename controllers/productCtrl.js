@@ -746,7 +746,6 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 // API filter sản phẩm theo keyword đơn giản cho chatbox AI
 exports.filterProductsByKeyword = async (req, res) => {
   try {
@@ -760,9 +759,9 @@ exports.filterProductsByKeyword = async (req, res) => {
       ];
     }
 
-    const pageNum = Math.max(1, parseInt(page));
+    const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
-    const skip = (pageNum - 1) * limitNum;
+    const skip     = (pageNum - 1) * limitNum;
 
     const [products, total] = await Promise.all([
       Product.find(filter)
@@ -778,31 +777,59 @@ exports.filterProductsByKeyword = async (req, res) => {
     const validProducts = products.filter(p => p._id && mongoose.Types.ObjectId.isValid(p._id));
     const productIds = validProducts.map(p => p._id);
 
+    // Ảnh đại diện
     const images = await Image.find({ product_id: { $in: productIds } }).lean();
     const imageMap = {};
-    images.forEach(img => {
-      if (img.url && !imageMap[img.product_id]) {
-        imageMap[img.product_id] = img.url;
-      }
+    for (const img of images) {
+      if (img.url && !imageMap[img.product_id]) imageMap[img.product_id] = img.url;
+    }
+
+    // Lấy biến thể từ bảng VariantProduct
+    // Trả về đúng các field cần dùng ở FE: _id, label/name, key (group), priceDiff/price, stock, optionSlug
+    const variantDocs = await VariantProduct.find({ product_id: { $in: productIds } })
+      .select('_id product_id label name key optionSlug priceDiff price stock')
+      .lean();
+
+    const variantMap = {};
+    for (const v of variantDocs) {
+      const pid = v.product_id?.toString();
+      if (!pid) continue;
+      if (!variantMap[pid]) variantMap[pid] = [];
+      variantMap[pid].push({
+        _id: v._id,
+        label: v.label || v.name || 'Tùy chọn',
+        key: v.key || 'Phiên bản',
+        optionSlug: v.optionSlug || null,
+        priceDiff: typeof v.price === 'number' ? (Number(v.price) - 0) : Number(v.priceDiff || 0),
+        price: typeof v.price === 'number' ? Number(v.price) : undefined,
+        stock: Number(v.stock || 0),
+      });
+    }
+
+    // Ghép dữ liệu trả về
+    const productsWithDetails = validProducts.map(p => {
+      const pid = p._id.toString();
+      return {
+        ...p,
+        image: imageMap[pid] || null,
+        variants: variantMap[pid] || [],   // <<== có mảng biến thể kèm _id & stock
+      };
     });
 
-    const productsWithImages = validProducts.map(p => ({
-      ...p,
-      image: imageMap[p._id.toString()] || null
-    }));
-
     res.json({
-      products: productsWithImages,
-      total: productsWithImages.length,
+      products: productsWithDetails,
+      total: productsWithDetails.length,
       page: pageNum,
       limit: limitNum,
-      hasMore: skip + productsWithImages.length < total,
+      hasMore: skip + productsWithDetails.length < total,
       totalPages: Math.ceil(total / limitNum)
     });
   } catch (err) {
+    console.error('filterProductsByKeyword error:', err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.getProductsByCategory = async (req, res) => {
   try {

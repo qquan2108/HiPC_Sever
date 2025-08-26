@@ -255,39 +255,114 @@ router.post('/presets/:presetId/create-build', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Tạo build mới
 router.post('/build', async (req, res) => {
   try {
     const user_id = req.body.userId || req.body.user_id;
     const { name, products } = req.body;
 
+    // Validate user_id
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
-      return res.status(400).json({ error: 'userId không hợp lệ (phải là ObjectId MongoDB)' });
+      return res.status(400).json({
+        error: 'userId không hợp lệ (phải là ObjectId MongoDB)'
+      });
     }
 
-    if (!user_id || !products || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ error: 'Thiếu thông tin user hoặc sản phẩm.' });
+    // Validate products array
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
+        error: 'Danh sách sản phẩm không hợp lệ hoặc trống'
+      });
     }
 
-    const ids = products.map(p => p.productId);
-    const productDocs = await Product.find({ _id: { $in: ids } }).lean();
-    const items = productDocs.map(doc => {
-      const qty = products.find(p => p.productId == doc._id.toString())?.quantity || 1;
-      return { ...doc, quantity: qty };
+    // Helper: chuẩn hóa id về string
+    const toIdStr = (val) => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object') return val._id || val.id || '';
+      return '';
+    };
+
+    // Normalize products -> { productId: string24, quantity, variant, variantId? }
+    const normalized = products.map(p => {
+      const pid = toIdStr(p.productId);
+      const vid = toIdStr(p.variantId);
+      return {
+        productId: pid,
+        quantity: Number(p.quantity) || 1,
+        variant: p.variant || null,
+        ...(mongoose.Types.ObjectId.isValid(vid) ? { variantId: vid } : {})
+      };
     });
+
+    // Validate từng productId
+    const invalidProducts = normalized
+      .map((p, idx) => ({ idx, productId: p.productId }))
+      .filter(p => !mongoose.Types.ObjectId.isValid(p.productId));
+
+    if (invalidProducts.length > 0) {
+      return res.status(400).json({
+        error: 'Một số sản phẩm có productId không hợp lệ',
+        invalidProducts
+      });
+    }
+
+    const productIds = normalized.map(p => p.productId);
+    const productDocs = await Product.find({ _id: { $in: productIds } }).lean();
+
+    if (productDocs.length !== productIds.length) {
+      // tìm id nào không tồn tại
+      const foundSet = new Set(productDocs.map(d => String(d._id)));
+      const missing = productIds.filter(id => !foundSet.has(String(id)));
+      return res.status(400).json({
+        error: 'Một số sản phẩm không tồn tại trong database',
+        missingProductIds: missing
+      });
+    }
+
+    // Tính toán (nếu bạn có util đã import)
+    const items = productDocs.map(doc => {
+      const pinfo = normalized.find(p => String(p.productId) === String(doc._id));
+      return { ...doc, quantity: pinfo?.quantity || 1 };
+    });
+
     const totalPrice = calculateTotalPrice(items);
     const performance = estimatePerformance(items);
     const compatibility = checkCompatibility(items);
-    const build = new Build({ user_id, name, total_price: totalPrice, status: 'draft' });
+
+    // Tạo build
+    const build = new Build({
+      user_id,
+      name: name || 'Untitled Build',
+      total_price: totalPrice,
+      status: 'draft'
+    });
     await build.save();
-    for (const p of products) {
-      await new BuildProduct({ build_id: build._id, product_id: p.productId, quantity: p.quantity }).save();
-    }
-    res.status(201).json({ buildId: build._id, totalPrice, performance, compatibility });
+
+    // Tạo BuildProduct
+    const buildProducts = normalized.map(p => ({
+      build_id: build._id,
+      product_id: p.productId,
+      quantity: p.quantity,
+      variant: p.variant || null,
+      ...(p.variantId ? { variant_id: p.variantId } : {})
+    }));
+
+    await BuildProduct.insertMany(buildProducts);
+
+    return res.status(201).json({
+      success: true,
+      buildId: build._id,
+      totalPrice,
+      performance,
+      compatibility
+    });
+
   } catch (err) {
     console.error('Lỗi khi tạo build:', err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Lỗi server khi tạo build'
+    });
   }
 });
 

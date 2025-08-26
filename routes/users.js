@@ -37,7 +37,7 @@ router.post('/upload', upload.single('file'), (req, res) => {
     return res.status(400).json({ message: 'Không có file được gửi lên' });
   }
   // URL public (giả sử server host tại http://localhost:3000)
-  const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  const url = `https://api.hipc.site/uploads/${req.file.filename}`;
   res.status(200).json({ url });
 });
 
