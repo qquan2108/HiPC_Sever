@@ -145,5 +145,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', productCtrl.createProduct);
 router.put('/:id', productCtrl.updateProduct);
 router.delete('/:id', productCtrl.deleteProduct);
+router.post('/:id/restore', productCtrl.restoreProduct);
+router.delete('/:id/purge', productCtrl.purgeProduct);
 
 module.exports = router;
