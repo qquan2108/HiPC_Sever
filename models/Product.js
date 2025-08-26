@@ -9,9 +9,8 @@ const productSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   image: { type: Object, default: '' },
   specifications: { type: [{ key: String, value: String }], default: [] },
-  rating: { type: Number, default: 0 },        // Thêm dòng này
-  reviewCount: { type: Number, default: 0 },         // Thêm dòng này
-  isDeleted: { type: Boolean, default: false }
+  rating:         { type: Number, default: 0 },        // Thêm dòng này
+  reviewCount:    { type: Number, default: 0 }         // Thêm dòng này
 }, { timestamps: true });
 
 productSchema.plugin(softDelete);

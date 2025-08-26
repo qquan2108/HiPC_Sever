@@ -39,7 +39,7 @@ router.get('/users/:id/edit', async (req, res) => {
 
 // Quản lý Sản phẩm
 router.get('/products', async (req, res) => {
-  const view = req.query.view || 'all';
+  const view = req.query.view || 'active';
   res.render('admin/products-static', { layout: 'admin/layout', view });
 });
 router.get('/products/create', async (req, res) => {

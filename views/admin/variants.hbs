@@ -15,6 +15,11 @@
       class="search-input w-1/3 px-4 py-2 rounded"
     />
   </div>
+  <div class="tabs my-4">
+    <a id="tabActive" href="/admin/variants?view=active" class="btn-add-user">Đang hoạt động</a>
+    <a id="tabAll" href="/admin/variants?view=all" class="btn-add-user">Tất cả</a>
+    <a id="tabTrash" href="/admin/variants?view=trash" class="btn-add-user">Thùng rác</a>
+  </div>
 </div>
 
 <div class="table-container overflow-auto shadow rounded">
@@ -35,11 +40,13 @@
 <script>
   let allVariants = [];
   let currentProductId = null;
+  let variantView = 'active';
 
   async function fetchVariants(productId) {
     try {
       currentProductId = productId || null;
-      const url = productId ? `/variants/by-product/${productId}` : '/variants';
+      const base = productId ? `/variants/by-product/${productId}` : '/variants';
+      const url = `${base}?view=${variantView}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Lỗi tải dữ liệu');
       allVariants = await res.json();
@@ -55,19 +62,34 @@
     list.forEach(v => {
       const tr = document.createElement('tr');
       const price = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.price || 0);
+      if (v.isDeleted) {
+        tr.style.opacity = '0.5';
+        tr.style.textDecoration = 'line-through';
+      }
+      let actions = `
+          <a href="/admin/variants/${v._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-edit text-xl"></i>
+          </a>`;
+      if (v.isDeleted) {
+        actions += `
+          <a href="#" onclick="restoreVariant('${v._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-undo text-xl"></i>
+          </a>
+          <a href="#" onclick="purgeVariant('${v._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-trash text-xl"></i>
+          </a>`;
+      } else {
+        actions += `
+          <a href="#" onclick="deleteVariant('${v._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+            <i class="bx bx-trash text-xl"></i>
+          </a>`;
+      }
       tr.innerHTML = `
         <td class="px-6 py-4">${v.product_id ? v.product_id.name : ''}</td>
         <td class="px-6 py-4">${v.name}</td>
         <td class="px-6 py-4">${price}</td>
         <td class="px-6 py-4">${v.stock ?? 0}</td>
-        <td class="px-6 py-4 text-center">
-          <a href="/admin/variants/${v._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-            <i class="bx bx-edit text-xl"></i>
-          </a>
-          <a href="#" onclick="deleteVariant('${v._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-            <i class="bx bx-trash text-xl"></i>
-          </a>
-        </td>`;
+        <td class="px-6 py-4 text-center">${actions}</td>`;
       tbody.appendChild(tr);
     });
   }
@@ -83,12 +105,40 @@
     }
   }
 
+  async function restoreVariant(id) {
+    try {
+      const res = await fetch('/variants/' + id + '/restore', { method: 'POST' });
+      if (!res.ok) throw new Error('Khôi phục thất bại');
+      fetchVariants(currentProductId);
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  }
+
+  async function purgeVariant(id) {
+    if (!confirm('Xóa vĩnh viễn biến thể này?')) return;
+    try {
+      const res = await fetch('/variants/' + id + '/purge', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Xóa vĩnh viễn thất bại');
+      fetchVariants(currentProductId);
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('productId');
+    variantView = params.get('view') || 'active';
     if (productId) {
       const link = document.getElementById('addVariantLink');
       if (link) link.href = `/admin/variants/create?productId=${productId}`;
+      document.querySelectorAll('.tabs a').forEach(a => {
+        const url = new URL(a.href, window.location.origin);
+        url.searchParams.set('view', url.searchParams.get('view'));
+        url.searchParams.set('productId', productId);
+        a.href = url.pathname + url.search;
+      });
     }
     fetchVariants(productId);
     document.getElementById('variantSearch').addEventListener('input', e => {
