@@ -29,7 +29,7 @@ router.post('/create', async (req, res) => {
 // Lấy tất cả biến thể
 router.get('/', async (req, res) => {
   try {
-    const variants = await VariantProduct.find()
+    const variants = await VariantProduct.find({ isDisabled: false })
       .populate('product_id', 'name')
       .lean();
     res.json(variants);
@@ -45,7 +45,7 @@ router.get('/by-product/:productId', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ error: 'productId không hợp lệ' });
     }
-    const variants = await VariantProduct.find({ product_id: productId })
+    const variants = await VariantProduct.find({ product_id: productId, isDisabled: false })
       .populate('product_id', 'name')
       .lean();
     res.json(variants);
@@ -57,7 +57,7 @@ router.get('/by-product/:productId', async (req, res) => {
 // Lấy biến thể theo id
 router.get('/:id', async (req, res) => {
   try {
-    const variant = await VariantProduct.findById(req.params.id);
+    const variant = await VariantProduct.findOne({ _id: req.params.id, isDisabled: false });
     if (!variant) return res.status(404).json({ error: 'Không tìm thấy biến thể' });
     res.json(variant);
   } catch (err) {
@@ -84,9 +84,9 @@ router.put('/:id', async (req, res) => {
 // Xóa biến thể
 router.delete('/:id', async (req, res) => {
   try {
-    const variant = await VariantProduct.findByIdAndDelete(req.params.id);
+    const variant = await VariantProduct.findByIdAndUpdate(req.params.id, { isDisabled: true });
     if (!variant) return res.status(404).json({ error: 'Không tìm thấy biến thể' });
-    res.json({ message: 'Đã xóa biến thể' });
+    res.json({ message: 'Đã vô hiệu hóa biến thể' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

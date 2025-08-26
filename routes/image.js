@@ -21,7 +21,7 @@ const upload = multer({ storage });
 // GET all images (optionally filtered by product or category)
 router.get('/', async (req, res) => {
   try {
-    const filter = {};
+    const filter = { isDisabled: false };
     if (req.query.product_id) filter.product_id = req.query.product_id;
     if (req.query.category_id) filter.category_id = req.query.category_id;
     const items = await Image.find(filter).populate('product_id').populate('category_id');
@@ -43,7 +43,7 @@ router.post('/upload', upload.single('image'), (req, res) => {
 // GET image by id
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Image.findById(req.params.id).populate('product_id').populate('category_id');
+    const item = await Image.findOne({ _id: req.params.id, isDisabled: false }).populate('product_id').populate('category_id');
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) {
@@ -75,8 +75,8 @@ router.put('/:id', async (req, res) => {
 // DELETE image
 router.delete('/:id', async (req, res) => {
   try {
-    await Image.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Image deleted' });
+    await Image.findByIdAndUpdate(req.params.id, { isDisabled: true });
+    res.json({ message: 'Image disabled' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
