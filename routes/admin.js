@@ -39,7 +39,7 @@ router.get('/users/:id/edit', async (req, res) => {
 
 // Quản lý Sản phẩm
 router.get('/products', async (req, res) => {
-  const view = req.query.view || 'active';
+  const view = req.query.view || 'all';
   res.render('admin/products-static', { layout: 'admin/layout', view });
 });
 router.get('/products/create', async (req, res) => {
@@ -56,8 +56,10 @@ router.get('/products/create', async (req, res) => {
   });
 });
 router.get('/products/:id/edit', async (req, res) => {
-  const [product, categories, brands] = await Promise.all([
-    Product.findById(req.params.id).lean(),
+  const product = await Product.findById(req.params.id).withDeleted().lean();
+  if (!product) return res.redirect('/admin/products');
+
+  const [categories, brands] = await Promise.all([
     Category.find().lean(),
     Brand.find().lean()
   ]);
