@@ -299,7 +299,6 @@ router.get('/user/:userId', async (req, res) => {
       return res.status(400).json({ error: 'userId không hợp lệ.' });
     }
 
-    // Get builds with populated products and their details
     const builds = await Build.find({ user_id: userId })
       .populate({
         path: 'products',
@@ -310,93 +309,60 @@ router.get('/user/:userId', async (req, res) => {
               { path: 'category_id', select: 'name' },
               { path: 'brand_id', select: 'name' }
             ]
-          }
+          },
+          { path: 'variant._id', model: 'VariantProduct', select: 'name price stock' }
         ]
       })
-      .populate({
-        path: 'user_id',
-        select: 'full_name email'
-      })
-      .sort({ createdAt: -1 })
-      .lean();
+      .populate({ path: 'user_id', select: 'full_name email' })
+      .sort({ createdAt: -1 }); // đừng .lean() ở đây
 
-    // Get all product IDs from builds
-    const productIds = builds.flatMap(build => 
-      build.products?.map(p => p.product_id?._id.toString())
-    ).filter(Boolean);
-
-    // Get images and variants
+    // Lấy productIds
+    const productIds = builds.flatMap(b => b.products?.map(p => p.product_id?._id)).filter(Boolean);
     const [images, variants] = await Promise.all([
       Image.find({ product_id: { $in: productIds } }).lean(),
       VariantProduct.find({ product_id: { $in: productIds } }).lean()
     ]);
 
-    // Create lookup maps
     const imageMap = {};
+    images.forEach(i => { if (!imageMap[i.product_id]) imageMap[i.product_id] = i.url; });
+
     const variantMap = {};
-
-    images.forEach(img => {
-      if (!imageMap[img.product_id]) {
-        imageMap[img.product_id] = img.url;
-      }
-    });
-
     variants.forEach(v => {
-      if (!variantMap[v.product_id]) {
-        variantMap[v.product_id] = [];
-      }
-      variantMap[v.product_id].push({
-        _id: v._id,
-        name: v.name,
-        price: v.price,
-        stock: v.stock
-      });
+      const key = v.product_id.toString();
+      (variantMap[key] ||= []).push({ _id: v._id, name: v.name, price: v.price, stock: v.stock });
     });
 
-    // Process builds with full details
-    const processedBuilds = builds.map(build => {
-      // Calculate total price from products
-      const totalPrice = build.products?.reduce((sum, product) => {
-        const basePrice = product.product_id?.price || 0;
-        const variantPrice = product.variant?.price || 0;
-        return sum + (variantPrice || basePrice) * product.quantity;
+    const processed = builds.map(b => {
+      const total = (b.products || []).reduce((sum, line) => {
+        const base = line?.product_id?.price || 0;
+        const chosen = line?.variant?.price || 0;
+        return sum + (chosen || base) * (line.quantity || 1);
       }, 0);
 
+      const products = (b.products || []).map(line => {
+        const pid = line?.product_id?._id?.toString();
+        return {
+          ...line.toObject?.() || line,
+          product_id: {
+            ...(line.product_id?.toObject?.() || line.product_id),
+            image: imageMap[pid] || null,
+            variants: variantMap[pid] || []
+          }
+        };
+      });
+
       return {
-        ...build,
-        products: build.products?.map(product => {
-          const productId = product.product_id?._id.toString();
-          return {
-            ...product,
-            product_id: {
-              ...product.product_id,
-              image: imageMap[productId] || null,
-              variants: variantMap[productId] || []
-            }
-          };
-        }),
-        total_price: totalPrice || build.total_price || 0,
-        hasVariants: build.products?.some(p => p.variant) || false,
-        productCount: build.products?.length || 0,
-        createdAtFormatted: new Date(build.createdAt).toLocaleDateString('vi-VN'),
-        searchableText: `${build.name || ''} ${build.status || ''} ${
-          build.products?.map(p => p.product_id?.name || '').join(' ') || ''
-        }`.toLowerCase()
+        ...b.toObject?.() || b,
+        products,
+        total_price: total || b.total_price || 0,
+        createdAt: b.createdAt || b.created_at, // chuẩn hoá cho client
       };
     });
 
-    res.json({
-      builds: processedBuilds,
-      total: processedBuilds.length,
-      message: 'Lấy danh sách build thành công'
-    });
-
+    res.json({ builds: processed, total: processed.length, message: 'Lấy danh sách build thành công' });
   } catch (err) {
     console.error('Error fetching builds:', err);
-    res.status(500).json({ 
-      error: 'Lỗi khi lấy danh sách build',
-      message: err.message 
-    });
+    res.status(500).json({ error: 'Lỗi khi lấy danh sách build', message: err.message });
   }
 });
 
@@ -408,7 +374,6 @@ router.get('/:buildId', async (req, res) => {
       return res.status(400).json({ error: 'buildId không hợp lệ.' });
     }
 
-    // Get build with populated data
     const build = await Build.findById(buildId)
       .populate({
         path: 'products',
@@ -420,47 +385,41 @@ router.get('/:buildId', async (req, res) => {
               { path: 'brand_id', select: 'name' }
             ]
           },
-          {
-            path: 'variant_id'
-          }
+          { path: 'variant._id', model: 'VariantProduct', select: 'name price stock' }
         ]
-      })
-      .lean();
+      });
 
-    if (!build) {
-      return res.status(404).json({ error: 'Không tìm thấy build.' });
-    }
+    if (!build) return res.status(404).json({ error: 'Không tìm thấy build.' });
 
-    // Get images for products
-    const productIds = build.products
-      ?.map(p => p.product_id?._id.toString())
-      .filter(Boolean);
-
-    const images = await Image.find({
-      product_id: { $in: productIds }
-    }).lean();
+    // Ảnh sản phẩm
+    const productIds = build.products?.map(p => p.product_id?._id).filter(Boolean);
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
 
     const imageMap = {};
-    images.forEach(img => {
-      if (!imageMap[img.product_id]) {
-        imageMap[img.product_id] = img.url;
+    images.forEach(img => { 
+      if (img && img.product_id) {
+        imageMap[img.product_id.toString()] = img.url;
       }
     });
 
-    // Process build data
-    const processedBuild = {
-      ...build,
-      products: build.products?.map(product => ({
-        ...product,
-        product_id: {
-          ...product.product_id,
-          image: imageMap[product.product_id?._id.toString()] || null
-        }
-      }))
+    const buildObj = build.toObject();
+    const processed = {
+      ...buildObj,
+      products: buildObj.products?.map(line => {
+        if (!line || !line.product_id) return line;
+
+        const productId = line.product_id._id?.toString();
+        return {
+          ...line,
+          product_id: {
+            ...line.product_id,
+            image: imageMap[productId] || null
+          }
+        };
+      }).filter(Boolean) // Remove any null/undefined entries
     };
 
-    res.json(processedBuild);
-
+    res.json(processed);
   } catch (err) {
     console.error('Error fetching build details:', err);
     res.status(500).json({ error: err.message });

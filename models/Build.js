@@ -1,51 +1,33 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const buildSchema = new mongoose.Schema({
-  user_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User',
-    required: true 
-  },
-  name: { 
-    type: String,
-    required: true 
-  },
-  total_price: {
-    type: Number,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'completed', 'archived'],
-    default: 'draft'
-  },
-  products: [{
-    product_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true
+const BuildSchema = new Schema(
+  {
+    user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, default: '' },
+    total_price: { type: Number, default: 0 },
+    status: {
+      type: String,
+      enum: ['draft', 'in-progress', 'completed', 'archived'],
+      default: 'draft',
     },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    variant: {
-      _id: mongoose.Schema.Types.ObjectId,
-      key: String,
-      label: String,
-      price: Number,
-      stock: Number
-    }
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
+    // KHÔNG lưu mảng products trực tiếp ở đây để tránh trùng data với BuildProduct
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,                   // => createdAt, updatedAt
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
+);
+
+// Virtual các dòng sản phẩm thuộc build (được populate khi query)
+BuildSchema.virtual('products', {
+  ref: 'BuildProduct',
+  localField: '_id',
+  foreignField: 'build_id',
+  justOne: false,
 });
 
-module.exports = mongoose.model('Build', buildSchema);
+BuildSchema.index({ user_id: 1, createdAt: -1 });
+
+module.exports = mongoose.model('Build', BuildSchema);

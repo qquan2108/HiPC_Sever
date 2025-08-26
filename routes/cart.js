@@ -233,82 +233,156 @@ router.post('/add-to-cart', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Update quantity with proper stock validation
 router.put('/update-quantity', async (req, res) => {
   try {
-    const { user_id, productId, comboId, variant = {}, quantity } = req.body;
+    const {
+     user_id,
+     productId,        // new
+     product_id,       // legacy
+     comboId,          // new
+     combo_id,         // legacy
+     variant_id,       // legacy
+     variantId,        // new
+     variant,          // { _id, ... }
+     quantity
+   } = req.body;
 
-    if (!user_id || (!productId && !comboId) || !quantity) {
-      return res.status(400).json({ error: 'Thiếu thông tin đầu vào.' });
+    if (!user_id) {
+      return res.status(400).json({ error: 'Missing user_id' });
     }
 
-    const cart = await Cart.findOne({ user_id });
-    if (!cart) return res.status(404).json({ error: 'Giỏ hàng không tồn tại.' });
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ error: 'Invalid quantity' });
+    }
 
-    let item;
-    if (comboId) {
-      item = cart.products.find(p => p.comboId && p.comboId.toString() === comboId);
-      // ...xử lý combo nếu cần...
-    } else {
-      item = cart.products.find(p => {
-        if (p.productId.toString() !== productId) return false;
-        if (variant.label) {
-          return p.variant?.label === variant.label;
+    // Find existing cart
+    let cart = await Cart.findOne({ user_id });
+    if (!cart) {
+      return res.status(404).json({ error: 'Cart not found' });
+    }
+
+    // Use either productId or product_id
+    const actualProductId = productId || product_id;
+    const actualComboId = comboId || combo_id;
+    const bodyVariantId   = variant_id || variantId || variant?._id || null;
+
+    if (actualProductId) {
+      // Update product quantity
+       const productIndex = cart.products.findIndex(item =>
+       String(item.productId) === String(actualProductId) &&
+       (bodyVariantId
+         ? String(item.variant?._id) === String(bodyVariantId)   // có biến thể → match theo _id
+         : !item.variant?._id)                                   // không biến thể → item không có variant
+     );
+
+      if (productIndex === -1) {
+        return res.status(404).json({ error: 'Product not found in cart' });
+      }
+
+      // Check stock
+      const product = await Product.findById(actualProductId);
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      if (bodyVariantId) {
+       const variant = await VariantProduct.findById(bodyVariantId);
+        if (!variant) {
+          return res.status(404).json({ error: 'Variant not found' });
         }
-        return true;
-      });
 
-      if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm trong giỏ hàng.' });
-
-      // Kiểm tra tồn kho
-      let availableStock = 0;
-      if (item.variant && item.variant.label) {
-        const variantDoc = await VariantProduct.findOne({
-          product_id: productId,
-          name: item.variant.label
-        });
-        if (!variantDoc) {
-          return res.status(404).json({ error: 'Không tìm thấy biến thể sản phẩm' });
-        }
-        availableStock = variantDoc.stock;
-        if (quantity > availableStock) {
-          // KHÔNG cập nhật item.quantity ở backend!
+        if (variant.stock < quantity) {
           return res.status(400).json({
-            error: 'Số lượng vượt quá tồn kho',
-            maxStock: availableStock,
-            details: `Biến thể ${variantDoc.name} chỉ còn ${availableStock} sản phẩm`
-          });
+           error: 'Số lượng vượt quá tồn kho',
+           maxStock: variant.stock,
+           details: `Biến thể ${variant.name} chỉ còn ${variant.stock} sản phẩm`
+         });
         }
       } else {
-        const product = await Product.findById(productId);
-        if (!product) {
-          return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
-        }
-        availableStock = product.stock;
-        if (quantity > availableStock) {
+        if (product.stock < quantity) {
           return res.status(400).json({
-            error: 'Số lượng vượt quá tồn kho',
-            maxStock: availableStock,
-            details: `Sản phẩm chỉ còn ${availableStock}`
-          });
+           error: 'Số lượng vượt quá tồn kho',
+           maxStock: product.stock,
+           details: `Sản phẩm ${product.name} chỉ còn ${product.stock} sản phẩm`
+         });
         }
       }
 
-      // Cập nhật số lượng nếu hợp lệ
-      item.quantity = quantity;
+      cart.products[productIndex].quantity = quantity;
+
+    } else if (actualComboId) {
+      // Find combo in products array where type is 'combo'
+      const comboIndex = cart.products.findIndex(item => 
+        item.type === 'combo' && 
+        String(item.comboId) === String(actualComboId)
+      );
+
+      if (comboIndex === -1) {
+        return res.status(404).json({ error: 'Combo not found in cart' });
+      }
+
+      // Check stock for all products in combo
+      const combo = await Combo.findById(actualComboId).populate('productIds');
+      if (!combo) {
+        return res.status(404).json({ error: 'Combo not found' });
+      }
+
+      // Validate stock for each product in combo
+      const comboProducts = cart.products[comboIndex].comboDetails?.products || [];
+      for (const product of comboProducts) {
+        const selectedVariant = product.selectedVariant;
+        if (selectedVariant) {
+          if (selectedVariant.stock < quantity) {
+            return res.status(400).json({
+       error: 'Số lượng vượt quá tồn kho',
+     maxStock: selectedVariant.stock,
+      details: `Sản phẩm ${product.name} (${selectedVariant.name}) chỉ còn ${selectedVariant.stock}`
+      });
+          }
+        } else {
+          if (product.stock < quantity) {
+            return res.status(400).json({
+              error: 'Not enough stock for combo product',
+              productName: product.name,
+              availableStock: product.stock
+            });
+          }
+        }
+      }
+
+      cart.products[comboIndex].quantity = quantity;
+    } else {
+      return res.status(400).json({ error: 'Missing productId or comboId' });
     }
 
+    // Save updated cart
     await cart.save();
 
-    const populated = await Cart.findById(cart._id)
-      .populate('products.productId')
+    // Return updated cart with populated data
+    const updatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: 'products.productId',
+        populate: [
+          { path: 'category_id', select: 'name' },
+          { path: 'brand_id', select: 'name' }
+        ]
+      })
       .populate({
         path: 'products.comboId',
-        populate: { path: 'productIds', model: 'Product' }
-      });
+        populate: {
+          path: 'productIds',
+          populate: [
+            { path: 'category_id', select: 'name' },
+            { path: 'brand_id', select: 'name' }
+          ]
+        }
+      })
+      .lean();
 
-    res.status(200).json(populated);
+    res.json({
+      message: 'Cart updated successfully',
+      cart: updatedCart
+    });
 
   } catch (err) {
     console.error('Error in update-quantity:', err);
