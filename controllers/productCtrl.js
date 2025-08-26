@@ -171,17 +171,28 @@ exports.getProducts = async (req, res) => {
     const limit = Math.max(1, +req.query.limit || 20);
     const skip  = (page - 1) * limit;
     const q     = (req.query.q || '').trim();
+    const view  = req.query.view || 'active';
 
     const nameFilter = q ? { name: new RegExp(q, 'i') } : {};
 
+    let findQuery = Product.find(nameFilter);
+    let countQuery = Product.countDocuments(nameFilter);
+    if (view === 'trash') {
+      findQuery = findQuery.onlyDeleted();
+      countQuery = countQuery.onlyDeleted();
+    } else if (view === 'all') {
+      findQuery = findQuery.withDeleted();
+      countQuery = countQuery.withDeleted();
+    }
+
     const [products, total] = await Promise.all([
-      Product.find(nameFilter)
+      findQuery
         .skip(skip)
         .limit(limit)
         .populate('category_id', 'name')
         .populate('brand_id', 'name')
         .lean(),
-      Product.countDocuments(nameFilter)
+      countQuery
     ]);
 
     const productsWithImage = await Promise.all(
@@ -278,15 +289,47 @@ exports.deleteProduct = async (req, res) => {
       return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
     }
 
-    const deleted = await Product.findByIdAndDelete(req.params.id);
-    if (!deleted) {
+    const product = await Product.findById(req.params.id).withDeleted();
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    }
+
+    await product.softDelete(req.user?._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in deleteProduct:', err);
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Restore product
+exports.restoreProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).withDeleted();
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    }
+    await product.restore();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in restoreProduct:', err);
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Purge product - hard delete
+exports.purgeProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).withDeleted();
+    if (!product) {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
     await Image.deleteMany({ product_id: req.params.id });
+    await product.deleteOne();
     res.json({ success: true });
   } catch (err) {
-    console.error('Error in deleteProduct:', err);
+    console.error('Error in purgeProduct:', err);
     res.status(400).json({ error: err.message });
   }
 };

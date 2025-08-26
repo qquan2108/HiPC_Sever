@@ -39,11 +39,8 @@ router.get('/users/:id/edit', async (req, res) => {
 
 // Quản lý Sản phẩm
 router.get('/products', async (req, res) => {
-  const products = await Product.find()
-    .populate('category_id', 'name')
-    .populate('brand_id', 'name')
-    .lean();
-  res.render('admin/products-static', { layout: 'admin/layout', products });
+  const view = req.query.view || 'active';
+  res.render('admin/products-static', { layout: 'admin/layout', view });
 });
 router.get('/products/create', async (req, res) => {
   const [categories, brands] = await Promise.all([
@@ -59,12 +56,20 @@ router.get('/products/create', async (req, res) => {
   });
 });
 router.get('/products/:id/edit', async (req, res) => {
-  const [product, categories, brands] = await Promise.all([
-    Product.findById(req.params.id).lean(),
-    Category.find().lean(),
-    Brand.find().lean()
+  const product = await Product.findById(req.params.id)
+    .withDeleted()
+    .populate('category_id brand_id')
+    .lean();
+  if (!product) return res.redirect('/admin/products');
+
+  const [categories, brands] = await Promise.all([
+    Category.find().withDeleted().lean(),
+    Brand.find().withDeleted().lean()
   ]);
-  const tsktTemplates = await TsktProduct.find({ category_id: product.category_id }).lean();
+  const tsktTemplates = await TsktProduct.find({
+    category_id: product.category_id?._id || product.category_id
+  }).lean();
+
   res.render('admin/form', {
     layout: 'admin/layout',
     product,

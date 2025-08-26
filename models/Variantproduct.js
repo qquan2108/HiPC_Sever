@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const softDelete = require('./plugins/softDelete');
 const VariantproductSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', index: true },
 
@@ -31,6 +31,7 @@ const VariantproductSchema = new mongoose.Schema({
   image:      { type: String, trim: true },
 }, { timestamps: true });
 
+VariantproductSchema.plugin(softDelete);
 // —— Index khuyến nghị ——
 // Tìm nhanh theo nhóm + option
 VariantproductSchema.index({ groupKey: 1, optionSlug: 1 });

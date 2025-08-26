@@ -238,9 +238,11 @@ router.post('/create', async (req, res) => {
 // ---------- READ ALL ----------
 router.get('/', async (req, res) => {
   try {
-    const variants = await VariantProduct.find()
-      .populate('product_id', 'name')
-      .lean();
+    const view = req.query.view || 'active';
+    let query = VariantProduct.find().populate('product_id', 'name');
+    if (view === 'trash') query = query.onlyDeleted();
+    else if (view === 'all') query = query.withDeleted();
+    const variants = await query.lean();
     res.json(variants);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -254,9 +256,11 @@ router.get('/by-product/:productId', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ error: 'productId không hợp lệ' });
     }
-    const variants = await VariantProduct.find({ product_id: productId })
-      .populate('product_id', 'name')
-      .lean();
+    const view = req.query.view || 'active';
+    let query = VariantProduct.find({ product_id: productId }).populate('product_id', 'name');
+    if (view === 'trash') query = query.onlyDeleted();
+    else if (view === 'all') query = query.withDeleted();
+    const variants = await query.lean();
     res.json(variants);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -266,7 +270,7 @@ router.get('/by-product/:productId', async (req, res) => {
 // ---------- READ ONE ----------
 router.get('/:id', async (req, res) => {
   try {
-    const variant = await VariantProduct.findById(req.params.id);
+    const variant = await VariantProduct.findById(req.params.id).withDeleted();
     if (!variant) return res.status(404).json({ error: 'Không tìm thấy biến thể' });
     res.json(variant);
   } catch (err) {
@@ -310,12 +314,34 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ---------- DELETE ----------
 router.delete('/:id', async (req, res) => {
   try {
-    const variant = await VariantProduct.findByIdAndDelete(req.params.id);
+    const variant = await VariantProduct.findById(req.params.id).withDeleted();
     if (!variant) return res.status(404).json({ error: 'Không tìm thấy biến thể' });
+    await variant.softDelete(req.user?._id);
     res.json({ message: 'Đã xóa biến thể' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Khôi phục biến thể
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const variant = await VariantProduct.findById(req.params.id).withDeleted();
+    if (!variant) return res.status(404).json({ error: 'Không tìm thấy biến thể' });
+    await variant.restore();
+    res.json({ message: 'Đã khôi phục biến thể' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Xóa vĩnh viễn biến thể
+router.delete('/:id/purge', async (req, res) => {
+  try {
+    await VariantProduct.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Đã xóa vĩnh viễn biến thể' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
