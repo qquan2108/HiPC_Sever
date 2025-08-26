@@ -518,6 +518,57 @@ function initCategoryForm() {
   const form = document.getElementById("categoryForm");
   if (!form) return;
 
+  const imageFile = document.getElementById("imageFile");
+  const imagePreview = document.getElementById("imagePreview");
+  const imageUrlInput = document.getElementById("imageUrl");
+  const imageSourceSelect = document.getElementById("imageSourceSelect");
+  const imageLink = document.getElementById("imageLink");
+  const imageFileGroup = document.getElementById("imageFileGroup");
+  const imageLinkGroup = document.getElementById("imageLinkGroup");
+
+  if (imageFile && imagePreview) {
+    imageFile.addEventListener('change', () => {
+      const file = imageFile.files[0];
+      if (file) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.style.display = 'block';
+      }
+    });
+  }
+
+  if (imageLink) {
+    imageLink.addEventListener('input', () => {
+      if (imageLink.value) {
+        imagePreview.src = imageLink.value;
+        imagePreview.style.display = 'block';
+      }
+    });
+  }
+
+  if (imageSourceSelect && imageFileGroup && imageLinkGroup) {
+    imageSourceSelect.addEventListener('change', () => {
+      const mode = imageSourceSelect.value;
+      if (mode === 'link') {
+        imageFileGroup.style.display = 'none';
+        imageLinkGroup.style.display = 'block';
+      } else {
+        imageFileGroup.style.display = 'block';
+        imageLinkGroup.style.display = 'none';
+      }
+    });
+  }
+
+  if (imageUrlInput && imageUrlInput.value) {
+    if (imageSourceSelect) imageSourceSelect.value = 'link';
+    if (imageFileGroup) imageFileGroup.style.display = 'none';
+    if (imageLinkGroup) imageLinkGroup.style.display = 'block';
+    if (imageLink) imageLink.value = imageUrlInput.value;
+    if (imagePreview) {
+      imagePreview.src = imageUrlInput.value;
+      imagePreview.style.display = 'block';
+    }
+  }
+
   form.addEventListener("submit", async e => {
     e.preventDefault();
 
@@ -527,6 +578,29 @@ function initCategoryForm() {
       description: fd.get("description") || ""
     };
     const id = fd.get("id");
+
+    let imageUrl = imageUrlInput ? imageUrlInput.value : '';
+    if (imageSourceSelect && imageSourceSelect.value === 'link') {
+      imageUrl = imageLink ? imageLink.value.trim() : '';
+    } else if (imageFile && imageFile.files[0]) {
+      const fdImg = new FormData();
+      fdImg.append('image', imageFile.files[0]);
+      try {
+        const upRes = await fetch(`${apiCategory}/upload`, {
+          method: 'POST',
+          body: fdImg
+        });
+        if (upRes.ok) {
+          const data = await upRes.json();
+          imageUrl = data.url;
+        }
+      } catch (err) {
+        console.error('Upload image error:', err);
+        showToast('Lỗi upload ảnh', 'error');
+      }
+    }
+    if (imageUrl) payload.image = imageUrl;
+
     const url = id ? `${apiCategory}/${id}` : apiCategory;
     const method = id ? "PUT" : "POST";
 

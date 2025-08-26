@@ -177,12 +177,21 @@
     </div>
     <div class="mb-3">
       <label class="form-label" for="image">Logo / Ảnh danh mục</label>
+      <select id="imageSourceSelect" class="form-select mb-2">
+        <option value="file">Tải lên file</option>
+        <option value="link">Dùng URL</option>
+      </select>
+      <div id="imageFileGroup">
+        <input type="file" id="imageFile" accept="image/*" class="form-control mb-2">
+      </div>
+      <div id="imageLinkGroup" style="display:none;">
+        <input type="text" id="imageLink" class="form-control mb-2" placeholder="Dán URL ảnh" value="{{category.image}}">
+      </div>
       {{#if category.image}}
         <img id="imagePreview" src="{{category.image}}" class="category-image-preview mb-2" alt="Ảnh danh mục">
       {{else}}
         <img id="imagePreview" src="/admin/static/images/no-image.png" class="category-image-preview mb-2" style="display:none" alt="Ảnh danh mục">
       {{/if}}
-      <input type="file" id="imageFile" accept="image/*" class="form-control mb-2">
       <input type="hidden" name="image" id="imageUrl" value="{{category.image}}">
     </div>
     <div class="modal-footer">
@@ -194,18 +203,4 @@
   </form>
 </div>
 
-<script>
-  // Hiển thị ảnh preview khi chọn file
-  document.getElementById('imageFile').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    const preview = document.getElementById('imagePreview');
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function (evt) {
-        preview.src = evt.target.result;
-        preview.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-</script>
+<script src="/admin/static/js/admin.js"></script>
