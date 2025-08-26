@@ -146,7 +146,6 @@ async function initProductForm() {
   const imageLink = document.getElementById("imageLink");
   const imageFileGroup = document.getElementById("imageFileGroup");
   const imageLinkGroup = document.getElementById("imageLinkGroup");
-  const priceInput = form.querySelector('input[name="price"]');
   const stockInput = form.querySelector('input[name="stock"]');
 
   const getSpecInputs = () =>
@@ -161,7 +160,6 @@ async function initProductForm() {
     return;
   }
 
-  setupNumberInput(priceInput);
   setupNumberInput(stockInput);
 
   // Initialize CKEditor
@@ -357,7 +355,6 @@ async function initProductForm() {
 
         // Fill basic fields
         form.querySelector('input[name="name"]').value = prod.name || '';
-        if (priceInput) { priceInput.value = prod.price || ''; priceInput.dispatchEvent(new Event('input')); }
         if (stockInput) { stockInput.value = prod.stock || ''; stockInput.dispatchEvent(new Event('input')); }
         if (editor) editor.setData(prod.description || "");
         if (descInput) descInput.value = prod.description || '';
@@ -470,7 +467,6 @@ async function initProductForm() {
         name: fd.get("name"),
         category_id: fd.get("category_id"),
         brand_id: fd.get("brand_id"),
-        price: Number(String(fd.get("price")).replace(/[^0-9]/g, '')),
         stock: Number(String(fd.get("stock")).replace(/[^0-9]/g, '')),
         image: imageUrl,
         description: fd.get("description"),

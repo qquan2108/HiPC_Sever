@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${apiProduct}/${id}`);
       const prod = await res.json();
       form.querySelector('input[name="name"]').value  = prod.name;
-      form.querySelector('input[name="price"]').value = prod.price;
       form.querySelector('input[name="stock"]').value = prod.stock;
       quill.root.innerHTML = prod.description || '';
       if (imagePreview) {
@@ -204,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
       name        : fd.get('name'),
       category_id : fd.get('category_id'),
       brand_id    : fd.get('brand_id'),
-      price       : parseFloat(fd.get('price')),
       stock       : parseInt(fd.get('stock')),
       image       : imageUrl,
       description : fd.get('description'),

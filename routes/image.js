@@ -5,7 +5,9 @@ const Image = require('../models/Image');
 // GET all images
 router.get('/', async (req, res) => {
   try {
-    const items = await Image.find().populate('product_id').populate('category_id');
+    const items = await Image.find({ disabled: { $ne: true } })
+      .populate('product_id')
+      .populate('category_id');
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,8 +17,10 @@ router.get('/', async (req, res) => {
 // GET image by id
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Image.findById(req.params.id).populate('product_id').populate('category_id');
-    if (!item) return res.status(404).json({ error: 'Not found' });
+    const item = await Image.findById(req.params.id)
+      .populate('product_id')
+      .populate('category_id');
+    if (!item || item.disabled) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) {
     res.status(404).json({ error: 'Not found' });
@@ -47,8 +51,8 @@ router.put('/:id', async (req, res) => {
 // DELETE image
 router.delete('/:id', async (req, res) => {
   try {
-    await Image.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Image deleted' });
+    await Image.findByIdAndUpdate(req.params.id, { disabled: true });
+    res.json({ message: 'Image disabled' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
