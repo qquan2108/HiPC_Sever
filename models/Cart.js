@@ -3,61 +3,43 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const cartSchema = new Schema({
-  user_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
-  },
+  user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   products: [{
-    // Single product fields
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: false
-    },
-    // Combo fields
-    comboId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Combo',
-      required: false
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 1
-    },
-    // For single products
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    comboId: { type: mongoose.Schema.Types.ObjectId, ref: 'Combo' },
+    comboSelections: [{
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    variantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Variantproduct', required: true },
+    label: String,
+    priceDiff: { type: Number, default: 0 }
+  }],
+    quantity: { type: Number, required: true, min: 1 },
+    // Cho sản phẩm đơn lẻ
     variant: {
+      _id: mongoose.Schema.Types.ObjectId,
       key: String,
       label: String,
       price: Number,
-      stock: Number,
-      _id: mongoose.Schema.Types.ObjectId
+      stock: Number
     },
-    // For combos
-    type: {
-      type: String,
-      enum: ['product', 'combo'],
-      required: false
-    },
+    // Cho combo
+    type: { type: String, enum: ['product', 'combo'] },
     price: Number,
-    selectedVariants: [{
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-      variantId: { type: mongoose.Schema.Types.ObjectId, ref: 'VariantProduct' }
-    }],
-    productDetails: [{
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    comboDetails: {
       name: String,
-      image: String,
-      price: Number,
-      variant: {
-        _id: mongoose.Schema.Types.ObjectId,
+      products: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
-        price: Number,
-        stock: Number
-      }
-    }]
-  }],
+        image: String,
+        variant: {
+          _id: mongoose.Schema.Types.ObjectId,
+          name: String,
+          price: Number,
+          stock: Number
+        }
+      }]
+    }
+  }]
 }, { timestamps: true });
 
 // Pre-save middleware

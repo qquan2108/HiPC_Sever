@@ -521,41 +521,82 @@ exports.createOrder = async (req, res) => {
           variant: item.variant,
         });
       } else if (item.comboId) {
-        const combo = item.comboId;
-        const comboProducts = await Product.find({
-          _id: { $in: combo.productIds },
-        });
-        for (const prod of comboProducts) {
-          if (prod.stock < item.quantity) {
-            return res
-              .status(400)
-              .json({
-                error: `Sản phẩm ${prod.name} trong combo chỉ còn ${prod.stock}`,
-              });
-          }
+        const combo = await Combo.findById(item.comboId)
+          .populate('productIds');
+        
+        if (!combo) {
+          return res.status(404).json({ error: 'Combo không tồn tại' });
         }
-        for (const prod of comboProducts) {
-          await Product.updateOne(
-            { _id: prod._id },
-            { $inc: { stock: -item.quantity } }
+
+        const comboProducts = [];
+        
+        // Process each product in combo
+        for (const product of combo.productIds) {
+          // Find variant selection for this product
+          const selection = item.comboSelections?.find(s => 
+            s.productId.toString() === product._id.toString()
           );
+
+          let variantInfo = null;
+          if (selection) {
+            // Check variant stock
+            const variant = await VariantProduct.findById(selection.variantId);
+            if (!variant) {
+              return res.status(404).json({ 
+                error: `Không tìm thấy biến thể cho sản phẩm ${product.name}` 
+              });
+            }
+
+            if (variant.stock < item.quantity) {
+              return res.status(400).json({
+                error: 'Số lượng vượt quá tồn kho',
+                productName: product.name,
+                variantName: variant.name,
+                maxStock: variant.stock
+              });
+            }
+
+            // Update variant stock
+            await VariantProduct.updateOne(
+              { _id: variant._id },
+              { $inc: { stock: -item.quantity } }
+            );
+
+            variantInfo = {
+              _id: variant._id,
+              name: variant.name,
+              price: variant.price,
+              priceDiff: variant.price - product.price
+            };
+          } else {
+            // Check product stock
+            if (product.stock < item.quantity) {
+              return res.status(400).json({
+                error: `Sản phẩm ${product.name} trong combo chỉ còn ${product.stock}`
+              });
+            }
+
+            // Update product stock
+            await Product.updateOne(
+              { _id: product._id },
+              { $inc: { stock: -item.quantity } }
+            );
+          }
+
+          comboProducts.push({
+            productId: product._id,
+            variant: variantInfo
+          });
         }
 
         const comboTotal = combo.price * item.quantity;
-
-        console.log("[CHECKOUT] Combo:", {
-          comboId: combo._id,
-          name: combo.name,
-          price: combo.price,
-          quantity: item.quantity,
-          comboTotal,
-        });
-
         totalPrice += comboTotal;
+
         orderCombos.push({
           comboId: combo._id,
           quantity: item.quantity,
           price: combo.price,
+          products: comboProducts
         });
       }
     }
@@ -642,15 +683,29 @@ exports.createOrder = async (req, res) => {
       phoneNumber,
       paymentMethod,
       shippingMethod,
-      voucher: orderVoucherId, // Order voucher ID
+      voucher: orderVoucherId,
       voucherDiscount: orderVoucherDiscount,
-      shippingVoucher: shippingVoucherId, // Shipping voucher ID
+      shippingVoucher: shippingVoucherId,
       shippingVoucherDiscount: shippingVoucherDiscount,
-      shippingFee: shippingFee, // Already discounted
+      shippingFee: shippingFee,
       total_price: totalPrice,
       total: finalTotal,
       status: "pending",
     });
+
+    // Populate the required fields before saving
+    await order.populate([
+      {
+        path: 'combos.products.productId',
+        select: 'name price'
+      },
+      {
+        path: 'combos.products.variant._id',
+        model: 'VariantProduct',
+        select: 'name price'
+      }
+    ]);
+
     await order.save();
 
     try {
@@ -752,10 +807,68 @@ exports.getOrderById = async (req, res) => {
 exports.getOrdersByUser = async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.params.userId })
-      .populate("products.productId", "name price image")
+      .populate('products.productId')
+      .populate({
+        path: 'combos.comboId',
+        populate: {
+          path: 'productIds',
+          populate: [
+            { path: 'category_id' },
+            { path: 'brand_id' }
+          ]
+        }
+      })
       .sort({ order_date: -1 });
-    res.json(orders);
+
+    // Process orders to include full details
+    const processedOrders = await Promise.all(orders.map(async (order) => {
+      // Process regular products
+      if (order.products && order.products.length > 0) {
+        for (const product of order.products) {
+          if (product.productId) {
+            const image = await Image.findOne({ product_id: product.productId._id });
+            product.productId.image = image ? image.url : null;
+          }
+        }
+      }
+
+      // Process combos
+      if (order.combos && order.combos.length > 0) {
+        for (const combo of order.combos) {
+          // Get combo details
+          const comboDoc = combo.comboId;
+          if (comboDoc) {
+            // Get images for combo products
+            const comboProducts = await Promise.all(comboDoc.productIds.map(async (product) => {
+              const image = await Image.findOne({ product_id: product._id });
+              return {
+                ...product.toObject(),
+                image: image ? image.url : null
+              };
+            }));
+
+            combo.products = comboProducts;
+
+            // Add combo description
+            combo.description = `Combo ${comboDoc.name} gồm: ${comboProducts
+              .map(p => `${p.name}${p.variant ? ` - ${p.variant.name}` : ''}`)
+              .join(', ')}`;
+          }
+        }
+      }
+
+      return {
+        ...order.toObject(),
+        itemCount: (order.products?.length || 0) + (order.combos?.length || 0),
+        hasCombo: order.combos?.length > 0,
+        totalItems: order.products.reduce((sum, p) => sum + p.quantity, 0) +
+                   order.combos.reduce((sum, c) => sum + c.quantity, 0)
+      };
+    }));
+
+    res.json(processedOrders);
   } catch (err) {
+    console.error('Error fetching user orders:', err);
     res.status(500).json({ error: err.message });
   }
 };
