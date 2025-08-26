@@ -38,13 +38,13 @@ exports.createProduct = async (req, res) => {
       name,
       category_id,
       brand_id,
-      price = 0,
+      price,
       description = '',
       specifications = [],      // Mặc định là chuỗi JSON mảng
     } = req.body;
 
     // Validate required fields
-    if (!name || !category_id || !brand_id) {
+    if (!name || !category_id || !brand_id || price === undefined) {
       return res.status(400).json({ error: 'Thiếu trường bắt buộc' });
     }
 
@@ -142,7 +142,7 @@ exports.updateProduct = async (req, res) => {
 
     // Xử lý image nếu có
     if (req.body.image) {
-      await Image.updateMany({ product_id: updated._id }, { isDisabled: true });
+      await Image.deleteMany({ product_id: updated._id });
       await new Image({
         product_id: updated._id,
         url:        req.body.image
@@ -151,7 +151,7 @@ exports.updateProduct = async (req, res) => {
 
     // Nếu có mảng imageUrls, lưu tất cả ảnh
     if (Array.isArray(req.body.imageUrls)) {
-      await Image.updateMany({ product_id: updated._id }, { isDisabled: true });
+      await Image.deleteMany({ product_id: updated._id });
       for (const url of req.body.imageUrls) {
         await new Image({ product_id: updated._id, url }).save();
       }
@@ -172,7 +172,7 @@ exports.getProducts = async (req, res) => {
     const skip  = (page - 1) * limit;
     const q     = (req.query.q || '').trim();
 
-    const nameFilter = q ? { name: new RegExp(q, 'i'), isDisabled: false } : { isDisabled: false };
+    const nameFilter = q ? { name: new RegExp(q, 'i') } : {};
 
     const [products, total] = await Promise.all([
       Product.find(nameFilter)
@@ -186,8 +186,8 @@ exports.getProducts = async (req, res) => {
 
     const productsWithImage = await Promise.all(
       products.map(async p => {
-        const img = await Image.findOne({ product_id: p._id, isDisabled: false }).lean();
-        const variants = await VariantProduct.find({ product_id: p._id, isDisabled: false }).lean();
+        const img = await Image.findOne({ product_id: p._id }).lean();
+        const variants = await VariantProduct.find({ product_id: p._id }).lean();
         return {
           ...p,
           image: img ? img.url : null,
@@ -218,7 +218,7 @@ exports.getProductById = async (req, res) => {
       return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
     }
 
-    const item = await Product.findOne({ _id: req.params.id, isDisabled: false })
+    const item = await Product.findById(req.params.id)
       .populate('category_id', 'name')
       .populate('brand_id', 'name')
       .lean();
@@ -228,10 +228,10 @@ exports.getProductById = async (req, res) => {
     }
 
     // Lấy biến thể từ bảng VariantProduct
-    const variants = await VariantProduct.find({ product_id: item._id, isDisabled: false }).lean();
+    const variants = await VariantProduct.find({ product_id: item._id }).lean();
 
     // images
-    const imgs = await Image.find({ product_id: item._id, isDisabled: false }).lean();
+    const imgs = await Image.find({ product_id: item._id }).lean();
     const urls = imgs.map(i => i.url);
     const primaryImage = urls[0] || null;
 
@@ -278,17 +278,12 @@ exports.deleteProduct = async (req, res) => {
       return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
     }
 
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { isDisabled: true },
-      { new: true }
-    );
-    if (!product) {
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+    if (!deleted) {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     }
 
-    await Image.updateMany({ product_id: req.params.id }, { isDisabled: true });
-    await VariantProduct.updateMany({ product_id: req.params.id }, { isDisabled: true });
+    await Image.deleteMany({ product_id: req.params.id });
     res.json({ success: true });
   } catch (err) {
     console.error('Error in deleteProduct:', err);
@@ -305,7 +300,7 @@ exports.filterProducts = async (req, res) => {
       limit = 20
     } = req.query;
 
-    const filter = { isDisabled: false };
+    const filter = {};
     let sortOptions = {};
 
     // ------------------------
@@ -404,7 +399,7 @@ if (min !== null || max !== null) {
     // Fetch Images
     // ------------------------
     const productIds = products.map(p => p._id);
-    const images = await Image.find({ product_id: { $in: productIds }, isDisabled: false }).lean();
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
 
 const imageMap = {};
 images.forEach(img => {
@@ -488,7 +483,7 @@ exports.getBestSellers = async (req, res) => {
 
     // Lấy ảnh đại diện cho từng sản phẩm
     const productIds = orders.map(o => o._id);
-    const images = await Image.find({ product_id: { $in: productIds }, isDisabled: false }).lean();
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
     const imageMap = {};
     images.forEach(img => {
       if (img.url && !imageMap[img.product_id]) {
@@ -621,7 +616,7 @@ exports.exportProductsToExcel = async (req, res) => {
       .lean();
 
     const ids = products.map(p => p._id);
-    const images = await Image.find({ product_id: { $in: ids }, isDisabled: false }).lean();
+    const images = await Image.find({ product_id: { $in: ids } }).lean();
     const imageMap = {};
     images.forEach(img => {
       if (!imageMap[img.product_id]) imageMap[img.product_id] = img.url;
@@ -702,7 +697,7 @@ exports.filterProductsByKeyword = async (req, res) => {
     const validProducts = products.filter(p => p._id && mongoose.Types.ObjectId.isValid(p._id));
     const productIds = validProducts.map(p => p._id);
 
-    const images = await Image.find({ product_id: { $in: productIds }, isDisabled: false }).lean();
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
     const imageMap = {};
     images.forEach(img => {
       if (img.url && !imageMap[img.product_id]) {
@@ -735,12 +730,12 @@ exports.getProductsByCategory = async (req, res) => {
       return res.status(400).json({ error: 'ID danh mục không hợp lệ' });
     }
 
-    const products = await Product.find({ category_id: categoryId, isDisabled: false })
+    const products = await Product.find({ category_id: categoryId })
       .populate('category_id', 'name')
       .lean();
 
     const productIds = products.map(p => p._id);
-    const images = await Image.find({ product_id: { $in: productIds }, isDisabled: false }).lean();
+    const images = await Image.find({ product_id: { $in: productIds } }).lean();
     const imageMap = {};
     images.forEach(img => {
       if (img.url && !imageMap[img.product_id]) {
@@ -749,7 +744,7 @@ exports.getProductsByCategory = async (req, res) => {
     });
 
     const productsWithImages = await Promise.all(products.map(async p => {
-      const variants = await VariantProduct.find({ product_id: p._id, isDisabled: false }).lean();
+      const variants = await VariantProduct.find({ product_id: p._id }).lean();
       return {
         ...p,
         image: imageMap[p._id.toString()] || null,
