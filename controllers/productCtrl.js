@@ -296,30 +296,23 @@ exports.filterProducts = async (req, res) => {
     const {
       q, category, brand, priceMin, priceMax,
       specKey, specValue, sort,
-      page = 1,
-      limit = 20
+      variantIds, page = 1, limit = 20
     } = req.query;
 
     const filter = {};
     let sortOptions = {};
 
-    // ------------------------
     // Text search
-    // ------------------------
     if (q?.trim()) {
       filter.name = { $regex: q.trim(), $options: 'i' };
     }
 
-    // ------------------------
     // Category filter
-    // ------------------------
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       filter.category_id = new mongoose.Types.ObjectId(category);
     }
 
-    // ------------------------
     // Brand filter (multi-id)
-    // ------------------------
     if (brand) {
       const brandIds = brand.split(',')
         .map(id => id.trim())
@@ -330,26 +323,16 @@ exports.filterProducts = async (req, res) => {
       }
     }
 
-    // ------------------------
-    // Price filter (Min / Max)
-    // ------------------------
-const min = priceMin && !isNaN(priceMin) ? parseFloat(priceMin) : null;
-const max = priceMax && !isNaN(priceMax) ? parseFloat(priceMax) : null;
+    // Price filter
+    const min = priceMin && !isNaN(priceMin) ? parseFloat(priceMin) : null;
+    const max = priceMax && !isNaN(priceMax) ? parseFloat(priceMax) : null;
+    if (min !== null || max !== null) {
+      filter.price = {};
+      if (min !== null) filter.price.$gte = min;
+      if (max !== null) filter.price.$lte = max;
+    }
 
-if (min !== null || max !== null) {
-  filter.price = {};
-  if (min !== null) filter.price.$gte = min;
-  if (max !== null) filter.price.$lte = max;
-}
-
-
-    // DEBUG (bạn có thể tắt sau khi test)
-    console.log('Parsed Price:', { min, max });
-    console.log('Filter conditions:', filter);
-
-    // ------------------------
     // Specification filter
-    // ------------------------
     if (specKey && specValue) {
       const specValues = specValue.split(',').map(val => val.trim());
       filter.specifications = {
@@ -360,30 +343,119 @@ if (min !== null || max !== null) {
       };
     }
 
-    // ------------------------
-    // Sorting options
-    // ------------------------
+    // Process variant ID filters
+    let productIdSetFromVariants = null;
+    if (variantIds) {
+      const ids = variantIds.split(',')
+        .filter(id => mongoose.Types.ObjectId.isValid(id))
+        .map(id => new mongoose.Types.ObjectId(id));
+        
+      if (ids.length) {
+        const variantDocs = await VariantProduct.find({ 
+          _id: { $in: ids } 
+        })
+          .select('product_id')
+          .lean();
+        productIdSetFromVariants = new Set(
+          variantDocs.map(v => v.product_id.toString())
+        );
+      }
+    }
+
+    // Process group filters
+    const groups = req.query.group 
+      ? (Array.isArray(req.query.group) ? req.query.group : [req.query.group])
+      : [];
+
+    if (groups.length) {
+      let intersection = null;
+
+      for (const groupFilter of groups) {
+        const [groupKey, slugString] = groupFilter.split(':');
+        if (!groupKey || !slugString) continue;
+
+        const slugs = slugString
+          .split(',')
+          .map(s => s.trim().toLowerCase())
+          .filter(Boolean);
+
+        if (!slugs.length) continue;
+
+        // Find variants matching this group's criteria
+        const variants = await VariantProduct.find({
+          groupKey: groupKey.trim(),
+          optionSlug: { $in: slugs }
+        })
+          .select('product_id')
+          .lean();
+
+        const productIdsThisGroup = new Set(
+          variants.map(v => v.product_id.toString())
+        );
+
+        // Perform intersection
+        if (intersection === null) {
+          intersection = productIdsThisGroup;
+        } else {
+          intersection = new Set(
+            [...intersection].filter(id => productIdsThisGroup.has(id))
+          );
+        }
+
+        // Early exit if intersection is empty
+        if (intersection.size === 0) {
+          return res.json({
+            products: [],
+            total: 0,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            hasMore: false
+          });
+        }
+      }
+
+      // Apply intersection filter if we have results
+      if (intersection && intersection.size > 0) {
+        const productIds = [...intersection].map(id => 
+          new mongoose.Types.ObjectId(id)
+        );
+        filter._id = { $in: productIds };
+      }
+    }
+
+    // Combine with variant ID filter if exists
+    if (productIdSetFromVariants) {
+      if (filter._id) {
+        // Intersect with existing product IDs
+        const existingIds = new Set(filter._id.$in.map(id => id.toString()));
+        const finalIds = [...productIdSetFromVariants]
+          .filter(id => existingIds.has(id))
+          .map(id => new mongoose.Types.ObjectId(id));
+        
+        filter._id.$in = finalIds;
+      } else {
+        filter._id = {
+          $in: [...productIdSetFromVariants].map(id => 
+            new mongoose.Types.ObjectId(id)
+          )
+        };
+      }
+    }
+
+    // Sorting
     switch (sort) {
       case 'price_asc': sortOptions = { price: 1 }; break;
       case 'price_desc': sortOptions = { price: -1 }; break;
       case 'name_asc': sortOptions = { name: 1 }; break;
       case 'name_desc': sortOptions = { name: -1 }; break;
-      case 'newest':
-      case 'popular':
-      case 'promotion':
-      default: sortOptions = { createdAt: -1 }; break;
+      default: sortOptions = { createdAt: -1 };
     }
 
-    // ------------------------
-    // Pagination
-    // ------------------------
+    // Execute query with pagination
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    // ------------------------
-    // Query DB
-    // ------------------------
     const [products, total] = await Promise.all([
       Product.find(filter)
         .sort(sortOptions)
@@ -395,32 +467,39 @@ if (min !== null || max !== null) {
       Product.countDocuments(filter)
     ]);
 
-    // ------------------------
-    // Fetch Images
-    // ------------------------
+    // Add images and variants
     const productIds = products.map(p => p._id);
-    const images = await Image.find({ product_id: { $in: productIds } }).lean();
+    const [images, variants] = await Promise.all([
+      Image.find({ product_id: { $in: productIds } }).lean(),
+      VariantProduct.find({ product_id: { $in: productIds } }).lean()
+    ]);
 
-const imageMap = {};
-images.forEach(img => {
-  if (img.url && !imageMap[img.product_id]) {
-    imageMap[img.product_id] = img.url;
-  }
-});
+    // Create lookup maps
+    const imageMap = {};
+    const variantMap = {};
 
+    images.forEach(img => {
+      if (img.url && !imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
 
-const productsWithImages = products.map(p => ({
-  ...p,
-  image: imageMap[p._id.toString()] || null,
-  rating: p.rating || 0,         // Thêm dòng này
-  reviewCount: p.reviewCount || 0 // Thêm dòng này
-}));
+    variants.forEach(v => {
+      if (!variantMap[v.product_id]) {
+        variantMap[v.product_id] = [];
+      }
+      variantMap[v.product_id].push(v);
+    });
 
-    // ------------------------
-    // Response
-    // ------------------------
+    // Enhance products with image and variant data
+    const productsWithDetails = products.map(p => ({
+      ...p,
+      image: imageMap[p._id.toString()] || null,
+      variants: variantMap[p._id] || []
+    }));
+
     res.json({
-      products: productsWithImages,
+      products: productsWithDetails,
       total,
       page: pageNum,
       limit: limitNum,
@@ -430,7 +509,9 @@ const productsWithImages = products.map(p => ({
 
   } catch (err) {
     console.error('Error in filterProducts:', err);
-    res.status(500).json({ error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' });
+    res.status(500).json({ 
+      error: 'Đã xảy ra lỗi máy chủ, vui lòng thử lại sau.' 
+    });
   }
 };
 

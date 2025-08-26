@@ -298,10 +298,105 @@ router.get('/user/:userId', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ error: 'userId không hợp lệ.' });
     }
-    const builds = await Build.find({ user_id: userId }).sort({ createdAt: -1 });
-    res.json(builds);
+
+    // Get builds with populated products and their details
+    const builds = await Build.find({ user_id: userId })
+      .populate({
+        path: 'products',
+        populate: [
+          {
+            path: 'product_id',
+            populate: [
+              { path: 'category_id', select: 'name' },
+              { path: 'brand_id', select: 'name' }
+            ]
+          }
+        ]
+      })
+      .populate({
+        path: 'user_id',
+        select: 'full_name email'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Get all product IDs from builds
+    const productIds = builds.flatMap(build => 
+      build.products?.map(p => p.product_id?._id.toString())
+    ).filter(Boolean);
+
+    // Get images and variants
+    const [images, variants] = await Promise.all([
+      Image.find({ product_id: { $in: productIds } }).lean(),
+      VariantProduct.find({ product_id: { $in: productIds } }).lean()
+    ]);
+
+    // Create lookup maps
+    const imageMap = {};
+    const variantMap = {};
+
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    variants.forEach(v => {
+      if (!variantMap[v.product_id]) {
+        variantMap[v.product_id] = [];
+      }
+      variantMap[v.product_id].push({
+        _id: v._id,
+        name: v.name,
+        price: v.price,
+        stock: v.stock
+      });
+    });
+
+    // Process builds with full details
+    const processedBuilds = builds.map(build => {
+      // Calculate total price from products
+      const totalPrice = build.products?.reduce((sum, product) => {
+        const basePrice = product.product_id?.price || 0;
+        const variantPrice = product.variant?.price || 0;
+        return sum + (variantPrice || basePrice) * product.quantity;
+      }, 0);
+
+      return {
+        ...build,
+        products: build.products?.map(product => {
+          const productId = product.product_id?._id.toString();
+          return {
+            ...product,
+            product_id: {
+              ...product.product_id,
+              image: imageMap[productId] || null,
+              variants: variantMap[productId] || []
+            }
+          };
+        }),
+        total_price: totalPrice || build.total_price || 0,
+        hasVariants: build.products?.some(p => p.variant) || false,
+        productCount: build.products?.length || 0,
+        createdAtFormatted: new Date(build.createdAt).toLocaleDateString('vi-VN'),
+        searchableText: `${build.name || ''} ${build.status || ''} ${
+          build.products?.map(p => p.product_id?.name || '').join(' ') || ''
+        }`.toLowerCase()
+      };
+    });
+
+    res.json({
+      builds: processedBuilds,
+      total: processedBuilds.length,
+      message: 'Lấy danh sách build thành công'
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error fetching builds:', err);
+    res.status(500).json({ 
+      error: 'Lỗi khi lấy danh sách build',
+      message: err.message 
+    });
   }
 });
 
@@ -312,13 +407,62 @@ router.get('/:buildId', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(buildId)) {
       return res.status(400).json({ error: 'buildId không hợp lệ.' });
     }
-    const build = await Build.findById(buildId);
-    if (!build) return res.status(404).json({ error: 'Không tìm thấy build.' });
 
-    // Lấy danh sách sản phẩm trong build
-    const products = await BuildProduct.find({ build_id: buildId }).populate('product_id');
-    res.json({ build, products });
+    // Get build with populated data
+    const build = await Build.findById(buildId)
+      .populate({
+        path: 'products',
+        populate: [
+          {
+            path: 'product_id',
+            populate: [
+              { path: 'category_id', select: 'name' },
+              { path: 'brand_id', select: 'name' }
+            ]
+          },
+          {
+            path: 'variant_id'
+          }
+        ]
+      })
+      .lean();
+
+    if (!build) {
+      return res.status(404).json({ error: 'Không tìm thấy build.' });
+    }
+
+    // Get images for products
+    const productIds = build.products
+      ?.map(p => p.product_id?._id.toString())
+      .filter(Boolean);
+
+    const images = await Image.find({
+      product_id: { $in: productIds }
+    }).lean();
+
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.product_id]) {
+        imageMap[img.product_id] = img.url;
+      }
+    });
+
+    // Process build data
+    const processedBuild = {
+      ...build,
+      products: build.products?.map(product => ({
+        ...product,
+        product_id: {
+          ...product.product_id,
+          image: imageMap[product.product_id?._id.toString()] || null
+        }
+      }))
+    };
+
+    res.json(processedBuild);
+
   } catch (err) {
+    console.error('Error fetching build details:', err);
     res.status(500).json({ error: err.message });
   }
 });
