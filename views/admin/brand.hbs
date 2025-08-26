@@ -223,6 +223,12 @@
   </div>
 </div>
 
+<div class="tabs mb-6">
+  <a href="/admin/brand?view=active" class="px-4 py-2 bg-blue-500 text-white rounded mr-2">Đang hoạt động</a>
+  <a href="/admin/brand?view=all" class="px-4 py-2 bg-blue-500 text-white rounded mr-2">Tất cả</a>
+  <a href="/admin/brand?view=trash" class="px-4 py-2 bg-blue-500 text-white rounded">Thùng rác</a>
+</div>
+
 {{!-- Brands Table --}}
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
   <div class="px-6 py-4 border-b border-gray-200">
@@ -313,6 +319,7 @@
 
 {{!-- Dữ liệu JSON từ server để JS sử dụng (tránh cần helper json) --}}
 <script>
+  const currentView = '{{view}}';
   // ===== Toast =====
   function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -347,6 +354,10 @@
       const tr = document.createElement('tr');
       tr.className = 'hover:bg-gray-50 transition-colors duration-150';
       tr.dataset.id = b._id;
+      if (b.isDeleted) {
+        tr.style.opacity = '0.5';
+        tr.style.textDecoration = 'line-through';
+      }
       tr.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap">
           <div class="text-sm font-medium text-hipc-dark">${b.name}</div>
@@ -358,14 +369,21 @@
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-center">
           <div class="flex items-center justify-center space-x-3">
-            <button class="btn-edit text-hipc-blue hover:text-blue-700 transition-colors duration-150"
-                    title="Sửa" data-id="${b._id}" data-name="${b.name}" data-logo="${b.logo || ''}">
-              <i class="fas fa-edit text-lg"></i>
-            </button>
-            <button class="btn-delete text-red-500 hover:text-red-700 transition-colors duration-150"
-                    title="Xóa" data-id="${b._id}" data-name="${b.name}">
-              <i class="fas fa-trash text-lg"></i>
-            </button>
+            ${b.isDeleted ? `
+              <button class="btn-restore text-hipc-blue hover:text-blue-700 transition-colors duration-150" title="Khôi phục" data-id="${b._id}">
+                <i class="fas fa-undo text-lg"></i>
+              </button>
+              <button class="btn-purge text-red-500 hover:text-red-700 transition-colors duration-150" title="Xóa vĩnh viễn" data-id="${b._id}">
+                <i class="fas fa-trash text-lg"></i>
+              </button>
+            ` : `
+              <button class="btn-edit text-hipc-blue hover:text-blue-700 transition-colors duration-150" title="Sửa" data-id="${b._id}" data-name="${b.name}" data-logo="${b.logo || ''}">
+                <i class="fas fa-edit text-lg"></i>
+              </button>
+              <button class="btn-delete text-red-500 hover:text-red-700 transition-colors duration-150" title="Xóa" data-id="${b._id}" data-name="${b.name}">
+                <i class="fas fa-trash text-lg"></i>
+              </button>
+            `}
           </div>
         </td>
       `;
@@ -394,7 +412,7 @@
 
   // ===== CRUD via API =====
   async function apiListBrands() {
-    return fetchJSON(API_BASE, { method: 'GET' });
+    return fetchJSON(`${API_BASE}?view=${currentView}`, { method: 'GET' });
   }
 
   async function apiCreateBrand(payload) {
@@ -413,6 +431,14 @@
 
   async function apiDeleteBrand(id) {
     return fetchJSON(`${API_BASE}/${id}`, { method: 'DELETE' });
+  }
+
+  async function apiRestoreBrand(id) {
+    return fetchJSON(`${API_BASE}/${id}/restore`, { method: 'POST' });
+  }
+
+  async function apiPurgeBrand(id) {
+    return fetchJSON(`${API_BASE}/${id}/purge`, { method: 'DELETE' });
   }
 
   // ===== Page behaviors =====
@@ -462,19 +488,42 @@
 
     // 3) Sửa/Xóa bằng event delegation
     document.getElementById('brandsTable').addEventListener('click', async (e) => {
-      const delBtn  = e.target.closest('.btn-delete');
+      const delBtn = e.target.closest('.btn-delete');
+      const restoreBtn = e.target.closest('.btn-restore');
+      const purgeBtn = e.target.closest('.btn-purge');
 
       if (delBtn) {
         const id = delBtn.dataset.id;
         const brandName = delBtn.dataset.name;
         if (!confirm(`Bạn có chắc chắn muốn xóa thương hiệu "${brandName}"?`)) return;
         try {
-          await apiDeleteBrand(id); // DELETE /brands/:id
+          await apiDeleteBrand(id);
           await loadAndRender();
           showToast('Xóa thương hiệu thành công', 'success');
         } catch (err) {
           console.error(err);
           showToast('Không thể xóa thương hiệu', 'error');
+        }
+      } else if (restoreBtn) {
+        const id = restoreBtn.dataset.id;
+        try {
+          await apiRestoreBrand(id);
+          await loadAndRender();
+          showToast('Khôi phục thương hiệu thành công', 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('Không thể khôi phục thương hiệu', 'error');
+        }
+      } else if (purgeBtn) {
+        const id = purgeBtn.dataset.id;
+        if (!confirm('Xóa vĩnh viễn thương hiệu này?')) return;
+        try {
+          await apiPurgeBrand(id);
+          await loadAndRender();
+          showToast('Đã xóa vĩnh viễn', 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('Không thể xóa vĩnh viễn', 'error');
         }
       }
     });

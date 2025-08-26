@@ -159,6 +159,12 @@
       </div>
     </div>
 
+    <div class="tabs mb-4">
+      <a href="/admin/categories?view=active" class="btn-primary text-white px-4 py-2 rounded-lg mr-2">Đang hoạt động</a>
+      <a href="/admin/categories?view=all" class="btn-primary text-white px-4 py-2 rounded-lg mr-2">Tất cả</a>
+      <a href="/admin/categories?view=trash" class="btn-primary text-white px-4 py-2 rounded-lg">Thùng rác</a>
+    </div>
+
     <!-- Categories Table -->
     <div class="glass-card rounded-2xl overflow-hidden slide-up">
       <div class="overflow-x-auto">
@@ -193,13 +199,14 @@
     </div>
   </div>
 
-  <script>
+    <script>
+    const currentView = '{{view}}';
     let allCategories = [];
     let isLoading = false;
 
     async function fetchCategories() {
       setLoading(true);
-      const res = await fetch('/category');
+      const res = await fetch(`/category?view=${currentView}`);
       const data = await res.json();
       allCategories = data;
       setLoading(false);
@@ -240,6 +247,10 @@
         const tr = document.createElement('tr');
         tr.className = 'table-row fade-in';
         tr.style.animationDelay = `${idx * 0.1}s`;
+        if (cat.isDeleted) {
+          tr.style.opacity = '0.5';
+          tr.style.textDecoration = 'line-through';
+        }
 
         tr.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap">${idx + 1}</td>
@@ -253,9 +264,12 @@
               <a href="/admin/categories/edit/${cat._id}" class="btn-secondary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
                 <i class="fas fa-edit"></i>
               </a>
-              <button onclick="deleteCategory('${cat._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce">
-                <i class="fas fa-trash"></i>
-              </button>
+              ${cat.isDeleted ? `
+                <button onclick="restoreCategory('${cat._id}')" class="btn-primary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce"><i class="fas fa-undo"></i></button>
+                <button onclick="purgeCategory('${cat._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce"><i class="fas fa-trash"></i></button>
+              ` : `
+                <button onclick="deleteCategory('${cat._id}')" class="btn-danger text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md icon-bounce"><i class="fas fa-trash"></i></button>
+              `}
             </div>
           </td>
         `;
@@ -267,10 +281,26 @@
       if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
       setLoading(true);
       await fetch(`/category/${id}`, { method: 'DELETE' });
-      allCategories = allCategories.filter(c => c._id !== id);
-      renderCategories(allCategories);
+      await fetchCategories();
       setLoading(false);
       showNotification('Danh mục đã được xóa thành công!', 'success');
+    }
+
+    async function restoreCategory(id) {
+      setLoading(true);
+      await fetch(`/category/${id}/restore`, { method: 'POST' });
+      await fetchCategories();
+      setLoading(false);
+      showNotification('Danh mục đã được khôi phục!', 'success');
+    }
+
+    async function purgeCategory(id) {
+      if (!confirm('Xóa vĩnh viễn danh mục này?')) return;
+      setLoading(true);
+      await fetch(`/category/${id}/purge`, { method: 'DELETE' });
+      await fetchCategories();
+      setLoading(false);
+      showNotification('Danh mục đã bị xóa vĩnh viễn!', 'success');
     }
 
     function showNotification(message, type = 'info') {

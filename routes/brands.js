@@ -34,10 +34,14 @@ router.post('/upload', upload.single('file'), (req, res) => {
   res.json({ url });
 });
 
-// GET all brands
+// GET all brands with view filter
 router.get('/', async (req, res) => {
   try {
-    const brands = await Brand.find();
+    const view = req.query.view || 'active';
+    let query = Brand.find();
+    if (view === 'trash') query = query.onlyDeleted();
+    else if (view === 'all') query = query.withDeleted();
+    const brands = await query.lean();
     res.json(brands);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -81,12 +85,35 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE brand
+// Soft delete brand
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await Brand.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Brand not found' });
+    const doc = await Brand.findById(req.params.id).withDeleted();
+    if (!doc) return res.status(404).json({ error: 'Brand not found' });
+    await doc.softDelete(req.user?._id);
     res.json({ message: 'Brand deleted successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Restore brand
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const doc = await Brand.findById(req.params.id).withDeleted();
+    if (!doc) return res.status(404).json({ error: 'Brand not found' });
+    await doc.restore();
+    res.json({ message: 'Brand restored' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Permanently delete brand
+router.delete('/:id/purge', async (req, res) => {
+  try {
+    await Brand.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Brand purged' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -8,6 +8,7 @@ let catHasMore     = true;
 const catLimit     = 20;
 let catObserver;
 let allCategories = [];
+let categoryView = 'active';
 
 /**
  * Fetch categories (pagination)
@@ -15,7 +16,7 @@ let allCategories = [];
 async function fetchCategories(page = 1) {
   if (!catHasMore && page !== 1) return;
   try {
-    const res = await fetch(`${apiCategory}/all?page=${page}&limit=${catLimit}`);
+    const res = await fetch(`${apiCategory}/all?page=${page}&limit=${catLimit}&view=${categoryView}`);
     if (!res.ok) throw new Error(`HTTP lỗi! status: ${res.status}`);
     const data = await res.json();
 
@@ -55,20 +56,35 @@ function renderCategories(categories, append = false) {
 
   categories.forEach((c, idx) => {
     const tr = document.createElement("tr");
+    if (c.isDeleted) {
+      tr.style.opacity = '0.5';
+      tr.style.textDecoration = 'line-through';
+    }
+    let actions = `
+        <a href="/admin/categories/${c._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+          <i class="bx bx-edit text-xl"></i>
+        </a>`;
+    if (c.isDeleted) {
+      actions += `
+        <a href="#" onclick="restoreCategory('${c._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+          <i class="bx bx-undo text-xl"></i>
+        </a>
+        <a href="#" onclick="purgeCategory('${c._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+          <i class="bx bx-trash text-xl"></i>
+        </a>`;
+    } else {
+      actions += `
+        <a href="#" onclick="deleteCategory('${c._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+          <i class="bx bx-trash text-xl"></i>
+        </a>`;
+    }
     tr.innerHTML = `
       <td class="px-6 py-4">
         ${(catCurrentPage - 1) * catLimit + idx + 1}
       </td>
       <td class="px-6 py-4">${c.name}</td>
       <td class="px-6 py-4">${c.description || ""}</td>
-      <td class="px-6 py-4 text-center">
-        <a href="/admin/categories/${c._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-          <i class="bx bx-edit text-xl"></i>
-        </a>
-        <a href="#" onclick="deleteCategory('${c._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
-          <i class="bx bx-trash text-xl"></i>
-        </a>
-      </td>
+      <td class="px-6 py-4 text-center">${actions}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -88,6 +104,31 @@ async function deleteCategory(id) {
     fetchCategories(1);
   } catch (err) {
     console.error("Lỗi xóa danh mục:", err);
+  }
+}
+
+async function restoreCategory(id) {
+  try {
+    const res = await fetch(`${apiCategory}/${id}/restore`, { method: 'POST' });
+    if (!res.ok) throw new Error('Restore failed');
+    catCurrentPage = 1;
+    catHasMore = true;
+    fetchCategories(1);
+  } catch (err) {
+    console.error('Lỗi khôi phục danh mục:', err);
+  }
+}
+
+async function purgeCategory(id) {
+  if (!confirm('Xóa vĩnh viễn danh mục này?')) return;
+  try {
+    const res = await fetch(`${apiCategory}/${id}/purge`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Purge failed');
+    catCurrentPage = 1;
+    catHasMore = true;
+    fetchCategories(1);
+  } catch (err) {
+    console.error('Lỗi xóa vĩnh viễn danh mục:', err);
   }
 }
 
@@ -117,6 +158,7 @@ function initCategoryScroll() {
 
 // Khởi động khi DOM sẵn sàng
 document.addEventListener("DOMContentLoaded", () => {
+  categoryView = new URLSearchParams(window.location.search).get('view') || 'active';
   initCategoryScroll();
   fetchCategories(1);
 });
