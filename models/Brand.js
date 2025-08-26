@@ -3,8 +3,8 @@ const softDelete = require('./plugins/softDelete');
 
 const brandSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  logo: String
-
+  logo: String,
+  isDeleted: { type: Boolean, default: false }
 });
 
 brandSchema.plugin(softDelete);

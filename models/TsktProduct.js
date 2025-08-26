@@ -12,7 +12,8 @@ const tsktSchema = new mongoose.Schema({
   value:          { type: [String], required: true, default: [] },
 
   // mảng các variant attributes
-  variantOptions: { type: [variantOptionSchema], default: [] }
+  variantOptions: { type: [variantOptionSchema], default: [] },
+  isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('TsktProduct', tsktSchema);

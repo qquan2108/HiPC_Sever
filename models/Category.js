@@ -3,8 +3,8 @@ const softDelete = require('./plugins/softDelete');
 
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: String
-
+  description: String,
+  isDeleted: { type: Boolean, default: false }
 });
 
 categorySchema.plugin(softDelete);
