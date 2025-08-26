@@ -99,7 +99,7 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ error: 'ID sản phẩm không hợp lệ' });
     }
 
-    const product = await Product.findOne({ _id: req.params.id, isDisabled: false })
+    const product = await Product.findById(req.params.id)
       .populate('category_id')
       .populate('brand_id')
       .lean();
@@ -110,7 +110,7 @@ router.get('/:id', async (req, res) => {
 
     // ===== GỘP: Lấy hình ảnh từ collection Image =====
     // Nếu có field đánh dấu thứ tự/primary, bạn có thể thêm sort({ isPrimary: -1, createdAt: 1 })
-    const imgs = await Image.find({ product_id: product._id, isDisabled: false }).lean();
+    const imgs = await Image.find({ product_id: product._id }).lean();
     const urls = (imgs || []).map(i => i.url).filter(Boolean);
     const primaryImage = urls[0] || null;
 
@@ -119,7 +119,7 @@ router.get('/:id', async (req, res) => {
     product.image = primaryImage || product.image || null;
 
     // ===== Lấy variant và format về group cho UI =====
-    const variants = await VariantProduct.find({ product_id: product._id, isDisabled: false }).lean();
+    const variants = await VariantProduct.find({ product_id: product._id }).lean();
 
     product.variants = [
       {
