@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "nodemon ./bin/www"
+    "dev": "nodemon ./bin/www",
+    "migrate:soft": "node scripts/migrate-soft-delete.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -5,7 +5,11 @@ const Category = require("../models/Category");
 // GET all categories
 router.get("/", async (req, res) => {
   try {
-    const items = await Category.find();
+    const view = req.query.view || 'active';
+    let query = Category.find();
+    if (view === 'trash') query = query.onlyDeleted();
+    else if (view === 'all') query = query.withDeleted();
+    const items = await query.lean();
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,13 +30,20 @@ router.get("/all", async (req, res) => {
     const safeLimit = Math.max(1, limit);
     const skip      = (safePage - 1) * safeLimit;
 
+    const view = req.query.view || 'active';
+    let findQuery = Category.find().sort({ createdAt: -1 }).skip(skip).limit(safeLimit);
+    let countQuery = Category.countDocuments();
+    if (view === 'trash') {
+      findQuery = findQuery.onlyDeleted();
+      countQuery = countQuery.onlyDeleted();
+    } else if (view === 'all') {
+      findQuery = findQuery.withDeleted();
+      countQuery = countQuery.withDeleted();
+    }
+
     const [categories, total] = await Promise.all([
-      Category.find()
-              .sort({ createdAt: -1 })
-              .skip(skip)
-              .limit(safeLimit)
-              .lean(),
-      Category.countDocuments()
+      findQuery.lean(),
+      countQuery
     ]);
 
     return res.json({
@@ -85,8 +96,30 @@ router.put("/:id", async (req, res) => {
 // DELETE category
 router.delete("/:id", async (req, res) => {
   try {
-    await Category.findByIdAndDelete(req.params.id);
+    const doc = await Category.findById(req.params.id).withDeleted();
+    if (!doc) return res.status(404).json({ error: "Not found" });
+    await doc.softDelete(req.user?._id);
     res.json({ message: "Category deleted" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const doc = await Category.findById(req.params.id).withDeleted();
+    if (!doc) return res.status(404).json({ error: 'Not found' });
+    await doc.restore();
+    res.json({ message: 'Category restored' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/:id/purge', async (req, res) => {
+  try {
+    await Category.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Category purged' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
