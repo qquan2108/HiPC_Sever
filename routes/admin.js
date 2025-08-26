@@ -56,14 +56,20 @@ router.get('/products/create', async (req, res) => {
   });
 });
 router.get('/products/:id/edit', async (req, res) => {
-  const product = await Product.findById(req.params.id).withDeleted().lean();
+  const product = await Product.findById(req.params.id)
+    .withDeleted()
+    .populate('category_id brand_id')
+    .lean();
   if (!product) return res.redirect('/admin/products');
 
   const [categories, brands] = await Promise.all([
-    Category.find().lean(),
-    Brand.find().lean()
+    Category.find().withDeleted().lean(),
+    Brand.find().withDeleted().lean()
   ]);
-  const tsktTemplates = await TsktProduct.find({ category_id: product.category_id }).lean();
+  const tsktTemplates = await TsktProduct.find({
+    category_id: product.category_id?._id || product.category_id
+  }).lean();
+
   res.render('admin/form', {
     layout: 'admin/layout',
     product,

@@ -10,7 +10,7 @@ module.exports = function softDelete(schema) {
   // query helpers
   schema.query.notDeleted = function () {
     this.setOptions({ withDeleted: false });
-    return this.where({ isDeleted: false });
+    return this.where({ isDeleted: { $ne: true } });
   };
   schema.query.onlyDeleted = function () {
     this.setOptions({ withDeleted: true });
@@ -25,7 +25,7 @@ module.exports = function softDelete(schema) {
     if (this.options.withDeleted) return next();
     const filter = this.getFilter();
     if (filter.isDeleted === undefined) {
-      this.where({ isDeleted: false });
+      this.where({ isDeleted: { $ne: true } });
     }
     next();
   }
@@ -41,7 +41,7 @@ module.exports = function softDelete(schema) {
     if (this.options && this.options.withDeleted) return next();
     const first = this.pipeline()[0];
     if (!first || !first.$match || first.$match.isDeleted === undefined) {
-      this.pipeline().unshift({ $match: { isDeleted: false } });
+      this.pipeline().unshift({ $match: { isDeleted: { $ne: true } } });
     }
     next();
   });
