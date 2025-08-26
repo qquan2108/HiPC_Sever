@@ -420,6 +420,50 @@ async function initProductForm() {
 function initCategoryForm() {
   const form = document.getElementById("categoryForm");
   if (!form) return;
+  const linkInput = document.getElementById('imageLink');
+  const fileInput = document.getElementById('imageFile');
+  const preview = document.getElementById('imagePreview');
+  const imageIdInput = document.getElementById('imageId');
+  const linkRadio = document.getElementById('useLink');
+  const uploadRadio = document.getElementById('useUpload');
+
+  const toggleSource = () => {
+    if (linkRadio && uploadRadio) {
+      if (linkRadio.checked) {
+        if (linkInput) linkInput.style.display = 'block';
+        if (fileInput) fileInput.style.display = 'none';
+      } else {
+        if (linkInput) linkInput.style.display = 'none';
+        if (fileInput) fileInput.style.display = 'block';
+      }
+    }
+  };
+  if (linkRadio) linkRadio.addEventListener('change', toggleSource);
+  if (uploadRadio) uploadRadio.addEventListener('change', toggleSource);
+  toggleSource();
+
+  if (linkInput) {
+    linkInput.addEventListener('input', () => {
+      if (linkInput.value) {
+        preview.src = linkInput.value;
+        preview.style.display = 'block';
+      }
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = evt => {
+          preview.src = evt.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
 
   form.addEventListener("submit", async e => {
     e.preventDefault();
@@ -441,6 +485,39 @@ function initCategoryForm() {
       });
 
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
+
+      const cat = await res.json();
+      const categoryId = cat._id || id;
+
+      let imageUrl = '';
+      if (linkRadio && linkRadio.checked && linkInput) {
+        imageUrl = linkInput.value.trim();
+      } else if (fileInput && fileInput.files[0]) {
+        const upFd = new FormData();
+        upFd.append('image', fileInput.files[0]);
+        const upRes = await fetch('/images/upload', { method: 'POST', body: upFd });
+        if (!upRes.ok) throw new Error('Upload image failed');
+        const upData = await upRes.json();
+        imageUrl = upData.url;
+      }
+
+      const imageId = imageIdInput ? imageIdInput.value : '';
+      if (imageUrl) {
+        const imgPayload = { url: imageUrl, category_id: categoryId };
+        if (imageId) {
+          await fetch(`/images/${imageId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(imgPayload)
+          });
+        } else {
+          await fetch('/images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(imgPayload)
+          });
+        }
+      }
 
       showToast('Lưu danh mục thành công', 'success');
       setTimeout(() => {

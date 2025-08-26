@@ -177,13 +177,22 @@
     </div>
     <div class="mb-3">
       <label class="form-label" for="image">Logo / Ảnh danh mục</label>
-      {{#if category.image}}
-        <img id="imagePreview" src="{{category.image}}" class="category-image-preview mb-2" alt="Ảnh danh mục">
+      {{#if image.url}}
+        <img id="imagePreview" src="{{image.url}}" class="category-image-preview mb-2" alt="Ảnh danh mục">
       {{else}}
         <img id="imagePreview" src="/admin/static/images/no-image.png" class="category-image-preview mb-2" style="display:none" alt="Ảnh danh mục">
       {{/if}}
-      <input type="file" id="imageFile" accept="image/*" class="form-control mb-2">
-      <input type="hidden" name="image" id="imageUrl" value="{{category.image}}">
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="imageSource" id="useLink" value="link" checked>
+        <label class="form-check-label" for="useLink">Link ảnh</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="imageSource" id="useUpload" value="upload">
+        <label class="form-check-label" for="useUpload">Tải ảnh lên</label>
+      </div>
+      <input type="text" id="imageLink" class="form-control mb-2" placeholder="https://..." value="{{image.url}}">
+      <input type="file" id="imageFile" accept="image/*" class="form-control mb-2" style="display:none">
+      <input type="hidden" id="imageId" value="{{image._id}}">
     </div>
     <div class="modal-footer">
       <button type="submit" class="btn btn-primary">
@@ -195,18 +204,3 @@
 </div>
 
 <script src="/admin/static/js/admin.js"></script>
-<script>
-  // Hiển thị ảnh preview khi chọn file
-  document.getElementById('imageFile').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    const preview = document.getElementById('imagePreview');
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function (evt) {
-        preview.src = evt.target.result;
-        preview.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-</script>

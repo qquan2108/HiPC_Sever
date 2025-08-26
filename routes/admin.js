@@ -79,15 +79,19 @@ router.get('/products/:id/edit', async (req, res) => {
 router.get('/categories', (req, res) => {
   res.render('admin/categories', { layout: 'admin/layout' });
 });
+
 // Trang tạo danh mục
 router.get('/categories/create', (req, res) => {
-  res.render('admin/category-form', { category: {} });
+  res.render('admin/category-form', { category: {}, image: null });
 });
 
 // Trang sửa danh mục
 router.get('/categories/edit/:id', async (req, res) => {
-  const category = await Category.findById(req.params.id).lean();
-  res.render('admin/category-form', { category });
+  const [category, image] = await Promise.all([
+    Category.findById(req.params.id).lean(),
+    Image.findOne({ category_id: req.params.id }).lean()
+  ]);
+  res.render('admin/category-form', { category, image });
 });
 
 // Quản lý thương hiệu
@@ -189,6 +193,25 @@ router.get('/api/products', async (req, res) => {
       image: imageMap[p._id] || null
     }));
     res.json(productsWithImage);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/api/categories', async (req, res) => {
+  try {
+    const categories = await Category.find().lean();
+    const ids = categories.map(c => c._id);
+    const images = await Image.find({ category_id: { $in: ids } }).lean();
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.category_id]) imageMap[img.category_id] = img.url;
+    });
+    const categoriesWithImage = categories.map(c => ({
+      ...c,
+      image: imageMap[c._id] || null
+    }));
+    res.json(categoriesWithImage);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

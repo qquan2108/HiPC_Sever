@@ -199,7 +199,7 @@
 
     async function fetchCategories() {
       setLoading(true);
-      const res = await fetch('/category');
+      const res = await fetch('/admin/api/categories');
       const data = await res.json();
       allCategories = data;
       setLoading(false);
