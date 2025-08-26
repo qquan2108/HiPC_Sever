@@ -72,12 +72,8 @@ router.get('/categories/create', (req, res) => {
 
 // Trang sửa danh mục
 router.get('/categories/edit/:id', async (req, res) => {
-  const [category, image] = await Promise.all([
-    Category.findById(req.params.id).lean(),
-    Image.findOne({ category_id: req.params.id }).lean()
-  ]);
-  const categoryData = category ? { ...category, image: image ? image.url : '' } : {};
-  res.render('admin/category-form', { category: categoryData });
+  const category = await Category.findById(req.params.id).lean();
+  res.render('admin/category-form', { category });
 });
 
 // bao cao
