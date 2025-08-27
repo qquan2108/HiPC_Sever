@@ -54,57 +54,60 @@ router.post('/register', async (req, res) => {
       provinceId,
       districtId,
       wardCode,
-      avatarUrl
+      addresses
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: 'Email already in use' });
+    // Basic validation
+    if (!full_name || !email || !password || !phone) {
+      return res.status(400).json({ 
+        message: 'Vui lòng điền đầy đủ thông tin cần thiết' 
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: 'Email này đã được đăng ký' 
+      });
+    }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Process avatarUrl similar to update route
-    let processedAvatar = '';
-    if (typeof avatarUrl === 'string') {
-      if (avatarUrl.startsWith('data:')) {
-        processedAvatar = '';
-      } else if (avatarUrl.startsWith('http')) {
-        const host = `${req.protocol}://${req.get('host')}/`;
-        processedAvatar = avatarUrl.replace(host, '');
-      } else {
-        processedAvatar = avatarUrl;
-      }
-    }
-
-    // Create user
+    // Create new user with role 'customer' instead of 'user'
     const newUser = new User({
       full_name,
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       phone,
-      address, // vẫn giữ cho user cũ nếu muốn
-      avatarUrl: processedAvatar,
-      addresses: [
-        {
-          label,
-          address,
-          phoneNum,
-          provinceId,
-          districtId,
-          wardCode,
-          isDefault: true
-        }
-      ]
+      address,
+      role: 'customer', // Changed from 'user' to 'customer'
+      active: true,
+      addresses: addresses || [{
+        label: label || "Địa chỉ nhận hàng",
+        address,
+        phoneNum: phone,
+        provinceId,
+        districtId,
+        wardCode,
+        isDefault: true
+      }]
     });
 
     await newUser.save();
 
-    res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({
+      success: true,
+      message: 'Đăng ký tài khoản thành công!'
+    });
 
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Registration error:', err);
+    res.status(500).json({
+      message: 'Đăng ký thất bại, vui lòng thử lại',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
@@ -115,16 +118,37 @@ router.post('/login', async (req, res) => {
 
     // Find user
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Email không tồn tại trong hệ thống' 
+      });
+    }
+
+    // Check if account is locked
+    if (!user.active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ.'
+      });
+    }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
+    if (!isMatch) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Mật khẩu không chính xác' 
+      });
+    }
 
     // Generate JWT
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { 
+        userId: user._id, 
+        role: user.role,
+        active: user.active 
+      },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
@@ -134,19 +158,27 @@ router.post('/login', async (req, res) => {
       .lean();
 
     res.status(200).json({
-      message: 'Login successful',
+      success: true,
+      message: 'Đăng nhập thành công',
       token,
       user: {
         id: user._id,
         full_name: user.full_name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        active: user.active,
+        avatarUrl: user.avatarUrl
       },
       banner
     });
 
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Đã xảy ra lỗi, vui lòng thử lại sau',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
