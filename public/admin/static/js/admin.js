@@ -38,6 +38,7 @@ let hasMore = true;
 const limit = 20;
 let observer; // IntersectionObserver reference
 let productQuery = '';
+let productView = 'active';
 
 /**
  * Fetch products from API with pagination
@@ -46,7 +47,7 @@ let productQuery = '';
 async function fetchProducts(page = 1, q = productQuery) {
   if (!hasMore && page !== 1) return;
   try {
-    const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}`;
+    const url = `${apiProduct}?page=${page}&limit=${limit}&q=${encodeURIComponent(q)}&view=${productView}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
@@ -88,14 +89,12 @@ function renderProducts(products, append = false) {
   products.forEach(p => {
     const tr = document.createElement("tr");
     const price = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(p.price || 0);
-    const stock = p.stock ?? 0;
     const variantCount = Array.isArray(p.variants) ? p.variants.length : 0;
-    tr.innerHTML = `
-      <td><img src="${p.image}" class="product-img" alt="${p.name}"></td>
-      <td>${p.name}</td>
-      <td>${price}</td>
-      <td>${variantCount}</td>
-       <td class="actions text-center">
+    if (p.isDeleted) {
+      tr.style.opacity = '0.5';
+      tr.style.textDecoration = 'line-through';
+    }
+    let actions = `
            <a href="/admin/products/${p._id}/edit" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
              <i class="bx bx-edit text-xl"></i>
            </a>
@@ -105,10 +104,27 @@ function renderProducts(products, append = false) {
             <a href="/admin/variants?productId=${encodeURIComponent(p._id)}" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
               <i class="bx bx-layer text-xl"></i>
             </a>
+    `;
+    if (p.isDeleted) {
+      actions += `
+           <a href="#" onclick="restoreProduct('${p._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+             <i class="bx bx-undo text-xl"></i>
+           </a>
+           <a href="#" onclick="purgeProduct('${p._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
+             <i class="bx bx-trash text-xl"></i>
+           </a>`;
+    } else {
+      actions += `
            <a href="#" onclick="deleteProduct('${p._id}')" class="inline-block mx-1 p-2 hover:bg-gray-100 rounded">
              <i class="bx bx-trash text-xl"></i>
-           </a>
-         </td>`;
+           </a>`;
+    }
+    tr.innerHTML = `
+      <td><img src="${p.image}" class="product-img" alt="${p.name}"></td>
+      <td>${p.name}</td>
+      <td>${price}</td>
+      <td>${variantCount}</td>
+      <td class="actions text-center">${actions}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -131,6 +147,35 @@ async function deleteProduct(id) {
   } catch (err) {
     console.error("Lỗi xóa sản phẩm:", err);
     showToast('Lỗi xóa sản phẩm', 'error');
+  }
+}
+
+async function restoreProduct(id) {
+  try {
+    const res = await fetch(`${apiProduct}/${id}/restore`, { method: 'POST' });
+    if (!res.ok) throw new Error('Restore failed');
+    currentPage = 1;
+    hasMore = true;
+    fetchProducts(1, productQuery);
+    showToast('Khôi phục thành công', 'success');
+  } catch (err) {
+    console.error('Lỗi khôi phục sản phẩm:', err);
+    showToast('Lỗi khôi phục sản phẩm', 'error');
+  }
+}
+
+async function purgeProduct(id) {
+  if (!confirm('Xóa vĩnh viễn sản phẩm này?')) return;
+  try {
+    const res = await fetch(`${apiProduct}/${id}/purge`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Purge failed');
+    currentPage = 1;
+    hasMore = true;
+    fetchProducts(1, productQuery);
+    showToast('Đã xóa vĩnh viễn', 'success');
+  } catch (err) {
+    console.error('Lỗi xóa vĩnh viễn sản phẩm:', err);
+    showToast('Lỗi xóa vĩnh viễn', 'error');
   }
 }
 
@@ -555,6 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Products
   if (document.getElementById("productTable")) {
+    productView = new URLSearchParams(window.location.search).get('view') || 'active';
     initProductScroll();
     fetchProducts(1);
     initExcelUpload();
