@@ -15,6 +15,7 @@ const {
 } = require("../utils/voucher");
 const PDFDocument = require('pdfkit');
 const { createCanvas, loadImage } = require('canvas');
+const mongoose = require('mongoose');
 
 // ===== SPECIFIC ROUTES FIRST (before parameterized routes) =====
 
@@ -96,105 +97,132 @@ router.get("/", async (req, res) => {
 router.post("/checkout", orderCtrl.createOrder);
 
 router.post('/buy-now', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { user_id, productId, quantity = 1, variant, address, phoneNumber, paymentMethod, shippingMethod, voucher, shippingFee } = req.body;
     
-    // 1. Validation đầu vào
-    if (!user_id || !productId || !quantity) {
-      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    // Basic validation
+    if (!user_id || !productId) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc' });
     }
 
-    if (quantity <= 0) {
-      return res.status(400).json({ error: 'Số lượng phải lớn hơn 0.' });
+    const numQuantity = Number(quantity);
+    if (isNaN(numQuantity) || numQuantity < 1) {
+      return res.status(400).json({ error: 'Số lượng không hợp lệ' });
     }
 
-    // 2. Lấy sản phẩm
-    const prod = await Product.findById(productId);
+    // Find product with session
+    const prod = await Product.findById(productId).session(session);
     if (!prod) {
-      return res.status(404).json({ error: 'Sản phẩm không tồn tại.' });
+      return res.status(404).json({ error: 'Sản phẩm không tồn tại' });
     }
 
-    // 3. Kiểm tra tồn kho
-    if (prod.stock < quantity) {
-      return res.status(400).json({ 
-        error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock} sản phẩm` 
-      });
+    let itemPrice = Number(prod.price) || 0;
+    let variantInfo = null;
+    const orderProducts = [];
+
+    // Handle variant if exists
+    if (variant && variant._id) {
+      // Check & update variant stock
+      const variantDoc = await VariantProduct.findById(variant._id).session(session);
+      if (!variantDoc) {
+        await session.abortTransaction();
+        return res.status(404).json({ error: 'Không tìm thấy biến thể sản phẩm' });
+      }
+
+      if (variantDoc.stock < numQuantity) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          error: `Biến thể ${variantDoc.name} chỉ còn ${variantDoc.stock} sản phẩm`,
+          availableStock: variantDoc.stock
+        });
+      }
+
+      // Update variant stock
+      await VariantProduct.updateOne(
+        { _id: variant._id },
+        { $inc: { stock: -numQuantity } }
+      ).session(session);
+
+      // Calculate price from variant
+      itemPrice = typeof variantDoc.price === 'number'
+        ? Number(variantDoc.price)
+        : (Number(prod.price) + Number(variantDoc.priceDiff || 0));
+
+      variantInfo = {
+        _id: variantDoc._id,
+        name: variantDoc.name,
+        price: typeof variantDoc.price === 'number' ? Number(variantDoc.price) : undefined,
+        priceDiff: typeof variantDoc.price === 'number' ? undefined : Number(variantDoc.priceDiff || 0)
+      };
+
+    } else {
+      // Check & update main product stock
+      if ((prod.stock || 0) < numQuantity) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock || 0} sản phẩm`,
+          availableStock: prod.stock || 0
+        });
+      }
+
+      await Product.updateOne(
+        { _id: prod._id },
+        { $inc: { stock: -numQuantity } }
+      ).session(session);
     }
 
-    // 4. Tính giá gốc
-    const basePrice = Number(prod.price) || 0;
-    const variantPrice = Number(variant?.priceDiff) || 0;
-    const itemPrice = basePrice + variantPrice;
-    const totalPrice = itemPrice * quantity;
+    // Calculate total price
+    const totalPrice = itemPrice * numQuantity;
 
-    // 5. Áp dụng voucher (nếu có)
+    // Handle voucher
     let voucherDiscount = 0;
-    if (voucher && voucher.code) {
-      const voucherDoc = await Voucher.findOne({ code: voucher.code?.toUpperCase?.() || voucher.code });
+    if (voucher?.code) {
+      const voucherDoc = await Voucher.findOne({
+        code: voucher.code.toUpperCase()
+      }).session(session);
+
       if (voucherDoc) {
         const validation = validateVoucherConditions(voucherDoc, totalPrice);
         if (!validation.valid) {
+          await session.abortTransaction();
           return res.status(400).json({ error: validation.message });
         }
         voucherDiscount = calculateDiscountAmount(voucherDoc, totalPrice);
       }
     }
 
-    // 6. Áp dụng phí ship (nếu có)
-    let fee = 0;
-    if (typeof shippingFee === 'number') {
-      fee = shippingFee;
-    }
+    // Calculate final amounts
+    const shippingFeeAmount = Number(shippingFee) || 0;
+    const finalTotal = Math.max(0, totalPrice + shippingFeeAmount - voucherDiscount);
 
-    // 7. Tổng cuối cùng
-    const finalTotal = Math.max(0, totalPrice + fee - voucherDiscount);
+    // Create order
+    const order = new Order({
+      user_id,
+      products: [{
+        productId: prod._id,
+        quantity: numQuantity,
+        price: itemPrice,
+        variant: variantInfo || {}
+      }],
+      address,
+      phoneNumber: phoneNumber || '',
+      paymentMethod,
+      shippingMethod,
+      voucher: voucher || null,
+      voucherDiscount,
+      shippingFee: shippingFeeAmount,
+      total_price: totalPrice,
+      total: finalTotal,
+      status: 'pending',
+      createdAt: new Date()
+    });
 
-    // 8. Trừ kho (transaction)
-    const session = await mongoose.startSession();
-    let order;
+    await order.save({ session });
+    await session.commitTransaction();
 
-    try {
-      await session.withTransaction(async () => {
-        const currentProd = await Product.findById(productId).session(session);
-        if (currentProd.stock < quantity) {
-          throw new Error(`Sản phẩm ${currentProd.name} chỉ còn ${currentProd.stock} sản phẩm`);
-        }
-
-        await Product.updateOne(
-          { _id: prod._id },
-          { $inc: { stock: -quantity } }
-        ).session(session);
-
-        order = new Order({
-          user_id,
-          products: [{
-            productId: prod._id,
-            quantity,
-            price: itemPrice,
-            variant: variant || {}
-          }],
-          address,
-          phoneNumber: phoneNumber || '',
-          paymentMethod,
-          shippingMethod,
-          voucher,
-          voucherDiscount,
-          shippingFee: fee,
-          total_price: totalPrice,
-          total: finalTotal,
-          status: 'pending',
-          createdAt: new Date()
-        });
-
-        await order.save({ session });
-      });
-    } finally {
-      await session.endSession();
-    }
-
-    // 9. Auto cancel giữ nguyên...
-
-    // 10. Trả về response
     res.status(200).json({
       success: true,
       message: 'Đặt hàng thành công',
@@ -202,7 +230,13 @@ router.post('/buy-now', async (req, res) => {
         orderId: order._id,
         totalAmount: finalTotal,
         voucherDiscount,
-        shippingFee: fee,
+        shippingFee: shippingFeeAmount,
+        product: {
+          name: prod.name,
+          price: Number(prod.price),
+          variant: variantInfo,
+          finalPrice: itemPrice
+        },
         paymentInfo: {
           acc: '123456789',
           bank: 'VCB',
@@ -213,11 +247,14 @@ router.post('/buy-now', async (req, res) => {
     });
 
   } catch (err) {
+    await session.abortTransaction();
     console.error('❌ Buy now error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: err.message || 'Lỗi server' 
+      error: err.message || 'Lỗi server'
     });
+  } finally {
+    session.endSession();
   }
 });
 

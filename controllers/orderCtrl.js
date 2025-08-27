@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const mongoose = require('mongoose');
 const Product = require("../models/Product");
 const Image = require("../models/Image");
 const Cart = require("../models/Cart");
@@ -12,6 +13,62 @@ const {
 const { canTransition } = require("../utils/orderStatus");
 const Notification = require("../models/Notification");
 const { sendMail } = require("../utils/mailer");
+
+// Hoàn tồn kho cho 1 line sản phẩm (có thể là line của order.products
+// hoặc 1 sản phẩm bên trong combo.products)
+async function restoreStockForLine(line, qtyMultiplier = 1, session = null) {
+  const quantity = Math.max(1, Number(line.quantity || 1)) * Math.max(1, Number(qtyMultiplier || 1));
+
+  // Nếu line là kiểu { productId, quantity, variant? }
+  // (đúng structure của order.products[])
+  const productId = line.productId?._id || line.productId || line?.product?._id || line?.product;
+  const variantId = line?.variant?._id || line?.variantId || null;
+
+  if (variantId) {
+    // Hoàn kho cho biến thể
+    await VariantProduct.updateOne(
+      { _id: variantId },
+      { $inc: { stock: quantity } },
+      session ? { session } : {}
+    );
+  } else if (productId) {
+    // Hoàn kho cho sản phẩm gốc
+    await Product.updateOne(
+      { _id: productId },
+      { $inc: { stock: quantity } },
+      session ? { session } : {}
+    );
+  }
+}
+
+// Hoàn tồn kho cho toàn bộ đơn
+async function restoreStockForOrder(order, session = null) {
+  // Hoàn kho cho các sản phẩm lẻ
+  if (Array.isArray(order.products)) {
+    for (const p of order.products) {
+      await restoreStockForLine(p, 1, session);
+    }
+  }
+
+  // Hoàn kho cho combo
+  if (Array.isArray(order.combos)) {
+    for (const c of order.combos) {
+      const qtyCombo = Math.max(1, Number(c.quantity || 1)); // mỗi combo gồm nhiều sp
+      if (Array.isArray(c.products)) {
+        for (const cp of c.products) {
+          // cp có dạng { productId, variant? }, cần nhân với số lượng combo
+          await restoreStockForLine(cp, qtyCombo, session);
+        }
+      } else if (Array.isArray(c.comboDetails?.products)) {
+        // Fallback nếu bạn đã gắn products trong comboDetails
+        for (const cp of c.comboDetails.products) {
+          await restoreStockForLine(cp, qtyCombo, session);
+        }
+      }
+    }
+  }
+}
+
 
 //thong bao
 const createOrderNotification = async (order, status) => {
@@ -65,101 +122,92 @@ const createOrderNotification = async (order, status) => {
 const sendOrderEmail = async (orderId, type) => {
   try {
     const order = await Order.findById(orderId)
-      .populate("user_id", "full_name email phone")
-      .populate("products.productId", "name price")
+      .populate({
+        path: "user_id",
+        select: "full_name email phone"
+      })
+      .populate({
+        path: "products.productId",
+        populate: [
+          { path: "category_id", select: "name" },
+          { path: "brand_id", select: "name" }
+        ]
+      })
       .lean();
+
     if (!order || !order.user_id) return;
 
-    const imgMap = {};
-    const productIds = order.products.map((p) => p.productId?._id);
-    if (productIds.length) {
-      const images = await Image.find({
-        product_id: { $in: productIds },
-      }).lean();
-      images.forEach((img) => {
-        imgMap[img.product_id.toString()] = img.url;
-      });
-    }
-
-    // Format currency
+    // Format currency helper
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat("vi-VN", {
         style: "currency",
-        currency: "VND",
+        currency: "VND"
       }).format(amount);
     };
 
-    // Calculate total
-    let totalAmount = 0;
-    const rows = order.products
-      .map((item) => {
-        const prod = item.productId;
-        const imgUrl = imgMap[prod._id.toString()] || "";
-        const variant = item.variant
-          ? `<span style="color: #666; font-size: 12px;">${item.variant.key}: ${item.variant.label}</span>`
-          : "";
-        const unitPrice =
-          prod.price + (item.variant ? item.variant.priceDiff : 0);
-        const itemTotal = unitPrice * item.quantity;
-        totalAmount += itemTotal;
+    // Format date helper
+    const formatDate = (date) => {
+      return new Date(date).toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
 
-        return `
+    // Generate product rows
+    const rows = order.products.map(item => {
+      const prod = item.productId;
+      const variant = item.variant;
+      const itemPrice = variant?.price || prod.price;
+      const itemTotal = itemPrice * item.quantity;
+
+      return `
         <tr style="border-bottom: 1px solid #eee;">
           <td style="padding: 15px 10px; vertical-align: top;">
-            <div style="font-weight: 600; color: #333; margin-bottom: 5px;">${
-              prod.name
-            }</div>
-            ${variant}
+            <div style="font-weight: 600; color: #333; margin-bottom: 5px;">
+              ${prod.name}
+            </div>
+            ${variant ? `
+              <div style="color: #666; font-size: 13px;">
+                ${variant.key}: ${variant.label}
+              </div>
+            ` : ''}
+            <div style="color: #666; font-size: 12px; margin-top: 3px;">
+              Danh mục: ${prod.category_id?.name || ''}
+              ${prod.brand_id ? `• Thương hiệu: ${prod.brand_id.name}` : ''}
+            </div>
           </td>
           <td style="padding: 15px 10px; text-align: center;">
-            <img src="${imgUrl}" width="60" height="60" style="object-fit: cover; border-radius: 8px; border: 1px solid #eee;" alt="${
-          prod.name
-        }"/>
+            <img 
+              src="${prod.image || ''}" 
+              width="60" height="60" 
+              style="object-fit: cover; border-radius: 8px; border: 1px solid #eee;"
+              alt="${prod.name}"
+            />
           </td>
           <td style="padding: 15px 10px; text-align: center; font-weight: 600; color: #2563eb;">
             ${item.quantity}
           </td>
           <td style="padding: 15px 10px; text-align: right; font-weight: 600;">
-            ${formatCurrency(unitPrice)}
+            ${formatCurrency(itemPrice)}
           </td>
           <td style="padding: 15px 10px; text-align: right; font-weight: 700; color: #dc2626;">
             ${formatCurrency(itemTotal)}
           </td>
         </tr>
       `;
-      })
-      .join("");
+    }).join('');
 
-    const subject =
-      type === "delivered"
-        ? `🎉 [HiPC] Đơn hàng #${order._id
-            .toString()
-            .slice(-8)} đã được giao thành công`
-        : type === "pending"
-        ? `✅ [HiPC] Đặt hàng thành công #${order._id.toString().slice(-8)}`
-        : `✅ [HiPC] Xác nhận đơn hàng #${order._id.toString().slice(-8)}`;
-
-    const heading =
-      type === "delivered"
-        ? "🎉 Đơn hàng của bạn đã được giao thành công!"
-        : type === "created"
-        ? "✅ Đặt hàng thành công tại HiPC!"
-        : "✅ Cảm ơn bạn đã đặt hàng tại HiPC!";
-
-    const message =
-      type === "delivered"
-        ? "Cảm ơn bạn đã tin tưởng và mua sắm tại HiPC. Chúng tôi hy vọng bạn hài lòng với sản phẩm đã nhận được."
-        : type === "created"
-        ? "Đơn hàng của bạn đã được tạo thành công và đang chờ xác nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất để xác nhận và giao hàng."
-        : "Đơn hàng của bạn đã được tiếp nhận và đang được xử lý. Chúng tôi sẽ liên hệ với bạn sớm nhất để xác nhận và giao hàng.";
-
+    // Email template
     const html = `
       <!DOCTYPE html>
       <html lang="vi">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject}</title>
+        <title>Thông tin đơn hàng #${order._id.toString().slice(-8)}</title>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
@@ -174,37 +222,42 @@ const sendOrderEmail = async (orderId, type) => {
             </p>
           </div>
 
+          <!-- Order Status -->
+          <div style="background-color: ${order.status === 'cancelled' ? '#fee2e2' : '#f0fdf4'}; padding: 15px 20px; border-bottom: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: ${order.status === 'cancelled' ? '#dc2626' : '#059669'}; font-weight: 600; text-align: center;">
+              ${order.status === 'cancelled' ? '🚫 Đơn hàng đã bị hủy' : '✅ Đơn hàng đang được xử lý'}
+            </p>
+          </div>
+
           <!-- Main Content -->
           <div style="padding: 30px 20px;">
-            <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 24px; font-weight: 600;">
-              ${heading}
-            </h2>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-              ${message}
-            </p>
-
             <!-- Order Info -->
             <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #2563eb;">
               <h3 style="color: #1f2937; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">
                 📋 Thông tin đơn hàng
               </h3>
               <div style="display: grid; gap: 8px;">
-                <p style="margin: 0; color: #374151;"><strong>Mã đơn hàng:</strong> #${order._id
-                  .toString()
-                  .slice(-8)}</p>
-                <p style="margin: 0; color: #374151;"><strong>👤 Khách hàng:</strong> ${
-                  order.user_id.full_name
-                }</p>
-                <p style="margin: 0; color: #374151;"><strong>📞 Số điện thoại:</strong> ${
-                  order.user_id.phone || "Chưa cung cấp"
-                }</p>
-                <p style="margin: 0; color: #374151;"><strong>📧 Email:</strong> ${
-                  order.user_id.email
-                }</p>
-                <p style="margin: 0; color: #374151;"><strong>📍 Địa chỉ giao hàng:</strong> ${
-                  order.address
-                }</p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Mã đơn hàng:</strong> #${order._id.toString().slice(-8)}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Ngày đặt:</strong> ${formatDate(order.createdAt)}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Khách hàng:</strong> ${order.user_id.full_name}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Số điện thoại:</strong> ${order.user_id.phone}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Email:</strong> ${order.user_id.email}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Địa chỉ:</strong> ${order.address}
+                </p>
+                <p style="margin: 0; color: #374151;">
+                  <strong>Phương thức thanh toán:</strong> ${order.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : order.paymentMethod}
+                </p>
               </div>
             </div>
 
@@ -219,11 +272,11 @@ const sendOrderEmail = async (orderId, type) => {
               <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                   <tr style="background-color: #f3f4f6;">
-                    <th style="padding: 15px 10px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db;">Sản phẩm</th>
-                    <th style="padding: 15px 10px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db;">Hình ảnh</th>
-                    <th style="padding: 15px 10px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db;">SL</th>
-                    <th style="padding: 15px 10px; text-align: right; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db;">Đơn giá</th>
-                    <th style="padding: 15px 10px; text-align: right; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db;">Thành tiền</th>
+                    <th style="padding: 12px 10px; text-align: left; color: #374151;">Sản phẩm</th>
+                    <th style="padding: 12px 10px; text-align: center; color: #374151;">Hình ảnh</th>
+                    <th style="padding: 12px 10px; text-align: center; color: #374151;">SL</th>
+                    <th style="padding: 12px 10px; text-align: right; color: #374151;">Đơn giá</th>
+                    <th style="padding: 12px 10px; text-align: right; color: #374151;">Thành tiền</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,14 +285,38 @@ const sendOrderEmail = async (orderId, type) => {
               </table>
             </div>
 
-            <!-- Total Amount -->
-            <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">
-              <p style="color: #fecaca; margin: 0 0 5px 0; font-size: 16px; font-weight: 500;">
-                💰 Tổng tiền đơn hàng
-              </p>
-              <p style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
-                ${formatCurrency(totalAmount)}
-              </p>
+            <!-- Order Summary -->
+            <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+              <table style="width: 100%;">
+                <tr>
+                  <td style="padding: 8px 0; color: #374151;">Tổng tiền hàng:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: 600;">
+                    ${formatCurrency(order.total_price)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #374151;">Phí vận chuyển:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: 600;">
+                    ${formatCurrency(order.shippingFee)}
+                  </td>
+                </tr>
+                ${order.voucherDiscount > 0 ? `
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151;">Giảm giá:</td>
+                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #059669;">
+                      -${formatCurrency(order.voucherDiscount)}
+                    </td>
+                  </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 12px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-top: 2px solid #e5e7eb;">
+                    Tổng thanh toán:
+                  </td>
+                  <td style="padding: 12px 0; text-align: right; color: #dc2626; font-weight: 700; font-size: 16px; border-top: 2px solid #e5e7eb;">
+                    ${formatCurrency(order.total)}
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <!-- Contact Info -->
@@ -270,17 +347,14 @@ const sendOrderEmail = async (orderId, type) => {
       </html>
     `;
 
+    // Send email
     await sendMail({
       to: order.user_id.email,
-      subject,
-      html,
+      subject: `[HiPC] Thông tin đơn hàng #${order._id.toString().slice(-8)}`,
+      html
     });
 
-    console.log(
-      `Order email sent successfully to ${
-        order.user_id.email
-      } for order #${order._id.toString().slice(-8)}`
-    );
+    console.log(`Order email sent successfully to ${order.user_id.email}`);
   } catch (err) {
     console.error("Error sending order email:", err);
   }
@@ -308,35 +382,96 @@ exports.createOrder = async (req, res) => {
       products.length > 0 &&
       (!Array.isArray(selectedProducts) || selectedProducts.length === 0)
     ) {
-      // Xử lý giống buy-now nhưng cho phép nhiều sản phẩm
+       // === FIX: Buy-now qua /checkout có trừ tồn biến thể + transaction ===
+      const session = await mongoose.startSession();
       let totalPrice = 0;
       const orderProducts = [];
 
-      for (const item of products) {
-        const prod = await Product.findById(item.productId);
-        if (!prod) {
-          return res.status(404).json({ error: `Sản phẩm không tồn tại.` });
-        }
-        if (prod.stock < item.quantity) {
-          return res
-            .status(400)
-            .json({ error: `Sản phẩm ${prod.name} chỉ còn ${prod.stock}` });
-        }
-        const itemPrice = prod.price + (item.variant?.priceDiff || 0);
-        const itemTotal = itemPrice * item.quantity;
-        totalPrice += itemTotal;
+      await session.withTransaction(async () => {
+        for (const raw of products) {
+          const quantity = Math.max(1, Number(raw.quantity || 1));
+          const prod = await Product.findById(raw.productId).session(session);
+          if (!prod) throw new Error('Sản phẩm không tồn tại.');
 
-        await Product.updateOne(
-          { _id: prod._id },
-          { $inc: { stock: -item.quantity } }
-        );
+          // Chuẩn hoá nguồn variantId: ưu tiên raw.variantId → raw.variant._id → tìm bằng label
+          const variantId =
+            raw.variantId || raw?.variant?._id || null;
+          let variantDoc = null;
 
-        orderProducts.push({
-          productId: prod._id,
-          quantity: item.quantity,
-          variant: item.variant,
-        });
-      }
+          if (variantId) {
+            variantDoc = await VariantProduct.findById(variantId).session(session);
+            if (!variantDoc) throw new Error('Không tìm thấy biến thể sản phẩm');
+            // Atomic trừ tồn
+            const up = await VariantProduct.updateOne(
+              { _id: variantDoc._id, stock: { $gte: quantity } },
+              { $inc: { stock: -quantity } },
+              { session }
+            );
+            if (up.modifiedCount !== 1) {
+              const left = (await VariantProduct.findById(variantDoc._id).session(session))?.stock ?? 0;
+              throw new Error(`Biến thể ${variantDoc.name} không đủ tồn (còn ${left})`);
+            }
+          } else if (raw?.variant?.label) {
+            // fallback theo label (tương thích FE cũ)
+            variantDoc = await VariantProduct.findOne({
+              product_id: prod._id,
+              name: raw.variant.label
+            }).session(session);
+            if (!variantDoc) throw new Error(`Không tìm thấy biến thể ${raw.variant.label}`);
+            const up = await VariantProduct.updateOne(
+              { _id: variantDoc._id, stock: { $gte: quantity } },
+              { $inc: { stock: -quantity } },
+              { session }
+            );
+            if (up.modifiedCount !== 1) {
+              const left = (await VariantProduct.findById(variantDoc._id).session(session))?.stock ?? 0;
+              throw new Error(`Biến thể ${variantDoc.name} không đủ tồn (còn ${left})`);
+            }
+          } else {
+            // Không có biến thể → trừ tồn sản phẩm gốc (atomic)
+            const up = await Product.updateOne(
+              { _id: prod._id, stock: { $gte: quantity } },
+              { $inc: { stock: -quantity } },
+              { session }
+            );
+            if (up.modifiedCount !== 1) {
+              const fresh = await Product.findById(prod._id).session(session);
+              const left = fresh?.stock ?? 0;
+              throw new Error(`Sản phẩm ${fresh?.name || ''} không đủ tồn (còn ${left})`);
+            }
+          }
+
+          // Tính giá line
+          let itemPrice = Number(prod.price) || 0;
+          let variantInfo = null;
+          if (variantDoc) {
+            // Ưu tiên variant.price; nếu không có thì base + priceDiff
+            itemPrice = typeof variantDoc.price === 'number'
+              ? Number(variantDoc.price)
+              : (Number(prod.price) + Number(variantDoc.priceDiff || (variantDoc.price - Number(prod.price)) || 0));
+
+            variantInfo = {
+              _id: variantDoc._id,
+              name: variantDoc.name,
+              price: typeof variantDoc.price === 'number' ? Number(variantDoc.price) : undefined,
+              priceDiff: typeof variantDoc.price === 'number' ? undefined : Number((variantDoc.price || 0) - Number(prod.price)),
+              label: variantDoc.name, // để invoice cũ vẫn hiển thị
+              key: raw?.variant?.key || 'Phiên bản'
+            };
+          } else if (raw?.variant) {
+            // giữ tương thích dữ liệu cũ nếu FE có đính kèm variant.priceDiff
+            itemPrice = Number(prod.price) + Number(raw.variant?.priceDiff || 0);
+          }
+
+          totalPrice += itemPrice * quantity;
+          orderProducts.push({
+            productId: prod._id,
+            quantity,
+            variant: variantInfo || raw?.variant || {}
+          });
+        }
+        // (phần tính voucher/phí ship/tạo Order vẫn ở ngoài, giữ nguyên)
+      });
 
       // Áp dụng voucher cho đơn hàng (chỉ loại 'order')
       let orderVoucherDiscount = 0,
@@ -903,20 +1038,12 @@ exports.updateStatus = async (req, res) => {
     }
 
     // Nếu chuyển sang cancelled và đơn đang ở các trạng thái này, hoàn lại stock
-    if (
+  if (
       status === "cancelled" &&
-      ["pending", "confirmed", "packed", "picked", "shipping"].includes(
-        order.status
-      ) &&
-      order.products &&
-      order.products.length > 0
+      ["pending", "confirmed", "packed", "picked", "shipping"].includes(order.status)
     ) {
-      for (const item of order.products) {
-        await Product.updateOne(
-          { _id: item.productId },
-          { $inc: { stock: item.quantity } }
-        );
-      }
+      await restoreStockForOrder(order);
+      order.isStockReturned = true; // đánh dấu đã hoàn kho để tránh hoàn lại lần 2
     }
 
     order.status = status;
@@ -947,17 +1074,9 @@ exports.cancelOrder = async (req, res) => {
       });
     }
     // Hoàn stock nếu đơn chưa bị hủy và có sản phẩm
-    if (
-      ["pending", "packed"].includes(order.status) &&
-      order.products &&
-      order.products.length > 0
-    ) {
-      for (const item of order.products) {
-        await Product.updateOne(
-          { _id: item.productId },
-          { $inc: { stock: item.quantity } }
-        );
-      }
+if (["pending", "packed"].includes(order.status) && !order.isStockReturned) {
+      await restoreStockForOrder(order);
+      order.isStockReturned = true;
     }
     order.status = "cancelled";
     order.cancelledAt = new Date();
@@ -983,17 +1102,8 @@ exports.returnStockForCancelledOrder = async (req, res) => {
     if (order.isStockReturned) {
       return res.status(400).json({ error: "Đơn này đã hoàn kho trước đó" });
     }
-    if (!order.products || !order.products.length) {
-      return res.status(400).json({ error: "Đơn không có sản phẩm" });
-    }
-
-    // Hoàn lại stock cho từng sản phẩm
-    for (const item of order.products) {
-      await Product.updateOne(
-        { _id: item.productId },
-        { $inc: { stock: item.quantity } }
-      );
-    }
+        // Hoàn lại stock cho cả products và combo (nếu có)
+    await restoreStockForOrder(order);
     order.isStockReturned = true;
     await order.save();
 
